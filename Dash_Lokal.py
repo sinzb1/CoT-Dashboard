@@ -1124,6 +1124,184 @@ dbc.Row([
     ], width=12)
 ]),
 
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Factor (DXY)"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Factor (DXY) Indicator** zeigt, wie sich das Long- bzw. 
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
+                        Trader und einem externen Währungsfaktor verteilt. Als externer Faktor wird der 
+                        **US-Dollar-Index (DXY)** verwendet, der die Stärke des US-Dollars gegenüber einem 
+                        Korb wichtiger Währungen abbildet. Dadurch wird sichtbar, ob eine Tradergruppe ihre 
+                        Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars aufbaut.
+
+                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
+                        mit der allgemeinen Dollarstärke sichtbar zu machen. Er hilft zu beurteilen, ob hohe oder 
+                        tiefe Long- bzw. Short-Positionierungen eher in Phasen eines starken oder schwachen 
+                        US-Dollars auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Dadurch 
+                        lassen sich mögliche Zusammenhänge zwischen Wechselkursumfeld und Positionierung im 
+                        jeweiligen Rohstoffmarkt erkennen.
+
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des DXY. Helle Farben stehen für 
+                        einen tieferen Dollarindex, dunkelrote Farben für einen höheren Dollarindex bzw. einen 
+                        stärkeren US-Dollar.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Long (MML):**
+
+                            $$
+                            \mathrm{DP\ Factor\ (DXY)}_{\mathrm{MML}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MML}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Short (MMS):**
+
+                            $$
+                            \mathrm{DP\ Factor\ (DXY)}_{\mathrm{MMS}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
+                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
+                        - **y-Achse:** Open Interest der betrachteten Gruppe
+                        - **Punktfarbe:** Niveau des DXY zum Zeitpunkt $t$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='dp-dxy-radio',
+            options=[
+                {'label': 'MM Long',  'value': 'MML'},
+                {'label': 'MM Short', 'value': 'MMS'},
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-dxy-indicator-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
+html.Hr(),  # Separator
+dbc.Row([
+    dbc.Col([
+        html.H1("DP Currency Indicator (USD/CHF)"),
+
+        dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    [
+                        dcc.Markdown(r"""
+                        Der **Dry Powder Currency Indicator** zeigt, wie sich das Long- bzw. 
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
+                        Trader und einem relevanten Wechselkurs verteilt. Als Währungsfaktor wird der 
+                        **USD/CHF-Wechselkurs** verwendet. Dadurch wird sichtbar, ob eine Tradergruppe 
+                        ihre Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars 
+                        gegenüber dem Schweizer Franken aufbaut.
+
+                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im 
+                        Zusammenhang mit dem Wechselkursumfeld sichtbar zu machen. Er hilft zu beurteilen, 
+                        ob hohe oder tiefe Long- bzw. Short-Positionierungen eher bei bestimmten USD/CHF-Niveaus 
+                        auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Der Wechselkurs 
+                        USD/CHF wird verwendet, da das Dashboard primär in der Schweiz eingesetzt wird und die 
+                        betrachteten Rohstoffmärkte überwiegend in US-Dollar notieren. Dadurch wird die 
+                        Positionierung aus einer für Schweizer Nutzer:innen besonders relevanten 
+                        Währungsperspektive interpretiert.
+
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des USD/CHF-Wechselkurses. 
+                        Helle Farben stehen für ein tieferes USD/CHF-Niveau, dunklere Farben für ein höheres 
+                        USD/CHF-Niveau.
+                        """, mathjax=True),
+                    ],
+                    title="Beschreibung",
+                ),
+
+                dbc.AccordionItem(
+                    [
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Long (MML):**
+
+                            $$
+                            \mathrm{DP\ Currency}_{\mathrm{MML}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MML}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+
+                            dbc.Col(dcc.Markdown(r"""
+                            **Für Managed Money Short (MMS):**
+
+                            $$
+                            \mathrm{DP\ Currency}_{\mathrm{MMS}}=
+                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
+                            $$
+                            """, mathjax=True), width=12, lg=6),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Bedeutung der Abkürzungen / Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
+                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
+                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
+                        - **y-Achse:** Open Interest der betrachteten Gruppe
+                        - **Punktfarbe:** Niveau des USD/CHF-Wechselkurses zum Zeitpunkt $t$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
+
+        dcc.RadioItems(
+            id='dp-currency-radio',
+            options=[
+                {'label': 'MM Long',  'value': 'MML'},
+                {'label': 'MM Short', 'value': 'MMS'},
+            ],
+            value='MML',
+            className='mb-4'
+        ),
+        dcc.Graph(id='dp-currency-indicator-graph'),
+        html.Br(),
+    ], width=12)
+]),
+
         html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
@@ -4526,6 +4704,278 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         ))
 
     # Most Recent Week (identisch zu DP Price Indicator)
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend_title='Legend',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Factor (DXY) – Callback
+# X = MM Long/Short Traders, Y = MM Long/Short OI
+# Punktfarbe = DXY-Wert (usd_index via macro_by_date), merge_asof 7-Tage-Toleranz
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-dxy-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-dxy-radio', 'value')]
+)
+def update_dp_dxy(selected_market, start_date, end_date, mm_side):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if mm_side == 'MML':
+        x_col   = 'MML Traders'
+        y_col   = 'MML Long OI'
+        x_title = 'MM Number of Long Traders'
+        y_title = 'MM Long OI (Contracts)'
+        title   = 'Dry Powder Factor – DXY (MM Long)'
+    else:
+        x_col   = 'MMS Traders'
+        y_col   = 'MMS Short OI'
+        x_title = 'MM Number of Short Traders'
+        y_title = 'MM Short OI (Contracts)'
+        title   = 'Dry Powder Factor – DXY (MM Short)'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+
+    # DXY-Wert als Farbe (FRED via df_macro, merge_asof identisch zu VIX)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    if not df_macro.empty and 'usd_index' in df_macro.columns:
+        dxy_df = df_macro[['Date', 'usd_index']].dropna(subset=['usd_index']).copy()
+        dxy_df = dxy_df.rename(columns={'Date': '_ddate'}).sort_values('_ddate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+        y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+        dff = pd.merge_asof(
+            dff, dxy_df,
+            left_on='_date', right_on='_ddate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals     = pd.to_numeric(dff['usd_index'], errors='coerce')
+        colorbar_title = 'DXY'
+    else:
+        color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'DXY (n/a)'
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>DXY: {c:.2f}'
+        for d, x, y, c in zip(
+            dates_str,
+            x_vals.fillna(0),
+            y_vals.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=14,
+            color=color_vals,
+            colorscale='RdYlGn',    # tiefer DXY = rot (schwacher Dollar), hoher DXY = grün
+            showscale=True,
+            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+            opacity=0.85,
+            line=dict(width=0.6, color='black')
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Trendlinie (identisch zu VIX: weißer Untergrund + Farblinie)
+    mask_t = x_vals.notna() & y_vals.notna()
+    if mask_t.sum() >= 2:
+        xv = x_vals[mask_t].astype(float).values
+        yv = y_vals[mask_t].astype(float).values
+        xs = np.array([xv.min(), xv.max()])
+        m, b = np.polyfit(xv, yv, 1)
+        ys = m * xs + b
+        col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color='white', width=7),
+            showlegend=False, hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color=col, width=3),
+            name='Trend', showlegend=True
+        ))
+
+    # Most Recent Week (identisch zu VIX)
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend_title='Legend',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Currency Indicator (USD/CHF) – Callback
+# X = MM Long/Short Traders, Y = MM Long/Short OI
+# Punktfarbe = USD/CHF-Kurs (usd_chf via macro_by_date), merge_asof 7-Tage-Toleranz
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-currency-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-currency-radio', 'value')]
+)
+def update_dp_currency(selected_market, start_date, end_date, mm_side):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if mm_side == 'MML':
+        x_col   = 'MML Traders'
+        y_col   = 'MML Long OI'
+        x_title = 'MM Number of Long Traders'
+        y_title = 'MM Long OI (Contracts)'
+        title   = 'Dry Powder Currency Indicator – USD/CHF (MM Long)'
+    else:
+        x_col   = 'MMS Traders'
+        y_col   = 'MMS Short OI'
+        x_title = 'MM Number of Short Traders'
+        y_title = 'MM Short OI (Contracts)'
+        title   = 'Dry Powder Currency Indicator – USD/CHF (MM Short)'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+
+    # USD/CHF-Kurs als Farbe (via df_macro, merge_asof identisch zu DXY/VIX)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    if not df_macro.empty and 'usd_chf' in df_macro.columns:
+        chf_df = df_macro[['Date', 'usd_chf']].dropna(subset=['usd_chf']).copy()
+        chf_df = chf_df.rename(columns={'Date': '_cdate'}).sort_values('_cdate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+        y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+        dff = pd.merge_asof(
+            dff, chf_df,
+            left_on='_date', right_on='_cdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals     = pd.to_numeric(dff['usd_chf'], errors='coerce')
+        colorbar_title = 'USD/CHF'
+    else:
+        color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'USD/CHF (n/a)'
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>USD/CHF: {c:.4f}'
+        for d, x, y, c in zip(
+            dates_str,
+            x_vals.fillna(0),
+            y_vals.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=14,
+            color=color_vals,
+            colorscale='RdYlGn',    # tiefer USD/CHF = rot (schwacher Dollar), hoher = grün
+            showscale=True,
+            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+            opacity=0.85,
+            line=dict(width=0.6, color='black')
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Trendlinie (identisch zu DXY/VIX: weißer Untergrund + Farblinie)
+    mask_t = x_vals.notna() & y_vals.notna()
+    if mask_t.sum() >= 2:
+        xv = x_vals[mask_t].astype(float).values
+        yv = y_vals[mask_t].astype(float).values
+        xs = np.array([xv.min(), xv.max()])
+        m, b = np.polyfit(xv, yv, 1)
+        ys = m * xs + b
+        col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color='white', width=7),
+            showlegend=False, hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color=col, width=3),
+            name='Trend', showlegend=True
+        ))
+
+    # Most Recent Week (identisch zu DXY/VIX)
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
