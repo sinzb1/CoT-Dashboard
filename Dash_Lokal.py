@@ -1071,34 +1071,26 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Long (MML):**
+                            dbc.Col(
+                                dcc.Markdown(r"""
+                                **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
-                            $$
-                            \mathrm{DP\ Factor\ (VIX)}_{\mathrm{MML}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MML}}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
+                                $$
+                                c(t)=\mathrm{VIX}(t)
+                                $$
 
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Short (MMS):**
-
-                            $$
-                            \mathrm{DP\ Factor\ (VIX)}_{\mathrm{MMS}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
+                                """, mathjax=True),
+                                width=12
+                            ),
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
                         **Bedeutung der Abkürzungen / Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
                         - **x-Achse:** Anzahl Trader der betrachteten Gruppe
                         - **y-Achse:** Open Interest der betrachteten Gruppe
-                        - **Punktfarbe:** Niveau des VIX zum Zeitpunkt $t$
+                        - **Punktfarbe:** $c(t)$, d. h. das Niveau des VIX zum Zeitpunkt $t$
                         """, mathjax=True),
                     ],
                     title="Berechnung",
@@ -1157,46 +1149,37 @@ dbc.Row([
                 ),
 
                 dbc.AccordionItem(
-                    [
-                        dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Long (MML):**
+    [
+                    dbc.Row([
+                        dbc.Col(
+                            dcc.Markdown(r"""
+                            **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                             $$
-                            \mathrm{DP\ Factor\ (DXY)}_{\mathrm{MML}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MML}}
+                            c(t)=\mathrm{DXY}(t)
                             $$
-                            """, mathjax=True), width=12, lg=6),
+                            """, mathjax=True),
+                            width=12
+                        ),
+                    ], className="mb-2"),
 
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Short (MMS):**
-
-                            $$
-                            \mathrm{DP\ Factor\ (DXY)}_{\mathrm{MMS}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-                        ], className="mb-2"),
-
-                        dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
-                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
-                        - **y-Achse:** Open Interest der betrachteten Gruppe
-                        - **Punktfarbe:** Niveau des DXY zum Zeitpunkt $t$
-                        """, mathjax=True),
-                    ],
-                    title="Berechnung",
-                ),
-            ],
-            start_collapsed=True,
-            always_open=True,
-            flush=True,
-            className="mb-4",
-        ),
+                    dcc.Markdown(r"""
+                    **Bedeutung der Abkürzungen / Begriffe:**
+                    - **MML:** Managed Money Long
+                    - **MMS:** Managed Money Short
+                    - **x-Achse:** Anzahl Trader der betrachteten Gruppe
+                    - **y-Achse:** Open Interest der betrachteten Gruppe
+                    - **Punktfarbe:** $c(t)$, d. h. das Niveau des DXY zum Zeitpunkt $t$
+                    """, mathjax=True),
+                                ],
+                                title="Berechnung",
+                            ),
+                        ],
+                        start_collapsed=True,
+                        always_open=True,
+                        flush=True,
+                        className="mb-4",
+                    ),
 
         dcc.RadioItems(
             id='dp-dxy-radio',
