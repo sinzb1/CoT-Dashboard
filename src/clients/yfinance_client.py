@@ -57,9 +57,16 @@ class YFinanceClient:
                     print(f"[YFinanceClient] No data returned for {commodity} ({ticker})")
                     continue
 
-                # yfinance >= 1.x returns MultiIndex columns (Price, Ticker)
+                # yfinance >= 0.2.x returns MultiIndex columns (Price, Ticker)
+                # Ticker names in columns may be normalized differently across versions,
+                # so we search for the Close column by first level instead of exact key.
                 if isinstance(df.columns, pd.MultiIndex):
-                    close = df[("Close", ticker)].rename(col_name)
+                    close_col = next(
+                        (c for c in df.columns if c[0] == "Close"), None
+                    )
+                    if close_col is None:
+                        raise ValueError(f"No 'Close' column found for {ticker}: {list(df.columns)}")
+                    close = df[close_col].rename(col_name)
                 else:
                     close = df["Close"].rename(col_name)
 
@@ -103,7 +110,12 @@ class YFinanceClient:
                     continue
 
                 if isinstance(df.columns, pd.MultiIndex):
-                    close = df[("Close", ticker)].rename(col_name)
+                    close_col = next(
+                        (c for c in df.columns if c[0] == "Close"), None
+                    )
+                    if close_col is None:
+                        raise ValueError(f"No 'Close' column found for {ticker}: {list(df.columns)}")
+                    close = df[close_col].rename(col_name)
                 else:
                     close = df["Close"].rename(col_name)
 

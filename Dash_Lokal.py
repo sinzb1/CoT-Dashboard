@@ -60,7 +60,7 @@ except Exception as _e:
 query_macro = """
 SELECT *
 FROM macro_by_date
-WHERE time >= now() - INTERVAL '4 years'
+WHERE time >= now() - INTERVAL '2 years'
 """
 print("Fetching macro data (FRED) from InfluxDB v3...")
 try:
@@ -73,6 +73,47 @@ try:
 except Exception as _e:
     print(f"[FRED] Could not load macro data: {_e}")
     df_macro = pd.DataFrame(columns=['Date'])
+
+# Fill macro gaps: fetch 4 years from yfinance as base, InfluxDB values take precedence
+_MACRO_FALLBACK = {
+    "vix":       "^VIX",
+    "usd_index": "DX-Y.NYB",
+    "usd_chf":   "CHF=X",
+}
+try:
+    import yfinance as yf
+    from datetime import date as _date
+    _fb_start = _date.today().replace(year=_date.today().year - 4)
+    for _col, _ticker in _MACRO_FALLBACK.items():
+        _raw = yf.download(_ticker, start=_fb_start.isoformat(), progress=False, auto_adjust=True)
+        if _raw.empty:
+            print(f"[Macro fallback] No data returned for {_col} ({_ticker})")
+            continue
+        if isinstance(_raw.columns, pd.MultiIndex):
+            _cc = next((c for c in _raw.columns if c[0] == "Close"), None)
+            _series = _raw[_cc] if _cc else None
+        else:
+            _series = _raw["Close"]
+        if _series is None:
+            continue
+        _fb = _series.reset_index()
+        _fb.columns = ["Date", _col]
+        _fb["Date"] = pd.to_datetime(_fb["Date"]).dt.tz_localize(None)
+        if df_macro.empty or 'Date' not in df_macro.columns:
+            df_macro = _fb
+        elif _col in df_macro.columns:
+            # Merge yfinance (4yr base) with InfluxDB; InfluxDB values take precedence
+            _tmp = pd.merge(_fb, df_macro[['Date', _col]].rename(columns={_col: f'{_col}_db'}),
+                            on="Date", how="outer")
+            _tmp[_col] = _tmp[f'{_col}_db'].combine_first(_tmp[_col])
+            _tmp.drop(columns=[f'{_col}_db'], inplace=True)
+            df_macro = pd.merge(df_macro.drop(columns=[_col]), _tmp[['Date', _col]],
+                                on="Date", how="outer").sort_values("Date").reset_index(drop=True)
+        else:
+            df_macro = pd.merge(df_macro, _fb, on="Date", how="outer").sort_values("Date").reset_index(drop=True)
+        print(f"[Macro fallback] Loaded {len(_fb)} rows for {_col} from yfinance")
+except Exception as _fb_e:
+    print(f"[Macro fallback] Error: {_fb_e}")
 
 # Close the client
 client.close()
@@ -226,7 +267,6 @@ default_end_date = df_pivoted['Date'].max()
 
 # Define the default start date (6 months prior to the end date)
 default_start_date = default_end_date - timedelta(days=182)
-
 
 # ---------------------------------------------------------------------------
 # PPCI – Positioning Price Concentration Indicator
@@ -4626,8 +4666,7 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         dff = pd.merge_asof(
             dff, vix_df,
             left_on='_date', right_on='_vdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
+            direction='backward'
         )
         color_vals     = pd.to_numeric(dff['vix'], errors='coerce')
         colorbar_title = 'VIX'
@@ -4762,8 +4801,7 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
         dff = pd.merge_asof(
             dff, dxy_df,
             left_on='_date', right_on='_ddate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
+            direction='backward'
         )
         color_vals     = pd.to_numeric(dff['usd_index'], errors='coerce')
         colorbar_title = 'DXY'
@@ -4898,8 +4936,7 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         dff = pd.merge_asof(
             dff, chf_df,
             left_on='_date', right_on='_cdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
+            direction='backward'
         )
         color_vals     = pd.to_numeric(dff['usd_chf'], errors='coerce')
         colorbar_title = 'USD/CHF'
