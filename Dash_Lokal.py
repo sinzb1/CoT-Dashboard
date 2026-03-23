@@ -427,8 +427,20 @@ def rel_concentration(oi_long, oi_short, total_oi):
     tot = nz(total_oi).replace(0, np.nan)  # Division durch 0 vermeiden
     return 100.0 * ((oiL / tot) - (oiS / tot))
 
-def scaled_diameters(vals, min_px=6, max_px=26):
+def scaled_diameters(vals, min_px=6, max_px=26, lo=None, hi=None, log_scale=False):
+    """Mappe Werte auf Pixeldurchmesser [min_px, max_px].
 
+    Parameters
+    ----------
+    vals      : Werte (Series, ndarray, list, scalar)
+    min_px    : kleinster Durchmesser in Pixel
+    max_px    : größter  Durchmesser in Pixel
+    lo, hi    : explizite Referenz-Grenzen (None → aus vals berechnen).
+                Für die Legende MUSS derselbe lo/hi wie für den Scatter
+                übergeben werden, damit Legende und Punkte konsistent sind.
+    log_scale : True → log1p-Transformation vor der Interpolation
+                (empfohlen für stark rechts-schiefe Daten wie Open Interest).
+    """
     # In ein float-Array konvertieren (verträglich mit Series/ndarray/list/scalar)
     v = np.asarray(vals, dtype=float)
 
@@ -438,15 +450,21 @@ def scaled_diameters(vals, min_px=6, max_px=26):
     if v.size == 0:
         return np.array([], dtype=float)
 
-    lo = np.nanmin(v)
-    hi = np.nanmax(v)
+    _lo = float(lo) if lo is not None else float(np.nanmin(v))
+    _hi = float(hi) if hi is not None else float(np.nanmax(v))
 
     # Falls alle Werte gleich (oder leer), mittlere Größe verwenden
-    if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
+    if not np.isfinite(_lo) or not np.isfinite(_hi) or _hi <= _lo:
         return np.full_like(v, (min_px + max_px) / 2.0, dtype=float)
 
-    # Linear skalieren auf Durchmesser (Pixel)
-    return np.interp(v, (lo, hi), (min_px, max_px))
+    if log_scale:
+        v_t  = np.log1p(np.maximum(v, 0.0))
+        lo_t = np.log1p(max(_lo, 0.0))
+        hi_t = np.log1p(_hi)
+    else:
+        v_t, lo_t, hi_t = v, _lo, _hi
+
+    return np.interp(v_t, (lo_t, hi_t), (min_px, max_px))
 
 def scaled_diameters_rank(vals, min_px=6, max_px=45, gamma=0.8):
 
@@ -644,8 +662,8 @@ dbc.Row([
                         Trader sich in dieselbe Richtung positionieren. Er ist unabhängig von der Positionsgrösse und passt sich dadurch gut an
                         regulatorische Beschränkungen wie Positionslimits oder Diversifikationsauflagen an.
 
-                        **Farbskala:** Die Farbe der Punkte zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
-                        stark sich Trader im Verhältnis zur historischen Bandbreite (ein Jahr) in einer Long- oder Short-Position 
+                        **Farbskala:** Die Punktfarbe zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
+                        stark sich Trader im Verhältnis zur historischen Bandbreite (ein Jahr) in einer Long- oder Short-Position
                         konzentrieren. Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung
                         positionieren.
                         """, mathjax=True),
@@ -657,7 +675,7 @@ dbc.Row([
                     [
                         dbc.Row([
                             dbc.Col(dcc.Markdown(r"""
-                            **Berechnung Long-Clustering (Money Manager):**
+                            **Long-Clustering (Money Manager):**
 
                             $$
                             \mathrm{Clustering}^{\mathrm{(Long)}}_{\mathrm{MM}}(\%)=
@@ -667,7 +685,7 @@ dbc.Row([
                             """, mathjax=True), width=12, lg=6),
 
                             dbc.Col(dcc.Markdown(r"""
-                            **Berechnung Short-Clustering (Money Manager):**
+                            **Short-Clustering (Money Manager):**
 
                             $$
                             \mathrm{Clustering}^{\mathrm{(Short)}}_{\mathrm{MM}}(\%)=
@@ -678,7 +696,7 @@ dbc.Row([
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **MM:** Money Manager
                         - **Number of traders $\mathrm{MM}_{\mathrm{Long}}$:** Anzahl MM-Trader mit Long-Positionen
                         - **Number of traders $\mathrm{MM}_{\mathrm{Short}}$:** Anzahl MM-Trader mit Short-Positionen
@@ -734,8 +752,6 @@ dbc.Row([
                     [
                         dcc.Markdown(
                             r"""
-                            **Berechnung:**
-
                             $$
                             \text{Position Size}_{G} =
                             \frac{\text{Open Interest}_{G}}
@@ -747,7 +763,7 @@ dbc.Row([
                             G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
                             $$
 
-                            **Bedeutung der Abkürzungen:**
+                            **Variablen und Begriffe:**
                             - **PMPU:** Producer/Merchant/Processor/User
                             - **SD:** Swap Dealer
                             - **MM:** Managed Money
@@ -769,7 +785,7 @@ dbc.Row([
     ], width=12)
 ]),
 
-dbc.Row([dbc.Col([html.H2("Producer/Merchant/Processor/User (PMPU)")], width=12)]),
+dbc.Row([dbc.Col([html.H2("Producer/Merchant/Processor/User")], width=12)]),
 dbc.Row([
     dbc.Col([dcc.Graph(id='pmpu-long-position-size-graph')], width=12),
     dbc.Col([dcc.Graph(id='pmpu-short-position-size-graph')], width=12),
@@ -793,19 +809,19 @@ dbc.Row([
         html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H1("Dry Powder Indicator"),
+        html.H1("DP Indicator"),
 
         dbc.Accordion(
             [
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Dry Powder (DP)** ist eine Methode zur Visualisierung der Positionierung in Rohstoffmärkten. 
-                        Dabei wird die Grösse der Long- und Short-Positionen (*Open Interest*) mit der Anzahl der Trader 
-                        in einer bestimmten Gruppe (z. B. Money Managers) in Beziehung gesetzt.
+                        **DP (Dry Powder)** ist eine Methode zur Visualisierung der Positionierung in Rohstoffmärkten.
+                        Dabei wird die Grösse der Long- und Short-Positionen (*Open Interest*) mit der Anzahl der Trader
+                        in einer bestimmten Gruppe (z. B. Money Manager) in Beziehung gesetzt.
 
-                        Das **Ziel der DP-Analyse** ist es, einschätzen zu können, ob bestehende Positionen noch ausgebaut werden 
-                        können oder ob sie anfällig für Liquidationen sind. DP-Indikatoren werden in Diagrammen dargestellt 
+                        Das **Ziel des Indikators** ist es, einschätzen zu können, ob bestehende Positionen noch ausgebaut werden
+                        können oder ob sie anfällig für Liquidationen sind. DP-Indikatoren werden in Diagrammen dargestellt
                         und können direkt als Handelssignale genutzt werden, um Marktchancen und Risiken besser zu bewerten.
                         """, mathjax=True),
                     ],
@@ -815,30 +831,16 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
                         Achsen (Zeitpunkt $t$):
-                        - **x-Achse:** Anzahl der Trader in der jeweiligen Gruppe
-                        - **y-Achse:** Grösse der offenen Positionen (Open Interest)
-
                         $$
-                        x_{\mathrm{MML}}(t) = N_{\mathrm{MML}}(t), 
-                        \qquad
-                        x_{\mathrm{MMS}}(t) = N_{\mathrm{MMS}}(t)
+                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
                         $$
 
-                        $$
-                        y_{\mathrm{MML}}(t) = OI_{\mathrm{MML}}^{L}(t),
-                        \qquad
-                        y_{\mathrm{MMS}}(t) = OI_{\mathrm{MMS}}^{S}(t)\;(\text{im Plot negativ})
-                        $$
+                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$; $y_{\mathrm{MMS}}(t)$ wird im Plot negativ dargestellt.
 
-                        **Bubble-Grösse:**  
-                        Die Fläche der Bubbles zeigt, wie gross die Gesamtposition (Long + Short) im Verhältnis ist – je grösser die Bubble, desto mehr offene Kontrakte (Open Interest) liegen vor.
-
-                        **Begriffe:**  
-                        - $OI$ (*Open Interest*): Anzahl offener Kontrakte (Long bzw. Short) einer Gruppe zu einem Zeitpunkt
-                        - $N_{\mathrm{MML}}, N_{\mathrm{MMS}}$: Anzahl Trader (Money Manager Long bzw. Short)
+                        **Variablen und Begriffe:**
+                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$ (Long bzw. Short)
+                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
                         - **Farbkodierung:** Dunkelblau = MML-Wolke (Long-Seite), Hellblau = MMS-Wolke (Short-Seite)
                         - **Schwarzer Punkt:** jeweils die **aktuellste Woche**
                         """, mathjax=True),
@@ -866,9 +868,9 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Notional Indicator** misst die aggregierte Long- bzw. Short-Exponierung 
-                        einer bestimmten Tradergruppe in Notional-Dollar, indem das Open Interest der Gruppe mit der 
-                        Kontraktgrösse und dem zugrunde liegenden Futures-Preis multipliziert wird. Dadurch wird sichtbar, 
+                        Der **DP Notional Indicator** misst die aggregierte Long- bzw. Short-Exponierung
+                        einer bestimmten Tradergruppe in Notional-Dollar, indem das Open Interest der Gruppe mit der
+                        Kontraktgrösse und dem zugrunde liegenden Futures-Preis multipliziert wird. Dadurch wird sichtbar,
                         wie gross das gesamte finanzielle Exposure einer Gruppe im Markt ist und wie stark sie kapitalmässig engagiert ist.
 
                         Das **Ziel des Indikators** ist es, die absolute Markt-Exponierung einer Tradergruppe in USD sichtbar 
@@ -886,8 +888,6 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
                         $$
                         x_G(t) = \mathrm{Traders}_G(t)
                         $$
@@ -897,7 +897,7 @@ dbc.Row([
                         = \mathrm{Position}_G(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)
                         $$
 
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **$G$:** betrachtete Tradergruppe, $\mathrm{MML}$ oder $\mathrm{MMS}$
                         - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
                         - **$\mathrm{Position}_G(t)$:** aggregierte Position der Gruppe $G$ zum Zeitpunkt $t$ (in Kontrakten)
@@ -930,9 +930,9 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Time Indicator** zeigt, wie sich die Long- bzw. Short-Konzentration 
-                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader über die Zeit entwickelt. 
-                        Dadurch wird sichtbar, wie stark eine Gruppe relativ zum gesamten Markt positioniert ist und 
+                        Der **DP Time Indicator** zeigt, wie sich die Long- bzw. Short-Konzentration
+                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader über die Zeit entwickelt.
+                        Dadurch wird sichtbar, wie stark eine Gruppe relativ zum gesamten Markt positioniert ist und
                         wie sich diese Positionierung im historischen Verlauf verändert.
 
                         Das **Ziel des Indikators** ist es, die zeitliche Entwicklung der Marktpositionierung einer 
@@ -973,12 +973,12 @@ dbc.Row([
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
-                        - **Total Open Interest:** gesamtes Open Interest des betrachteten Futures-Marktes
+                        - **$\mathrm{OI}_{\mathrm{MML}}(t)$:** Open Interest der Managed-Money-Long-Positionen
+                        - **$\mathrm{OI}_{\mathrm{MMS}}(t)$:** Open Interest der Managed-Money-Short-Positionen
+                        - **$\mathrm{OI}(t)$:** gesamtes Open Interest des betrachteten Futures-Marktes
                         - **Negatives Vorzeichen bei MMS:** dient der separaten Darstellung der Short-Seite im Plot
                         """, mathjax=True),
                     ],
@@ -1006,10 +1006,10 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Price Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest 
-                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader und dem zugrunde 
-                        liegenden Preisniveau verteilt. Dadurch wird sichtbar, bei welchen Preisniveaus eine 
-                        Gruppe besonders stark oder schwach positioniert ist und wie sich diese Positionierung 
+                        Der **DP Price Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest
+                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader und dem zugrunde
+                        liegenden Preisniveau verteilt. Dadurch wird sichtbar, bei welchen Preisniveaus eine
+                        Gruppe besonders stark oder schwach positioniert ist und wie sich diese Positionierung
                         im Verhältnis zur Zahl der beteiligten Trader verändert.
 
                         Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
@@ -1018,8 +1018,8 @@ dbc.Row([
                         vielen oder wenigen Tradern getragen werden. Dadurch lassen sich typische Preisbereiche 
                         identifizieren, in denen eine Gruppe besonders aktiv ist.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des Continuous Front-Monts Features 
-                        (2nd nearby). Helle Farben stehen für tiefere Preise, dunklere Farben für höhere Preise.
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des Continuous Front-Month Futures
+                        (2nd Nearby). Helle Farben stehen für tiefere Preise, dunklere Farben für höhere Preise.
                         """, mathjax=True),
                     ],
                     title="Beschreibung",
@@ -1028,31 +1028,24 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für die Long-Seite:**
+                            dbc.Col(
+                                dcc.Markdown(r"""
+                **Für die Long-Seite und die Short-Seite gilt:**
 
-                            $$
-                            \mathrm{DP\ Price}_{G}(t)=\mathrm{Open\ Interest}_{G}(t)
-                            $$
-                            """, mathjax=True), width=12, lg=6),
+                $$
+                c(t)=\mathit{Price}_{\mathrm{Front\ Month}}(t)
+                $$
 
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für die Short-Seite:**
-
-                            $$
-                            \mathrm{DP\ Price}_{G}(t)=\mathrm{Open\ Interest}_{G}(t)
-                            $$
-                            """, mathjax=True), width=12, lg=6),
+                **Variablen und Begriffe:**
+                - *PMPUL:** Producer/Merchant/Processor/User Long
+                - **PMPUS:** Producer/Merchant/Processor/User Short
+                - **$\mathrm{OI}_G(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$
+                - **$N_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ zum Zeitpunkt $t$
+                - **Punktfarbe:** $c(t)$, d. h. das Preisniveau des Front-Month Futures zum Zeitpunkt $t$
+                """, mathjax=True),
+                                width=12
+                            ),
                         ], className="mb-2"),
-
-                        dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
-                        - **$G$:** betrachtete Tradergruppe auf der gewählten Marktseite, $\mathrm{PMPUL}$ oder $\mathrm{PMPUS}$
-                        - **$\mathrm{Open\ Interest}_{G}(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$
-                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
-                        - **y-Achse:** Open Interest der betrachteten Gruppe
-                        - **Punktfarbe:** Preisniveau des Continuous Front-Monts Features zum Zeitpunkt $t$
-                        """, mathjax=True),
                     ],
                     title="Berechnung",
                 ),
@@ -1066,8 +1059,8 @@ dbc.Row([
         dcc.RadioItems(
             id='dp-price-radio',
             options=[
-                {'label': 'PMPU Long',  'value': 'PMPUL'},
-                {'label': 'PMPU Short', 'value': 'PMPUS'},
+                {'label': 'PMPUL',  'value': 'PMPUL'},
+                {'label': 'PMPUS', 'value': 'PMPUS'},
             ],
             value='PMPUL',
             className='mb-4'
@@ -1080,18 +1073,18 @@ dbc.Row([
 html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H1("DP Factor (VIX)"),
+        html.H1("DP Factor (VIX) Indicator"),
 
         dbc.Accordion(
             [
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Factor (VIX) Indicator** zeigt, wie sich das Long- bzw. 
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
-                        Trader und einem externen Risikofaktor verteilt. Als externer Faktor wird der 
-                        **Volatility Index (VIX)** verwendet, der die vom Markt erwartete Schwankungsintensität 
-                        des S&P 500 für die nächsten 30 Tage abbildet. Dadurch wird sichtbar, ob eine Tradergruppe 
+                        Der **DP Factor (VIX) Indicator** zeigt, wie sich das Long- bzw.
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
+                        Trader und einem externen Risikofaktor verteilt. Als externer Faktor wird der
+                        **Volatility Index (VIX)** verwendet, der die vom Markt erwartete Schwankungsintensität
+                        des S&P 500 für die nächsten 30 Tage abbildet. Dadurch wird sichtbar, ob eine Tradergruppe
                         ihre Positionen eher in Phasen tiefer oder hoher erwarteter Marktvolatilität aufbaut.
 
                         Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
@@ -1125,11 +1118,11 @@ dbc.Row([
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
-                        - **y-Achse:** Open Interest der betrachteten Gruppe
+                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
                         - **Punktfarbe:** $c(t)$, d. h. das Niveau des VIX zum Zeitpunkt $t$
                         """, mathjax=True),
                     ],
@@ -1145,8 +1138,8 @@ dbc.Row([
         dcc.RadioItems(
             id='dp-vix-radio',
             options=[
-                {'label': 'MM Long',  'value': 'MML'},
-                {'label': 'MM Short', 'value': 'MMS'},
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'},
             ],
             value='MML',
             className='mb-4'
@@ -1159,18 +1152,18 @@ dbc.Row([
 html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H1("DP Factor (DXY)"),
+        html.H1("DP Factor (DXY) Indicator"),
 
         dbc.Accordion(
             [
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Factor (DXY) Indicator** zeigt, wie sich das Long- bzw. 
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
-                        Trader und einem externen Währungsfaktor verteilt. Als externer Faktor wird der 
-                        **US-Dollar-Index (DXY)** verwendet, der die Stärke des US-Dollars gegenüber einem 
-                        Korb wichtiger Währungen abbildet. Dadurch wird sichtbar, ob eine Tradergruppe ihre 
+                        Der **DP Factor (DXY) Indicator** zeigt, wie sich das Long- bzw.
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
+                        Trader und einem externen Währungsfaktor verteilt. Als externer Faktor wird der
+                        **US-Dollar-Index (DXY)** verwendet, der die Stärke des US-Dollars gegenüber einem
+                        Korb wichtiger Währungen abbildet. Dadurch wird sichtbar, ob eine Tradergruppe ihre
                         Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars aufbaut.
 
                         Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang 
@@ -1189,43 +1182,43 @@ dbc.Row([
                 ),
 
                 dbc.AccordionItem(
-    [
-                    dbc.Row([
-                        dbc.Col(
-                            dcc.Markdown(r"""
-                            **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
+                    [
+                        dbc.Row([
+                            dbc.Col(
+                                dcc.Markdown(r"""
+                                **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
-                            $$
-                            c(t)=\mathrm{DXY}(t)
-                            $$
-                            """, mathjax=True),
-                            width=12
-                        ),
-                    ], className="mb-2"),
-
-                    dcc.Markdown(r"""
-                    **Bedeutung der Abkürzungen / Begriffe:**
-                    - **MML:** Managed Money Long
-                    - **MMS:** Managed Money Short
-                    - **x-Achse:** Anzahl Trader der betrachteten Gruppe
-                    - **y-Achse:** Open Interest der betrachteten Gruppe
-                    - **Punktfarbe:** $c(t)$, d. h. das Niveau des DXY zum Zeitpunkt $t$
-                    """, mathjax=True),
-                                ],
-                                title="Berechnung",
+                                $$
+                                c(t)=\mathrm{DXY}(t)
+                                $$
+                                """, mathjax=True),
+                                width=12
                             ),
-                        ],
-                        start_collapsed=True,
-                        always_open=True,
-                        flush=True,
-                        className="mb-4",
-                    ),
+                        ], className="mb-2"),
+
+                        dcc.Markdown(r"""
+                        **Variablen und Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
+                        - **Punktfarbe:** $c(t)$, d. h. das Niveau des DXY zum Zeitpunkt $t$
+                        """, mathjax=True),
+                    ],
+                    title="Berechnung",
+                ),
+            ],
+            start_collapsed=True,
+            always_open=True,
+            flush=True,
+            className="mb-4",
+        ),
 
         dcc.RadioItems(
             id='dp-dxy-radio',
             options=[
-                {'label': 'MM Long',  'value': 'MML'},
-                {'label': 'MM Short', 'value': 'MMS'},
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'},
             ],
             value='MML',
             className='mb-4'
@@ -1245,11 +1238,11 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        Der **Dry Powder Currency Indicator** zeigt, wie sich das Long- bzw. 
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl 
-                        Trader und einem relevanten Wechselkurs verteilt. Als Währungsfaktor wird der 
-                        **USD/CHF-Wechselkurs** verwendet. Dadurch wird sichtbar, ob eine Tradergruppe 
-                        ihre Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars 
+                        Der **DP Currency Indicator** zeigt, wie sich das Long- bzw.
+                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
+                        Trader und einem relevanten Wechselkurs verteilt. Als Währungsfaktor wird der
+                        **USD/CHF-Wechselkurs** verwendet. Dadurch wird sichtbar, ob eine Tradergruppe
+                        ihre Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars
                         gegenüber dem Schweizer Franken aufbaut.
 
                         Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im 
@@ -1269,41 +1262,31 @@ dbc.Row([
                     title="Beschreibung",
                 ),
 
-                dbc.AccordionItem(
-                    [
-                        dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Long (MML):**
+                    dbc.AccordionItem(
+                        [
+                            dbc.Row([
+                                dbc.Col(
+                                    dcc.Markdown(r"""
+                    **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
-                            $$
-                            \mathrm{DP\ Currency}_{\mathrm{MML}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MML}}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
+                    $$
+                    c(t)=FX(t)
+                    $$
 
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Short (MMS):**
-
-                            $$
-                            \mathrm{DP\ Currency}_{\mathrm{MMS}}=
-                            \mathrm{Open\ Interest}_{\mathrm{MMS}}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-                        ], className="mb-2"),
-
-                        dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MML}}$:** Open Interest der Managed-Money-Long-Positionen
-                        - **$\mathrm{Open\ Interest}_{\mathrm{MMS}}$:** Open Interest der Managed-Money-Short-Positionen
-                        - **x-Achse:** Anzahl Trader der betrachteten Gruppe
-                        - **y-Achse:** Open Interest der betrachteten Gruppe
-                        - **Punktfarbe:** Niveau des USD/CHF-Wechselkurses zum Zeitpunkt $t$
-                        """, mathjax=True),
-                    ],
-                    title="Berechnung",
-                ),
+                    **Variablen und Begriffe:**
+                    - **MML:** Managed Money Long
+                    - **MMS:** Managed Money Short
+                    - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                    - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
+                    - **$FX(t)$:** FX-Wert zum Zeitpunkt $t$
+                    - **Punktfarbe:** $c(t)$, Niveau des USD/CHF-Wechselkurses zum Zeitpunkt $t$
+                    """, mathjax=True),
+                                    width=12
+                                ),
+                            ], className="mb-2"),
+                        ],
+                        title="Berechnung",
+                    ),
             ],
             start_collapsed=True,
             always_open=True,
@@ -1314,8 +1297,8 @@ dbc.Row([
         dcc.RadioItems(
             id='dp-currency-radio',
             options=[
-                {'label': 'MM Long',  'value': 'MML'},
-                {'label': 'MM Short', 'value': 'MMS'},
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'},
             ],
             value='MML',
             className='mb-4'
@@ -1340,9 +1323,9 @@ dbc.Row([
                             anhand des Open Interest und stellt die Konzentration der Gruppen dar. Dadurch lassen sich verschiedene Märkte 
                             oder Gruppen innerhalb eines Marktes direkt vergleichen.
 
-                            Das **Ziel des Indikators** ist es, die Positionierungsprofile von Märkten vollständig zu visualisieren und Unterschiede 
-                            sichtbar zu machen – etwa zwischen verwandten Rohstoffen wie Mais und Sojabohnen oder zwischen WTI und Brent. 
-                            Dadurch können Rückschlüsse auf zukünftige Marktbewegungen, Hedging-Verhalten und potenzielle Spreadausweitungen 
+                            Das **Ziel des Indikators** ist es, die Positionierungsprofile von Märkten vollständig zu visualisieren und Unterschiede
+                            sichtbar zu machen – etwa zwischen verwandten Rohstoffen wie Gold und Silber oder zwischen Platin und Palladium.
+                            Dadurch können Rückschlüsse auf zukünftige Marktbewegungen, Hedging-Verhalten und potenzielle Spreadausweitungen
                             gezogen werden.
                             """,
                             mathjax=True
@@ -1355,16 +1338,9 @@ dbc.Row([
                     [
                         dcc.Markdown(
                             r"""
-                            **Berechnung:**
-
-                            Achsen (Zeitpunkt $(t)$):
-                            - **x-Achse:** Anzahl Trader in der jeweiligen Gruppe (Long oder Short)
-                            - **y-Achse:** Relative Concentration $(RC_G(t))$, d. h. die Nettopositionierung der Gruppe $(G)$ relativ zum gesamten Open Interest
-
+                            Achsen (Zeitpunkt $t$):
                             $$
-                            x_G(t) = N_G(t),
-                            \qquad
-                            y_G(t) = RC_G(t)
+                            x_G(t) = N_G(t), \qquad y_G(t) = RC_G(t)
                             $$
 
                             mit
@@ -1386,10 +1362,10 @@ dbc.Row([
                             - $\sigma_G = +1$ für Long-Serien (MM-L, OR-L, PMPU-L, SD-L)  
                             - $\sigma_G = -1$ für Short-Serien (MM-S, OR-S, PMPU-S, SD-S)
 
-                            **Begriffe:**  
-                            - $OI$ (*Open Interest*): Anzahl aller offenen Kontrakte
-                            - $N_G$: Anzahl Trader in Gruppe $G$
-                            - $RC_G(t)$: Relative Concentration (in Prozentpunkten) einer Gruppe
+                            **Variablen und Begriffe:**
+                            - $\mathrm{OI}(t)$: gesamtes Open Interest aller offenen Kontrakte zum Zeitpunkt $t$
+                            - $N_G(t)$: Anzahl Trader in Gruppe $G$ zum Zeitpunkt $t$
+                            - $RC_G(t)$: Relative Concentration (in Prozentpunkten) einer Gruppe zum Zeitpunkt $t$
                             - **Schwarzer Punkt:** markiert den Wert der **aktuellsten Woche** je Gruppe
                             """,
                             mathjax=True
@@ -1422,7 +1398,7 @@ dbc.Row([
                         sichtbar macht. Dabei werden Positionen nicht nur nach Grösse und Anzahl der Trader, sondern zusätzlich 
                         nach Zeitabschnitten (z. B. Monate oder Quartale) dargestellt.
 
-                        **Das Ziel dieses Indikators** ist es, saisonale Hedging-Muster oder Abweichungen davon zu erkennen. 
+                        Das **Ziel des Indikators** ist es, saisonale Hedging-Muster oder Abweichungen davon zu erkennen. 
                         So lassen sich etwa typische Verhaltensweisen von Produzenten oder Konsumenten in bestimmten Jahreszeiten 
                         aufzeigen (z. B. stärkere Hedging-Aktivität im Winter bei Heizöl). Gleichzeitig hilft er, potenzielle 
                         Anomalien oder Unterabsicherungen zu identifizieren, die ein Risiko für Preisbewegungen darstellen könnten.
@@ -1434,8 +1410,6 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
                         $$
                         x_q(t) = N_q(t), \qquad y_q(t) = RC_q(t)
                         $$
@@ -1473,7 +1447,7 @@ dbc.Row([
                         Dadurch lassen sich Abweichungen zwischen Positionsgrösse und Traderanzahl sichtbar machen, die Hinweise 
                         auf mögliche Wendepunkte im Markt geben können.
 
-                        Das **Ziel dieses Indikators** ist es, ein klareres Bild der Netto-Positionierung zu liefern und Extremwerte 
+                        Das **Ziel des Indikators** ist es, ein klareres Bild der Netto-Positionierung zu liefern und Extremwerte
                         besser einzuordnen. So können Situationen erkannt werden, in denen z. B. das Open Interest eine Long-Position 
                         zeigt, die Mehrheit der Trader aber Short positioniert ist. Zudem lassen sich auch Spread-Positionen analysieren, 
                         um einzuschätzen, ob diese sich in extremeren Marktphasen (z. B. Contango oder Backwardation) verstärken könnten.
@@ -1485,33 +1459,28 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
-                        Achsen (Zeitpunkt $(t)$):
-                        - **x-Achse:** Netto-Anzahl Money-Manager-Trader
-                        - **y-Achse:** Netto-Open-Interest der Money Manager
-                        
+                        Achsen (Zeitpunkt $t$):
                         $$
                         x(t)=N^{\text{Net}}(t)=N^{\text{Long}}(t)-N^{\text{Short}}(t),
                         \qquad
-                        y(t)=OI^{\text{Net}}(t)=OI^{\text{Long}}(t)-OI^{\text{Short}}(t)
+                        y(t)=\mathrm{OI}^{\text{Net}}(t)=\mathrm{OI}^{\text{Long}}(t)-\mathrm{OI}^{\text{Short}}(t)
                         $$
-                        
+
                         **Medians (gestrichelte Referenzlinien):**
                         $$
                         \widetilde{N}^{\text{Net}}=\operatorname{Median}_t\!\big(N^{\text{Net}}(t)\big),
                         \qquad
-                        \widetilde{OI}^{\text{Net}}=\operatorname{Median}_t\!\big(OI^{\text{Net}}(t)\big)
+                        \widetilde{\mathrm{OI}}^{\text{Net}}=\operatorname{Median}_t\!\big(\mathrm{OI}^{\text{Net}}(t)\big)
                         $$
                         
-                        **Variablen (mit Datenbezug):**
+                        **Variablen und Begriffe:**
                         - $t$: Kalenderwoche/Beobachtungszeitpunkt innerhalb des gewählten Datumsbereichs
-                        - $N^{\text{Long}}(t)$: Anzahl **Long-Trader (MM)** zum Zeitpunkt $t$
-                        - $N^{\text{Short}}(t)$: Anzahl **Short-Trader (MM)** zum Zeitpunkt $t$
-                        - $N^{\text{Net}}(t)$: **Netto-Traderzahl** $=\;N^{\text{Long}}(t)-N^{\text{Short}}(t)$
-                        - $OI^{\text{Long}}(t)$: **Long-Open-Interest (MM)** zum Zeitpunkt $t$
-                        - $OI^{\text{Short}}(t)$: **Short-Open-Interest (MM)** zum Zeitpunkt $t$
-                        - $OI^{\text{Net}}(t)$: **Netto-Open-Interest** $=\;OI^{\text{Long}}(t)-OI^{\text{Short}}(t)$
+                        - $N^{\text{Long}}(t)$: Anzahl Long-Trader (MM) zum Zeitpunkt $t$
+                        - $N^{\text{Short}}(t)$: Anzahl Short-Trader (MM) zum Zeitpunkt $t$
+                        - $N^{\text{Net}}(t)$: Netto-Traderzahl $=\;N^{\text{Long}}(t)-N^{\text{Short}}(t)$
+                        - $\mathrm{OI}^{\text{Long}}(t)$: Long-Open-Interest (MM) zum Zeitpunkt $t$
+                        - $\mathrm{OI}^{\text{Short}}(t)$: Short-Open-Interest (MM) zum Zeitpunkt $t$
+                        - $\mathrm{OI}^{\text{Net}}(t)$: Netto-Open-Interest $=\;\mathrm{OI}^{\text{Long}}(t)-\mathrm{OI}^{\text{Short}}(t)$
                         """, mathjax=True),
                     ],
                     title="Berechnung",
@@ -1541,7 +1510,7 @@ dbc.Row([
                         mit der Preisentwicklung eines Rohstoffs. Dabei wird die Positionsgrösse (y-Achse) gegen die Anzahl der Trader 
                         (x-Achse) dargestellt, wobei die Farben die jeweilige Preisrange markieren.
 
-                        Das **Ziel dieses Indikators** ist es, Zusammenhänge zwischen Positionsgrössen und Marktpreisen sichtbar zu machen. 
+                        Das **Ziel des Indikators** ist es, Zusammenhänge zwischen Positionsgrössen und Marktpreisen sichtbar zu machen. 
                         So lassen sich Muster erkennen, etwa dass Long-Trader bei tieferen Preisen grössere Positionen halten 
                         (stärkeres Engagement), während bei höheren Preisen die Traderzahl sinkt. Auf der Short-Seite hingegen treten 
                         oft uneinheitlichere Muster auf, was auf unterschiedliche Handelsstrategien wie Spread- oder 
@@ -1557,21 +1526,21 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
+                        Achsen (Zeitpunkt $t$):
+                        $$
+                        x_G(t)=N_G(t), \qquad y_G(t)=\mathrm{PS}_G(t)
+                        $$
 
-                        Achsen:
+                        Farbcodierung (Zeitpunkt $t$):
                         $$
-                        x_g(t)=N_g(t), \qquad y_g(t)=\mathrm{PS}_g(t)
+                        \text{color}_G(t)\;\propto\;\mathrm{OI}_G(t)
                         $$
-                        - $N_g(t)$: Anzahl der Trader einer Gruppe $g$ zum Zeitpunkt $t$
-                        - $\mathrm{PS}_g(t)$: durchschnittliche Positionsgrösse je Trader einer Gruppe $g$ zum Zeitpunkt $t$
 
-                        Farbcodierung:
-                        $$
-                        \text{color}_g(t)\;\propto\;\mathrm{OI}_g(t)
-                        $$
-                        - $\mathrm{OI}_g(t)$: Open Interest zum Zeitpunkt $t$, d. h. die gesamte Anzahl offener Kontrakte
-                        - Die **Farbe eines Punktes** zeigt somit an, wie hoch das Open Interest in der jeweiligen Woche war
+                        **Variablen und Begriffe:**
+                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - $\mathrm{PS}_G(t)$: durchschnittliche Positionsgrösse je Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$
+                        - Die **Punktfarbe** zeigt, wie hoch das Open Interest in der jeweiligen Woche war
                           (je heller/gelber, desto höher das Open Interest)
                         """, mathjax=True),
                     ],
@@ -1607,14 +1576,14 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **DP Hedging Indicators** erweitern die klassische DP-Analyse, indem sie mehrere Tradergruppen 
-                        gleichzeitig betrachten – typischerweise Money Manager (MM) und Produzenten/Verbraucher (PMPU). 
-                        So wird sichtbar, wie viel „Dry Powder“ (Spielraum für zusätzliche Positionen) eine Gruppe im Verhältnis 
+                        Der **DP Hedging Indicator** erweitert die klassische DP-Analyse, indem er mehrere Tradergruppen
+                        gleichzeitig betrachtet – typischerweise Money Manager (MM) und Producer/Merchant/Processor/User (PMPU).
+                        So wird sichtbar, wie viel „Dry Powder” (Spielraum für zusätzliche Positionen) eine Gruppe im Verhältnis
                         zu einer anderen noch hat.
 
-                        Das **Ziel dieser Indikatoren** ist es, ein vollständigeres Bild der Marktpositionierung zu geben und besser 
-                        einzuschätzen, ob Preise noch weiter steigen oder fallen können. Besonders die PMPU-Gruppe 
-                        (Produzenten und Konsumenten) liefert wertvolle Hinweise, da deren Hedging-Verhalten oft eine starke 
+                        Das **Ziel des Indikators** ist es, ein vollständigeres Bild der Marktpositionierung zu geben und besser
+                        einzuschätzen, ob Preise noch weiter steigen oder fallen können. Besonders die PMPU-Gruppe
+                        (Producer/Merchant/Processor/User) liefert wertvolle Hinweise, da deren Hedging-Verhalten oft eine starke
                         Verbindung zur physischen Marktlage hat.
                         """, mathjax=True),
                     ],
@@ -1624,34 +1593,28 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
+                        Achsen (Zeitpunkt $t$):
+                        $$
+                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                        $$
 
-                        x-Achse (Traderzahl):
-                        $$
-                        x \;=\; \#\;\text{MM Trader (Long oder Short)}
-                        $$
-                        - Anzahl der aktiven Money Manager Trader in Long- oder Short-Positionen
+                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
 
-                        y-Achse (Positionsgrösse):
+                        Farbcodierung – Hedging-Kraft der PMPU (Zeitpunkt $t$):
                         $$
-                        y \;=\; \text{MM (Long oder Short) Open Interest}
-                        $$
-                        - gesamtes Open Interest (offene Kontrakte) der Money Manager in Long- oder Short-Positionen
-
-                        Farbcodierung (Hedging-Kraft der PMPU):
-                        $$
-                        \text{Color}
+                        \text{Color}_G(t)
                         \;=\;
-                        \frac{\;\text{PMPU(L/S) OI}_{\text{current}} - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)\;}
-                             {\max\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big) - \min\!\big(\text{PMPU(L/S) OI}_{\text{range}}\big)}
+                        \frac{\mathrm{OI}_{\mathrm{PMPU}}(t) - \min\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big)}
+                             {\max\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big) - \min\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big)}
                         $$
-                        - normiertes Open Interest der Produzenten/Verbraucher (PMPU), 
-                          zeigt die aktuelle Position im Vergleich zu ihrem historischen Minimum und Maximum  
-                        - **PMPU(L/S)** bezeichnet je nach Auswahl Long (PMPUL) oder Short (PMPUS)
 
-                        **Weitere Visualisierungselemente:**
-                        - **Grösse der Bubbles:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
-                        - **Farbe der Bubbles:** zeigt die relative Stärke/Positionierung der PMPU-Gruppe im beobachteten Zeitraum
+                        **Variablen und Begriffe:**
+                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ (MM Long oder Short) zum Zeitpunkt $t$
+                        - $\mathrm{OI}_{\mathrm{PMPU}}(t)$: Open Interest der PMPU-Gruppe zum Zeitpunkt $t$
+                        - **PMPU(L/S):** Producer/Merchant/Processor/User, je nach Auswahl Long (PMPUL) oder Short (PMPUS)
+                        - **Bubble-Grösse:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
+                        - **Punktfarbe:** normiertes OI der PMPU-Gruppe; zeigt die aktuelle Position relativ zu historischem Minimum und Maximum
                         """, mathjax=True),
                     ],
                     title="Berechnung",
@@ -1679,7 +1642,7 @@ dbc.Row([
 html.Hr(),  # Separator
 dbc.Row([
     dbc.Col([
-        html.H2("DP Concentration / Clustering Indicator"),
+        html.H1("DP Concentration / Clustering Indicator"),
 
         dbc.Accordion(
             [
@@ -1702,47 +1665,45 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
+                        **1) Clustering je Zeitpunkt $t$**
 
-                        **1) Clustering je Zeitpunkt $(t)$**
-
-                        Rohanteil der Gruppe $(g)$ an allen Futures-Tradern:
+                        Rohanteil der Gruppe $G$ an allen Futures-Tradern:
                         $$
-                        \mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)=\frac{T_g(m,t)}{TT_F(m,t)}
+                        \mathrm{ClustShare}^{\mathrm{raw}}_G(m,t)=\frac{T_G(m,t)}{TT_F(m,t)}
                         $$
-                        - Anteil der Trader der Gruppe \(g\) an der Gesamtzahl aller Futures-Trader im Markt
+                        - Anteil der Trader der Gruppe $G$ an der Gesamtzahl aller Futures-Trader im Markt
                         - Skaliert zwischen 0 und 1 (später normiert), unabhängig von der absoluten Traderzahl
 
                         Rolling-Normierung (1-Jahresfenster $\mathcal{W}_{365}$):
                         $$
-                        \mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)=
-                        \frac{\mathrm{ClustShare}^{\mathrm{raw}}_g(m,t)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}
-                        {\max_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_g(m,\tau)}\cdot100
+                        \mathrm{ClustShare}^{\mathrm{roll}}_G(m,t)=
+                        \frac{\mathrm{ClustShare}^{\mathrm{raw}}_G(m,t)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)}
+                        {\max_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)}\cdot100
                         $$
                         - Setzt den aktuellen Rohanteil in Relation zur eigenen 1-Jahres-Historie dieses Marktes
                         - Ergebnis ist 0–100: 0 = historisches Jahres-Minimum, 100 = Jahres-Maximum
 
                         Zeitliche Aggregation im Fenster $[t_0,t_1]$:
                         $$
-                        \overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)=
-                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{ClustShare}^{\mathrm{roll}}_g(m,t)
+                        \overline{\mathrm{ClustShare}}^{\mathrm{roll}}_G(m)=
+                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{ClustShare}^{\mathrm{roll}}_G(m,t)
                         $$
                         - Glättet kurzfristiges Rauschen über das gewählte Analysefenster
                         - Liefert einen repräsentativen Durchschnittswert statt eines Einzelzeitpunkts
 
-                        **2) Concentration je Zeitpunkt $(t)$**
+                        **2) Concentration je Zeitpunkt $t$**
 
                         Netto-Kontrakte (Long minus Short):
                         $$
-                        \mathrm{RelConc}^{\mathrm{raw}}_g(m,t)=OI^{L}_g(m,t)-OI^{S}_g(m,t)
+                        \mathrm{RelConc}^{\mathrm{raw}}_G(m,t)=\mathrm{OI}^{L}_G(m,t)-\mathrm{OI}^{S}_G(m,t)
                         $$
-                        - Misst die Richtung und Stärke der Positionierung der Gruppe $(g)$
+                        - Misst die Richtung und Stärke der Positionierung der Gruppe $G$
                         - Positive Werte ⇒ Netto-Long; negative ⇒ Netto-Short
 
                         Zeitliche Aggregation im Fenster $[t_0,t_1]$:
                         $$
-                        \overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)=
-                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{RelConc}^{\mathrm{raw}}_g(m,t)
+                        \overline{\mathrm{RelConc}}^{\mathrm{raw}}_G(m)=
+                        \frac{1}{|[t_0,t_1]|}\sum_{t=t_0}^{t_1}\mathrm{RelConc}^{\mathrm{raw}}_G(m,t)
                         $$
                         - Mittelt die Netto-Position über das Analysefenster
                         - Reduziert Ausreisser, betont die **persistente** Positionierung
@@ -1751,32 +1712,32 @@ dbc.Row([
 
                         Clustering – Vergleichbarkeit über Märkte:
                         $$
-                        \mathrm{ClusteringRange}_g(m)=
-                        \frac{\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m)-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}
-                        {\max_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_g(m')}\cdot100
+                        \mathrm{ClusteringRange}_G(m)=
+                        \frac{\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_G(m)-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_G(m')}
+                        {\max_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_G(m')-\min_{m'}\overline{\mathrm{ClustShare}}^{\mathrm{roll}}_G(m')}\cdot100
                         $$
                         - Min-Max-Scaling quer über alle Märkte für die Cluster-Kennzahl
                         - 0 = niedrigster Markt im Sample, 100 = höchster ⇒ direkt vergleichbar
 
                         Concentration – Vergleichbarkeit über Märkte:
                         $$
-                        \mathrm{ConcentrationRange}_g(m)=
-                        \frac{\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m)-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}
-                        {\max_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_g(m')}\cdot100
+                        \mathrm{ConcentrationRange}_G(m)=
+                        \frac{\overline{\mathrm{RelConc}}^{\mathrm{raw}}_G(m)-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_G(m')}
+                        {\max_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_G(m')-\min_{m'}\overline{\mathrm{RelConc}}^{\mathrm{raw}}_G(m')}\cdot100
                         $$
                         - Min-Max-Scaling quer über alle Märkte für die Netto-Position
                         - Macht Märkte mit unterschiedlichen OI-Skalen vergleichbar auf 0–100
 
                         **4) Punkt im Plot (für Markt $(m)$)**
                         $$
-                        x_m=\mathrm{ClusteringRange}_g(m),\qquad
-                        y_m=\mathrm{ConcentrationRange}_g(m)
+                        x_m=\mathrm{ClusteringRange}_G(m),\qquad
+                        y_m=\mathrm{ConcentrationRange}_G(m)
                         $$
                         - Jeder Markt wird ein Punkt $(x_m, y_m)$ im Scatter-Plot
 
                         **Interpretation:**
-                        - **Clustering hoch ($x$ nahe 100)**: Im Vergleich zu Historie & anderen Märkten stark von Gruppe $g$ „gecrowded“
-                        - **Concentration hoch ($y$ nahe 100)**: Markt zeigt (nach Zeitglättung) einen hohen Netto-Kontrakt-Überhang zugunsten der Gruppe $g$
+                        - **Clustering hoch ($x$ nahe 100)**: Im Vergleich zu Historie & anderen Märkten stark von Gruppe $G$ „gecrowded”
+                        - **Concentration hoch ($y$ nahe 100)**: Markt zeigt (nach Zeitglättung) einen hohen Netto-Kontrakt-Überhang zugunsten der Gruppe $G$
                         - **Oben rechts** (hoch/hoch): doppelt extrem → Markt tendiert bei Schocks zu stärkeren Moves; **unten links**: unauffällig
                         """, mathjax=True),
                     ],
@@ -1841,8 +1802,6 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
                         $$
                         \mathrm{PP\ Concentration}_{G}(t)=
                         \frac{\mathrm{Position}_{G}(t)}
@@ -1851,11 +1810,11 @@ dbc.Row([
                         """, mathjax=True),
 
                         dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **OI / Open Interest:** Gesamtzahl aller offenen Kontrakte im Markt
-                        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
+                        - **$\mathrm{OI}(t)$:** gesamtes Open Interest aller offenen Kontrakte im Markt
+                        - **$\mathrm{Position}_G(t)$:** Position der betrachteten Gruppe $G$ am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
                         - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI
                         """, mathjax=True),
                     ],
@@ -1871,10 +1830,10 @@ dbc.Row([
         dcc.RadioItems(
             id='ppci-mm-radio',
             options=[
-                {'label': 'Long', 'value': 'Long'},
-                {'label': 'Short', 'value': 'Short'}
+                {'label': 'MML', 'value': 'MML'},
+                {'label': 'MMS', 'value': 'MMS'}
             ],
-            value='Long',
+            value='MML',
             className='mb-4'
         ),
 
@@ -1896,12 +1855,12 @@ dbc.Row([
                         Der **Positioning Price Clustering Indicator** misst, wie gross der Anteil der Trader 
                         einer bestimmten Tradergruppe an allen Long- bzw. Short-Tradern im Markt ist. Dadurch 
                         wird sichtbar, wie breit oder eng eine Positionierung innerhalb einer Gruppe abgestützt ist. 
-                        Eine hohe Clustering-Ausprägung bedeutet, dass ein grosser Anteil der Marktteilnehmenden 
+                        Eine hohe Clustering-Ausprägung bedeutet, dass ein grosser Anteil der Trader
                         auf der jeweiligen Marktseite dieser Gruppe zuzuordnen ist.
 
-                        Das **Ziel des Indikators** ist es, die Breite der Marktteilnahme einer Tradergruppe sichtbar 
-                        zu machen. Er zeigt, ob eine Positionierung von vielen oder nur von wenigen Tradern getragen 
-                        wird und macht damit die Struktur der Marktteilnahme transparenter. Dadurch lassen sich Phasen 
+                        Das **Ziel des Indikators** ist es, die Breite der Marktteilnahme einer Tradergruppe sichtbar
+                        zu machen. Er zeigt, ob eine Positionierung von vielen oder nur von wenigen Tradern getragen
+                        wird und macht damit die Struktur der Marktteilnahme transparenter. Dadurch lassen sich Phasen
                         erkennen, in denen sich Positionierungen innerhalb einer Gruppe besonders stark verdichten oder verbreitern.
 
                         **Farbskala:** Die Punktfarbe zeigt das Clustering der jeweiligen Gruppe.
@@ -1913,8 +1872,6 @@ dbc.Row([
                 dbc.AccordionItem(
                     [
                         dcc.Markdown(r"""
-                        **Berechnung:**
-
                         $$
                         \mathrm{PP\ Clustering}_{G}(t)=
                         \frac{\mathrm{Traders}_{G}(t)}
@@ -1923,11 +1880,11 @@ dbc.Row([
                         """, mathjax=True),
 
                         dcc.Markdown(r"""
-                        **Bedeutung der Abkürzungen / Begriffe:**
+                        **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
                         - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-                        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+                        - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ am Reportdatum $t$
                         - **$\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)$:** Gesamtzahl aller Trader derselben Marktseite (Long oder Short) am Reportdatum $t$
                         - **Clustering:** Anteil der Trader einer Gruppe an allen Tradern derselben Marktseite
                         """, mathjax=True),
@@ -1970,14 +1927,14 @@ dbc.Row([
                         der Positionen einzelner Trader innerhalb einer bestimmten Tradergruppe. Dazu wird die 
                         Position der betrachteten Gruppe mit dem Preis multipliziert und durch die Anzahl der 
                         Trader dieser Gruppe geteilt. Dadurch wird sichtbar, wie gross die durchschnittliche 
-                        preisgewichtete Position pro Trader ist und wie stark einzelne Marktteilnehmende innerhalb 
+                        preisgewichtete Position pro Trader ist und wie stark einzelne Trader innerhalb
                         der Gruppe engagiert sind.
 
-                        Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse pro Trader und 
-                        damit die Intensität des Engagements innerhalb einer Tradergruppe sichtbar zu machen. Er 
-                        hilft zu beurteilen, ob Veränderungen im Open Interest eher durch eine steigende Zahl von 
-                        Tradern oder durch grössere durchschnittliche Positionen pro Trader entstehen. Dadurch 
-                        lassen sich Rückschlüsse auf die Stärke und Überzeugung der Marktteilnehmenden innerhalb 
+                        Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse pro Trader und
+                        damit die Intensität des Engagements innerhalb einer Tradergruppe sichtbar zu machen. Er
+                        hilft zu beurteilen, ob Veränderungen im Open Interest eher durch eine steigende Zahl von
+                        Tradern oder durch grössere durchschnittliche Positionen pro Trader entstehen. Dadurch
+                        lassen sich Rückschlüsse auf die Stärke und Überzeugung der Trader innerhalb
                         einer Gruppe ziehen.
 
                         **Farbskala:** Die Punktfarbe zeigt die durchschnittliche Positionsgrösse der jeweiligen Gruppe.
@@ -1989,8 +1946,6 @@ dbc.Row([
 dbc.AccordionItem(
     [
         dcc.Markdown(r"""
-        **Berechnung:**
-
         $$
         \mathrm{PP\ PositionSize}_{G}(t)=
         \frac{\mathrm{Position}_{G}(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)}
@@ -1999,14 +1954,14 @@ dbc.AccordionItem(
         """, mathjax=True),
 
         dcc.Markdown(r"""
-        **Bedeutung der Abkürzungen / Begriffe:**
+        **Variablen und Begriffe:**
         - **MML:** Managed Money Long
         - **MMS:** Managed Money Short
         - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-        - **$\mathrm{Position}_{G}(t)$:** Position der betrachteten Gruppe am Reportdatum $t$ (in Kontrakten)
+        - **$\mathrm{Position}_G(t)$:** Position der betrachteten Gruppe $G$ am Reportdatum $t$ (in Kontrakten)
         - **$\mathrm{ContractSize}$:** Kontraktgrösse des betrachteten Futures-Marktes
         - **$\mathrm{Price}(t)$:** Preis des betrachteten Futures-Marktes am Reportdatum $t$
-        - **$\mathrm{Traders}_{G}(t)$:** Anzahl Trader der betrachteten Gruppe am Reportdatum $t$
+        - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ am Reportdatum $t$
         - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader innerhalb der betrachteten Gruppe
         """, mathjax=True),
     ],
@@ -2261,7 +2216,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         col_long = pd.to_numeric(filtered_df['PMPUL Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen (z.B. 6–26 px)
-    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26)
+    _pmpu_l_pos = tr_long[tr_long > 0]
+    pmpu_l_lo = float(_pmpu_l_pos.min()) if _pmpu_l_pos.size > 0 else 1.0
+    pmpu_l_hi = float(tr_long.max()) if tr_long.max() > 0 else 1.0
+    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26, lo=pmpu_l_lo, hi=pmpu_l_hi)
 
     # 3) Punkte plotten
     pmpu_long_position_size_fig.add_trace(
@@ -2306,7 +2264,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         pmpu_long_position_size_fig.add_trace(
@@ -2355,7 +2313,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         col_short = pd.to_numeric(filtered_df['PMPUS Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26)
+    _pmpu_s_pos = tr_short[tr_short > 0]
+    pmpu_s_lo = float(_pmpu_s_pos.min()) if _pmpu_s_pos.size > 0 else 1.0
+    pmpu_s_hi = float(tr_short.max()) if tr_short.max() > 0 else 1.0
+    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26, lo=pmpu_s_lo, hi=pmpu_s_hi)
 
     # 3) Punkte plotten
     pmpu_short_position_size_fig.add_trace(
@@ -2400,7 +2361,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         pmpu_short_position_size_fig.add_trace(
@@ -2448,7 +2409,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         sd_col_long = pd.to_numeric(filtered_df['SDL Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    sd_sizes_long = scaled_diameters(sd_tr_long, min_px=6, max_px=26)
+    _sd_l_pos = sd_tr_long[sd_tr_long > 0]
+    sd_l_lo = float(_sd_l_pos.min()) if _sd_l_pos.size > 0 else 1.0
+    sd_l_hi = float(sd_tr_long.max()) if sd_tr_long.max() > 0 else 1.0
+    sd_sizes_long = scaled_diameters(sd_tr_long, min_px=6, max_px=26, lo=sd_l_lo, hi=sd_l_hi)
 
     # 3) Punkte plotten
     sd_long_position_size_fig.add_trace(
@@ -2493,7 +2457,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         sd_legend_valsL = np.array([10, 20, 35], dtype=int)
 
-    sd_legend_sizesL = scaled_diameters(sd_legend_valsL, min_px=6, max_px=26)
+    sd_legend_sizesL = np.linspace(7, 20, len(sd_legend_valsL)) if len(sd_legend_valsL) > 1 else np.array([13.0])
     for v, s in zip(sd_legend_valsL, sd_legend_sizesL):
         sd_long_position_size_fig.add_trace(
             go.Scatter(
@@ -2541,7 +2505,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         sd_col_short = pd.to_numeric(filtered_df['SDS Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    sd_sizes_short = scaled_diameters(sd_tr_short, min_px=6, max_px=26)
+    _sd_s_pos = sd_tr_short[sd_tr_short > 0]
+    sd_s_lo = float(_sd_s_pos.min()) if _sd_s_pos.size > 0 else 1.0
+    sd_s_hi = float(sd_tr_short.max()) if sd_tr_short.max() > 0 else 1.0
+    sd_sizes_short = scaled_diameters(sd_tr_short, min_px=6, max_px=26, lo=sd_s_lo, hi=sd_s_hi)
 
     # 3) Punkte plotten
     sd_short_position_size_fig.add_trace(
@@ -2586,7 +2553,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         sd_legend_valsS = np.array([10, 20, 35], dtype=int)
 
-    sd_legend_sizesS = scaled_diameters(sd_legend_valsS, min_px=6, max_px=26)
+    sd_legend_sizesS = np.linspace(7, 20, len(sd_legend_valsS)) if len(sd_legend_valsS) > 1 else np.array([13.0])
     for v, s in zip(sd_legend_valsS, sd_legend_sizesS):
         sd_short_position_size_fig.add_trace(
             go.Scatter(
@@ -2632,7 +2599,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     # 2) Marker-Grössen robust auf fixen Pixelbereich mappen
     MIN_PX = 8
     MAX_PX = 30
-    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX)
+    _tr_pos = tr_total[tr_total > 0]
+    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
+    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
+    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
 
     # 3) Scatter
     long_clustering_fig.add_trace(go.Scatter(
@@ -2671,7 +2641,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         long_clustering_fig.add_trace(go.Scatter(
@@ -2731,7 +2701,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     # 2) gleiche Pixel-Skalierung
     MIN_PX = 8
     MAX_PX = 30
-    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX)
+    _tr_pos = tr_total[tr_total > 0]
+    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
+    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
+    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
 
     # 3) Scatter
     short_clustering_fig.add_trace(go.Scatter(
@@ -2770,7 +2743,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         short_clustering_fig.add_trace(go.Scatter(
@@ -2834,7 +2807,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         col_long = pd.to_numeric(filtered_df['ORL Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26)
+    _or_l_pos = tr_long[tr_long > 0]
+    or_l_lo = float(_or_l_pos.min()) if _or_l_pos.size > 0 else 1.0
+    or_l_hi = float(tr_long.max()) if tr_long.max() > 0 else 1.0
+    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26, lo=or_l_lo, hi=or_l_hi)
 
     # 3) Punkte plotten
     or_long_position_size_fig.add_trace(
@@ -2879,7 +2855,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
     for v, s in zip(legend_vals, legend_sizes):
         or_long_position_size_fig.add_trace(
             go.Scatter(
@@ -2927,7 +2903,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         col_short = pd.to_numeric(filtered_df['ORS Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26)
+    _or_s_pos = tr_short[tr_short > 0]
+    or_s_lo = float(_or_s_pos.min()) if _or_s_pos.size > 0 else 1.0
+    or_s_hi = float(tr_short.max()) if tr_short.max() > 0 else 1.0
+    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26, lo=or_s_lo, hi=or_s_hi)
 
     # 3) Punkte plotten
     or_short_position_size_fig.add_trace(
@@ -2972,7 +2951,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
     for v, s in zip(legend_vals, legend_sizes):
         or_short_position_size_fig.add_trace(
             go.Scatter(
@@ -3020,7 +2999,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         mm_col_long = pd.to_numeric(filtered_df['MML Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen (z.B. 6–26 px)
-    mm_sizes_long = scaled_diameters(mm_tr_long, min_px=6, max_px=26)
+    _mm_l_pos = mm_tr_long[mm_tr_long > 0]
+    mm_l_lo = float(_mm_l_pos.min()) if _mm_l_pos.size > 0 else 1.0
+    mm_l_hi = float(mm_tr_long.max()) if mm_tr_long.max() > 0 else 1.0
+    mm_sizes_long = scaled_diameters(mm_tr_long, min_px=6, max_px=26, lo=mm_l_lo, hi=mm_l_hi)
 
     # 3) Punkte plotten
     long_position_size_fig.add_trace(go.Scatter(
@@ -3060,7 +3042,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
     for v, s in zip(legend_vals, legend_sizes):
         long_position_size_fig.add_trace(go.Scatter(
             x=[None], y=[None], mode='markers',
@@ -3107,7 +3089,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         mm_col_short = pd.to_numeric(filtered_df['MMS Position Size'], errors='coerce').fillna(0)
 
     # 2) Durchmesser explizit auf Pixel mappen
-    mm_sizes_short = scaled_diameters(mm_tr_short, min_px=6, max_px=26)
+    _mm_s_pos = mm_tr_short[mm_tr_short > 0]
+    mm_s_lo = float(_mm_s_pos.min()) if _mm_s_pos.size > 0 else 1.0
+    mm_s_hi = float(mm_tr_short.max()) if mm_tr_short.max() > 0 else 1.0
+    mm_sizes_short = scaled_diameters(mm_tr_short, min_px=6, max_px=26, lo=mm_s_lo, hi=mm_s_hi)
 
     # 3) Punkte plotten
     short_position_size_fig.add_trace(go.Scatter(
@@ -3147,7 +3132,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     else:
         legend_vals = np.array([10, 20, 35], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=6, max_px=26)
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
     for v, s in zip(legend_vals, legend_sizes):
         short_position_size_fig.add_trace(go.Scatter(
             x=[None], y=[None], mode='markers',
@@ -3183,9 +3168,8 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     # --- Dry Powder Indicator---
     dry_powder_fig = go.Figure()
 
-    bubble_size = (filtered_df['MML Long OI'].abs() + filtered_df['MML Short OI'].abs())
+    BUBBLE_PX = 14
     desired_max_px = 28
-    sizeref = 2.0 * bubble_size.max() / (desired_max_px ** 2)
 
     COL_LONG = "#2c7fb8"  # MML
     COL_SHORT = "#7fcdbb"  # MMS
@@ -3196,7 +3180,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         y=filtered_df['MML Long OI'],
         mode='markers',
         marker=dict(
-            size=bubble_size, sizemode='area', sizeref=sizeref,
+            size=BUBBLE_PX,
             color=COL_LONG, opacity=0.75, line=dict(width=0.6, color='black')
         ),
         name='MML'
@@ -3208,7 +3192,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         y=filtered_df['MML Short OI'],
         mode='markers',
         marker=dict(
-            size=bubble_size, sizemode='area', sizeref=sizeref,
+            size=BUBBLE_PX,
             color=COL_SHORT, opacity=0.75, line=dict(width=0.6, color='black')
         ),
         name='MMS'
@@ -3263,7 +3247,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     ))
 
     dry_powder_fig.update_layout(
-        title=f"Dry Powder Indicator",
+        title=f"DP Indicator",
         xaxis=dict(title='Number of Traders', showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False),
         yaxis=dict(title='Long and Short OI', showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False),
         plot_bgcolor='white',
@@ -3546,7 +3530,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
                   line=dict(color="Gray", width=1, dash="dash"))
 
     dp_position_size_fig.update_layout(
-        title='Dry Powder Position Size Indicator ({})'.format(mm_type),
+        title='DP Position Size Indicator ({})'.format(mm_type),
         xaxis_title='Number of {} Traders'.format(mm_type),
         yaxis_title='{} Position Size'.format(mm_type),
         showlegend=True,
@@ -3586,7 +3570,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
         x = 'Traders M Money Long'
         y = 'MML Long OI'
         color = 'PMPUL Relative Concentration'
-        title = 'Dry Powder Hedging Indicator (MML vs PMPUL)'
+        title = 'DP Hedging Indicator (MML vs PMPUL)'
         colorbar_title = 'PMPUL OI Range'
         x_title = 'MM Number of Long Traders'
         y_title = 'MM Long OI'
@@ -3594,7 +3578,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
         x = 'Traders M Money Short'
         y = 'MMS Short OI'
         color = 'PMPUS Relative Concentration'
-        title = 'Dry Powder Hedging Indicator (MMS vs PMPUS)'
+        title = 'DP Hedging Indicator (MMS vs PMPUS)'
         colorbar_title = 'PMPUS OI Range'
         x_title = 'MM Number of Short Traders'
         y_title = 'MM Short OI'
@@ -3710,7 +3694,7 @@ def update_concentration_clustering_graph(start_date, end_date, selected_indicat
     ))
     
     fig.update_layout(
-        title=f'Dry Powder Concentration/Clustering Indicator ({selected_indicator})',
+        title=f'DP Concentration/Clustering Indicator ({selected_indicator})',
         xaxis_title='MM Long Clustering Range' if selected_indicator == 'MML' else 'MM Short Clustering Range',
         yaxis_title='MM Long Concentration Range' if selected_indicator == 'MML' else 'MM Short Concentration Range',
         xaxis=dict(range=[-5, 110]),  # Adjusted to ensure all bubbles are visible
@@ -3749,12 +3733,12 @@ def update_ppci(selected_market, start_date, end_date, direction):
     dff['_long_conc']  = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
     dff['_short_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
 
-    if direction == 'Long':
+    if direction == 'MML':
         color_col      = '_long_conc'
-        colorbar_title = 'Long Concentration (%)'
+        colorbar_title = 'MML Concentration (%)'
     else:
         color_col      = '_short_conc'
-        colorbar_title = 'Short Concentration (%)'
+        colorbar_title = 'MMS Concentration (%)'
 
     # Merge futures prices from InfluxDB (continuous contract proxy for 2nd Nearby)
     price_col = _ppci_get_price_col(selected_market)
@@ -3781,7 +3765,10 @@ def update_ppci(selected_market, start_date, end_date, direction):
 
     MIN_PX = 8
     MAX_PX = 30
-    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX)
+    _oi_pos = oi[oi > 0]
+    oi_lo = float(_oi_pos.min()) if _oi_pos.size > 0 else 1.0
+    oi_hi = float(oi.max()) if oi.max() > 0 else 1.0
+    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX, lo=oi_lo, hi=oi_hi, log_scale=True)
 
     color_vals = pd.to_numeric(dff[color_col], errors='coerce')
 
@@ -3833,7 +3820,8 @@ def update_ppci(selected_market, start_date, end_date, direction):
     else:
         legend_vals = np.array([50000, 100000, 150000, 200000, 250000], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+    n_leg = len(legend_vals)
+    legend_sizes = np.linspace(7, 20, n_leg) if n_leg > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         fig.add_trace(go.Scatter(
@@ -3941,7 +3929,10 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
     oi = pd.to_numeric(dff['Open Interest'], errors='coerce').fillna(0).abs()
     MIN_PX = 8
     MAX_PX = 30
-    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX)
+    _oi_pos = oi[oi > 0]
+    oi_lo = float(_oi_pos.min()) if _oi_pos.size > 0 else 1.0
+    oi_hi = float(oi.max()) if oi.max() > 0 else 1.0
+    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX, lo=oi_lo, hi=oi_hi, log_scale=True)
 
     color_vals = pd.to_numeric(dff[color_col], errors='coerce')
 
@@ -3992,7 +3983,8 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
     else:
         legend_vals = np.array([50000, 100000, 150000, 200000, 250000], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+    n_leg = len(legend_vals)
+    legend_sizes = np.linspace(7, 20, n_leg) if n_leg > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         fig.add_trace(go.Scatter(
@@ -4113,7 +4105,10 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     traders = pd.to_numeric(dff[traders_col], errors='coerce').fillna(0).abs()
     MIN_PX = 8
     MAX_PX = 30
-    sizes_traders = scaled_diameters(traders, min_px=MIN_PX, max_px=MAX_PX)
+    _tr_pos = traders[traders > 0]
+    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
+    tr_hi = float(traders.max()) if traders.max() > 0 else 1.0
+    sizes_traders = scaled_diameters(traders, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
 
     # Hover-Text
     dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
@@ -4162,7 +4157,8 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     else:
         legend_vals = np.array([20, 40, 60, 80, 100], dtype=int)
 
-    legend_sizes = scaled_diameters(legend_vals, min_px=MIN_PX, max_px=MAX_PX)
+    n_leg = len(legend_vals)
+    legend_sizes = np.linspace(7, 20, n_leg) if n_leg > 1 else np.array([13.0])
 
     for v, s in zip(legend_vals, legend_sizes):
         fig.add_trace(go.Scatter(
@@ -4269,11 +4265,8 @@ def update_dp_notional(selected_market, start_date, end_date):
     x_mml = pd.to_numeric(dff['MML Traders'], errors='coerce')
     x_mms = pd.to_numeric(dff['MMS Traders'], errors='coerce')
 
-    # Bubble-Größe (identisch zu DP Indicator)
-    bubble_size = (dff['MML Long OI'].abs() + dff['MML Short OI'].abs())
+    BUBBLE_PX = 14
     desired_max_px = 28
-    bsmax = bubble_size.max()
-    sizeref = 2.0 * bsmax / (desired_max_px ** 2) if bsmax > 0 else 1.0
 
     COL_LONG  = "#2c7fb8"  # MML
     COL_SHORT = "#7fcdbb"  # MMS
@@ -4285,7 +4278,7 @@ def update_dp_notional(selected_market, start_date, end_date):
         x=x_mml, y=y_mml,
         mode='markers',
         marker=dict(
-            size=bubble_size, sizemode='area', sizeref=sizeref,
+            size=BUBBLE_PX,
             color=COL_LONG, opacity=0.75, line=dict(width=0.6, color='black')
         ),
         name='MML',
@@ -4295,7 +4288,7 @@ def update_dp_notional(selected_market, start_date, end_date):
         x=x_mms, y=y_mms,
         mode='markers',
         marker=dict(
-            size=bubble_size, sizemode='area', sizeref=sizeref,
+            size=BUBBLE_PX,
             color=COL_SHORT, opacity=0.75, line=dict(width=0.6, color='black')
         ),
         name='MMS',
@@ -4344,7 +4337,7 @@ def update_dp_notional(selected_market, start_date, end_date):
     ))
 
     fig.update_layout(
-        title='Dry Powder Notional Indicator',
+        title='DP Notional Indicator',
         xaxis=dict(
             title='Number of Traders',
             showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
@@ -4479,7 +4472,7 @@ def update_dp_time(selected_market, start_date, end_date):
     ))
 
     fig.update_layout(
-        title='Dry Powder Time Indicator',
+        title='DP Time Indicator',
         xaxis=dict(
             title='Number of Traders',
             showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
@@ -4525,13 +4518,13 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
         y_col    = 'Producer/Merchant/Processor/User Long'
         x_title  = 'PMPU Number of Long Traders'
         y_title  = 'PMPU Long OI (Contracts)'
-        pt_title = 'Dry Powder Price Indicator (PMPU Long)'
+        pt_title = 'DP Price Indicator (PMPU Long)'
     else:
         x_col    = 'PMPUS Traders'
         y_col    = 'Producer/Merchant/Processor/User Short'
         x_title  = 'PMPU Number of Short Traders'
         y_title  = 'PMPU Short OI (Contracts)'
-        pt_title = 'Dry Powder Price Indicator (PMPU Short)'
+        pt_title = 'DP Price Indicator (PMPU Short)'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce')
@@ -4643,13 +4636,13 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         y_col   = 'MML Long OI'
         x_title = 'MM Number of Long Traders'
         y_title = 'MM Long OI (Contracts)'
-        title   = 'Dry Powder Factor – VIX (MM Long)'
+        title   = 'DP Factor (VIX) Indicator – MML'
     else:
         x_col   = 'MMS Traders'
         y_col   = 'MMS Short OI'
         x_title = 'MM Number of Short Traders'
         y_title = 'MM Short OI (Contracts)'
-        title   = 'Dry Powder Factor – VIX (MM Short)'
+        title   = 'DP Factor (VIX) Indicator – MMS'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
@@ -4778,13 +4771,13 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
         y_col   = 'MML Long OI'
         x_title = 'MM Number of Long Traders'
         y_title = 'MM Long OI (Contracts)'
-        title   = 'Dry Powder Factor – DXY (MM Long)'
+        title   = 'DP Factor (DXY) Indicator – MML'
     else:
         x_col   = 'MMS Traders'
         y_col   = 'MMS Short OI'
         x_title = 'MM Number of Short Traders'
         y_title = 'MM Short OI (Contracts)'
-        title   = 'Dry Powder Factor – DXY (MM Short)'
+        title   = 'DP Factor (DXY) Indicator – MMS'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
@@ -4913,13 +4906,13 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         y_col   = 'MML Long OI'
         x_title = 'MM Number of Long Traders'
         y_title = 'MM Long OI (Contracts)'
-        title   = 'Dry Powder Currency Indicator – USD/CHF (MM Long)'
+        title   = 'DP Currency Indicator – USD/CHF (MML)'
     else:
         x_col   = 'MMS Traders'
         y_col   = 'MMS Short OI'
         x_title = 'MM Number of Short Traders'
         y_title = 'MM Short OI (Contracts)'
-        title   = 'Dry Powder Currency Indicator – USD/CHF (MM Short)'
+        title   = 'DP Currency Indicator – USD/CHF (MMS)'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
