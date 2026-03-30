@@ -9,6 +9,7 @@ from threading import Timer
 from datetime import datetime as dt, timedelta
 import dash_bootstrap_components as dbc
 import numpy as np
+from src.analysis.shapley_owen import compute_rolling_shapley
 
 # Function to open the web browser
 def open_browser():
@@ -224,6 +225,12 @@ df_pivoted['MML Relative Concentration'] = df_pivoted['Managed Money Long'] - df
 df_pivoted['MMS Relative Concentration'] = df_pivoted['Managed Money Short'] - df_pivoted['Managed Money Long']
 df_pivoted['ORL Relative Concentration'] = df_pivoted['Other Reportables Long'] - df_pivoted['Other Reportables Short']
 df_pivoted['ORS Relative Concentration'] = df_pivoted['Other Reportables Short'] - df_pivoted['Other Reportables Long']
+
+# Aliase für Shapley-Owen: lesbare Kurzbezeichnungen der Netto-Positionierungen
+df_pivoted['PMPU Net'] = df_pivoted['PMPUL Relative Concentration']
+df_pivoted['SD Net']   = df_pivoted['SDL Relative Concentration']
+df_pivoted['MM Net']   = df_pivoted['MML Relative Concentration']
+df_pivoted['OR Net']   = df_pivoted['ORL Relative Concentration']
 
 # Columns for the number of traders for each group
 df_pivoted['PMPUL Traders'] = df_pivoted['Traders Prod/Merc Long']
@@ -482,6 +489,58 @@ def scaled_diameters_rank(vals, min_px=6, max_px=45, gamma=0.8):
 
 # Example calculation
 median_oi, median_traders = calculate_medians(df_pivoted)
+
+# ---------------------------------------------------------------------------
+# Shapley-Owen: Rollende Zerlegung des R² für alle Märkte vorberechnen
+# ---------------------------------------------------------------------------
+_SHAPLEY_X_COLS      = ['Δ PMPU Net', 'Δ SD Net', 'Δ MM Net', 'Δ OR Net']
+_SHAPLEY_Y_COL       = '_price_change'
+_SHAPLEY_WINDOW      = 52
+_SHAPLEY_MIN_PERIODS = 26
+
+_shapley_results: dict = {}   # market_name → DataFrame (Shapley-Resultate)
+
+for _mkt in df_pivoted['Market Names'].unique():
+    _pcol = _ppci_get_price_col(_mkt)
+    if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
+        print(f"[Shapley] Kein Preisdaten für {_mkt} – überspringe.")
+        continue
+
+    _dff = df_pivoted[df_pivoted['Market Names'] == _mkt].copy()
+    _dff = _dff.sort_values('Date').reset_index(drop=True)
+
+    # Futures-Preise via merge_asof einbinden (identisch zu PPCI-Callbacks)
+    _prices = (
+        df_futures_prices[['Date', _pcol]]
+        .dropna(subset=[_pcol])
+        .rename(columns={'Date': '_pdate', _pcol: '_close'})
+        .sort_values('_pdate')
+    )
+    _dff = pd.merge_asof(
+        _dff, _prices,
+        left_on='Date', right_on='_pdate',
+        direction='backward',
+        tolerance=pd.Timedelta(days=7)
+    )
+
+    # Absolute Preisänderung als Zielvariable (y = change in price)
+    _dff[_SHAPLEY_Y_COL] = _dff['_close'].diff()
+
+    # First Differences der Netto-Positionierungen (Δ Net OI = X-Variablen)
+    _dff['Δ PMPU Net'] = _dff['PMPU Net'].diff()
+    _dff['Δ SD Net']   = _dff['SD Net'].diff()
+    _dff['Δ MM Net']   = _dff['MM Net'].diff()
+    _dff['Δ OR Net']   = _dff['OR Net'].diff()
+
+    _result = compute_rolling_shapley(
+        _dff,
+        x_cols=_SHAPLEY_X_COLS,
+        y_col=_SHAPLEY_Y_COL,
+        window=_SHAPLEY_WINDOW,
+        min_periods=_SHAPLEY_MIN_PERIODS,
+    )
+    _shapley_results[_mkt] = _result
+    print(f"[Shapley] {_mkt}: {len(_result)} Datenpunkte berechnet.")
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -1988,6 +2047,124 @@ dbc.AccordionItem(
         html.Br(),
     ], width=12)
 ]),
+
+        html.Hr(),
+
+        # ---------------------------------------------------------------
+        # Shapley-Owen Decomposition
+        # ---------------------------------------------------------------
+        dbc.Row([dbc.Col([
+
+            html.H1("Shapley-Owen Decomposition – Net Positioning"),
+
+            dbc.Accordion([
+                dbc.AccordionItem([
+                    dcc.Markdown(r"""
+Der **Shapley-Owen Decomposition** Indikator zerlegt die Erklärungskraft (R²) eines
+linearen Regressionsmodells in die individuellen Beiträge der vier CFTC-Händlergruppen.
+
+**Modell:**
+Die wöchentliche Preisrendite (Zielvariable Y) wird durch die **Netto-Positionierungen**
+(Long − Short) der vier Gruppen erklärt:
+
+- **PMPU** – Producer/Merchant/Processor/User
+- **SD** – Swap Dealer
+- **MM** – Managed Money
+- **OR** – Other Reportables
+
+**Interpretation:**
+- Ein hoher Shapley-Wert einer Gruppe bedeutet, dass deren Netto-Positionierung
+  besonders viel zur Erklärung der Preisbewegungen beiträgt.
+- Negative Werte treten auf, wenn eine Variable die Erklärungskraft im Zusammenspiel
+  mit anderen Variablen *reduziert* (Kollinearität / gegenseitige Überlappung).
+- Die Summe aller Shapley-Werte entspricht dem R² des Vollmodells.
+
+**Rollend:** Die Berechnung erfolgt auf einem gleitenden 52-Wochen-Fenster.
+Das Zeitreihendiagramm zeigt, wie sich die Beiträge im Zeitverlauf verändern.
+                    """, mathjax=True),
+                ], title="Beschreibung"),
+
+                dbc.AccordionItem([
+                    dcc.Markdown(r"""
+**Shapley-Wert für Prädiktor** $i$ (exakte Formel):
+
+$$
+\varphi_i \;=\;
+\sum_{S \subseteq N \setminus \{i\}}
+\frac{|S|!\;(N-|S|-1)!}{N!}
+\Bigl[R^2\!\bigl(S \cup \{i\}\bigr) - R^2(S)\Bigr]
+$$
+
+**Variablen:**
+- $N$ – Anzahl Prädiktoren ($N = 4$)
+- $S$ – Teilmenge der übrigen Prädiktoren (Koalition)
+- $R^2(S)$ – Bestimmtheitsmass der linearen Regression $Y \sim X_S$
+- $Y$ – wöchentliche Futures-Preisrendite: $r_t = \frac{P_t - P_{t-1}}{P_{t-1}}$
+- $X_i$ – Netto-Positionierung der Gruppe $i$: $\text{Long}_i - \text{Short}_i$
+
+**Eigenschaft:** $\sum_{i=1}^{N} \varphi_i = R^2(Y \sim X_1, \ldots, X_N)$
+
+Für $N = 4$ werden alle $2^4 = 16$ Koalitionen explizit berechnet (exakter Algorithmus).
+                    """, mathjax=True),
+                ], title="Berechnung"),
+            ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
+
+            # -- Zeitreihen-Chart (rollende Shapley-Werte) --
+            html.H2("Zeitverlauf der Shapley-Werte (52-Wochen-Fenster)",
+                    className="mt-2 mb-2"),
+            dcc.Graph(id='shapley-timeseries-chart'),
+            html.Br(),
+
+            # -- Balkendiagramm + Tabelle für das letzte Datum im Fenster --
+            html.H2("Aktuellste Shapley-Werte (letztes Datum im gewählten Zeitraum)",
+                    className="mt-2 mb-2"),
+            dbc.Row([
+                dbc.Col([
+                    dcc.Graph(id='shapley-bar-chart'),
+                ], width=7),
+                dbc.Col([
+                    dash_table.DataTable(
+                        id='shapley-table',
+                        columns=[
+                            {'name': 'Händlergruppe',   'id': 'group'},
+                            {'name': 'Shapley-Wert (φ)', 'id': 'phi',   'type': 'numeric',
+                             'format': {'specifier': '.4f'}},
+                            {'name': 'Anteil am R² (%)', 'id': 'share', 'type': 'numeric',
+                             'format': {'specifier': '.1f'}},
+                        ],
+                        style_header={
+                            'backgroundColor': 'rgb(230, 230, 230)',
+                            'fontWeight': 'bold',
+                        },
+                        style_cell={
+                            'textAlign': 'left',
+                            'padding': '8px',
+                            'fontFamily': 'monospace',
+                        },
+                        style_data_conditional=[
+                            {
+                                'if': {'filter_query': '{phi} < 0'},
+                                'color': '#d62728',
+                                'fontWeight': 'bold',
+                            },
+                            {
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': 'rgb(248, 248, 248)',
+                            },
+                            {
+                                'if': {'filter_query': '{group} = "Gesamt (R²)"'},
+                                'backgroundColor': 'rgb(220, 235, 255)',
+                                'fontWeight': 'bold',
+                            },
+                        ],
+                    ),
+                    html.Div(id='shapley-r2-info', className='mt-2',
+                             style={'fontSize': '13px', 'color': '#555'}),
+                ], width=5),
+            ]),
+            html.Br(),
+
+        ], width=12)]),
 
         html.Hr(),  # Separator
         dbc.Row([
@@ -5012,6 +5189,188 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
     )
 
     return fig
+
+
+# ---------------------------------------------------------------------------
+# Shapley-Owen Callback
+# ---------------------------------------------------------------------------
+
+_SHAPLEY_GROUP_LABELS = {
+    'Δ PMPU Net': 'PMPU (Producer/Merchant)',
+    'Δ SD Net':   'SD (Swap Dealer)',
+    'Δ MM Net':   'MM (Managed Money)',
+    'Δ OR Net':   'OR (Other Reportables)',
+}
+_SHAPLEY_COLORS = {
+    'Δ PMPU Net': '#e6550d',
+    'Δ SD Net':   '#3182bd',
+    'Δ MM Net':   '#31a354',
+    'Δ OR Net':   '#756bb1',
+}
+
+
+@app.callback(
+    [Output('shapley-timeseries-chart', 'figure'),
+     Output('shapley-bar-chart',        'figure'),
+     Output('shapley-table',            'data'),
+     Output('shapley-r2-info',          'children')],
+    [Input('market-dropdown',     'value'),
+     Input('date-picker-range',   'start_date'),
+     Input('date-picker-range',   'end_date')],
+)
+def update_shapley(selected_market, start_date, end_date):
+    """Aktualisiert alle drei Shapley-Owen-Elemente (Zeitreihe, Balken, Tabelle)."""
+
+    empty_fig = go.Figure()
+    empty_fig.update_layout(
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        annotations=[dict(
+            text="Keine Shapley-Daten verfügbar für diesen Markt.",
+            xref="paper", yref="paper", x=0.5, y=0.5,
+            showarrow=False, font=dict(size=14, color='#888')
+        )],
+        height=400,
+    )
+
+    if selected_market not in _shapley_results:
+        return empty_fig, empty_fig, [], ""
+
+    df_s = _shapley_results[selected_market].copy()
+    df_s['Date'] = pd.to_datetime(df_s['Date'])
+
+    # Datumsfilter
+    if start_date:
+        df_s = df_s[df_s['Date'] >= pd.to_datetime(start_date)]
+    if end_date:
+        df_s = df_s[df_s['Date'] <= pd.to_datetime(end_date)]
+
+    df_s = df_s.dropna(subset=_SHAPLEY_X_COLS, how='all')
+
+    if df_s.empty:
+        return empty_fig, empty_fig, [], "Keine Daten im gewählten Zeitraum."
+
+    # ----------------------------------------------------------------
+    # 1) Zeitreihen-Chart
+    # ----------------------------------------------------------------
+    fig_ts = go.Figure()
+
+    for col in _SHAPLEY_X_COLS:
+        label = _SHAPLEY_GROUP_LABELS[col]
+        color = _SHAPLEY_COLORS[col]
+        valid = df_s[['Date', col]].dropna(subset=[col])
+        fig_ts.add_trace(go.Scatter(
+            x=valid['Date'],
+            y=valid[col],
+            mode='lines',
+            name=label,
+            line=dict(color=color, width=2),
+            hovertemplate=(
+                f'<b>{label}</b><br>'
+                'Datum: %{x|%Y-%m-%d}<br>'
+                'φ = %{y:.4f}<extra></extra>'
+            ),
+        ))
+
+    # Nulllinie
+    fig_ts.add_hline(y=0, line_dash='dash', line_color='gray', line_width=1)
+
+    fig_ts.update_layout(
+        title=f'Shapley-Owen Zeitverlauf – {selected_market}  '
+              f'(rollend, {_SHAPLEY_WINDOW} Wochen)',
+        xaxis=dict(
+            title='Datum',
+            showgrid=True, gridcolor='LightGray',
+        ),
+        yaxis=dict(
+            title='Shapley-Wert (φ)',
+            showgrid=True, gridcolor='LightGray',
+            zeroline=True, zerolinecolor='gray', zerolinewidth=1,
+        ),
+        plot_bgcolor='white',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        height=450,
+        hovermode='x unified',
+    )
+
+    # ----------------------------------------------------------------
+    # 2) Balkendiagramm – letzter Datenpunkt im gefilterten Zeitraum
+    # ----------------------------------------------------------------
+    last_row = df_s.dropna(subset=_SHAPLEY_X_COLS, how='all').iloc[-1]
+    last_date = pd.to_datetime(last_row['Date']).strftime('%Y-%m-%d')
+    r2_full   = last_row.get('R2_full', np.nan)
+
+    phi_vals  = [last_row.get(c, np.nan) for c in _SHAPLEY_X_COLS]
+    labels    = [_SHAPLEY_GROUP_LABELS[c] for c in _SHAPLEY_X_COLS]
+    colors_bar = [
+        _SHAPLEY_COLORS[c] if (not np.isnan(v) and v >= 0) else '#d62728'
+        for c, v in zip(_SHAPLEY_X_COLS, phi_vals)
+    ]
+
+    fig_bar = go.Figure(go.Bar(
+        x=labels,
+        y=phi_vals,
+        marker_color=colors_bar,
+        text=[f'{v:.4f}' if not np.isnan(v) else 'n/a' for v in phi_vals],
+        textposition='outside',
+        hovertemplate='<b>%{x}</b><br>φ = %{y:.4f}<extra></extra>',
+    ))
+
+    fig_bar.add_hline(y=0, line_dash='dash', line_color='gray', line_width=1)
+
+    # R²-Linie als Referenz
+    if not np.isnan(r2_full):
+        fig_bar.add_hline(
+            y=r2_full,
+            line_dash='dot',
+            line_color='#333',
+            line_width=1.5,
+            annotation_text=f'R² gesamt = {r2_full:.4f}',
+            annotation_position='top right',
+            annotation_font_size=11,
+        )
+
+    fig_bar.update_layout(
+        title=f'Shapley-Werte – {selected_market}  (Datum: {last_date})',
+        xaxis=dict(title='Händlergruppe'),
+        yaxis=dict(
+            title='Shapley-Wert (φ)',
+            showgrid=True, gridcolor='LightGray',
+            zeroline=True, zerolinecolor='gray', zerolinewidth=1,
+        ),
+        plot_bgcolor='white',
+        height=400,
+        showlegend=False,
+    )
+
+    # ----------------------------------------------------------------
+    # 3) Tabelle
+    # ----------------------------------------------------------------
+    table_rows = []
+    for col, phi in zip(_SHAPLEY_X_COLS, phi_vals):
+        share_col = f'R2_share_{col}'
+        share_val = last_row.get(share_col, np.nan)
+        table_rows.append({
+            'group': _SHAPLEY_GROUP_LABELS[col],
+            'phi':   round(phi,   4) if not np.isnan(phi)   else None,
+            'share': round(share_val, 1) if not np.isnan(share_val) else None,
+        })
+
+    table_rows.append({
+        'group': 'Gesamt (R²)',
+        'phi':   round(r2_full, 4) if not np.isnan(r2_full) else None,
+        'share': 100.0,
+    })
+
+    r2_info = (
+        f"Fenster: {_SHAPLEY_WINDOW} Wochen  |  "
+        f"Datum: {last_date}  |  "
+        f"R² Vollmodell: {r2_full:.4f}" if not np.isnan(r2_full) else ""
+    )
+
+    return fig_ts, fig_bar, table_rows, r2_info
 
 
 # Open browser automatically
