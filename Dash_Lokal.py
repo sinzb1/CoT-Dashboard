@@ -10,6 +10,11 @@ from datetime import datetime as dt, timedelta
 import dash_bootstrap_components as dbc
 import numpy as np
 from src.analysis.shapley_owen import compute_rolling_shapley
+from src.analysis.decision_tree import (
+    train_decision_tree,
+    render_tree_image,
+    feature_importance_figure as dt_feature_importance_figure,
+)
 
 # Function to open the web browser
 def open_browser():
@@ -541,6 +546,26 @@ for _mkt in df_pivoted['Market Names'].unique():
     )
     _shapley_results[_mkt] = _result
     print(f"[Shapley] {_mkt}: {len(_result)} Datenpunkte berechnet.")
+
+# ---------------------------------------------------------------------------
+# Decision Tree: vorberechnen für alle Märkte mit Preisdaten
+# ---------------------------------------------------------------------------
+_dt_results: dict = {}   # market_name → dict (Modell + Prognose)
+
+for _mkt in df_pivoted['Market Names'].unique():
+    _pcol = _ppci_get_price_col(_mkt)
+    if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
+        print(f"[DecisionTree] Keine Preisdaten für {_mkt} – überspringe.")
+        continue
+
+    _dff = df_pivoted[df_pivoted['Market Names'] == _mkt].copy()
+    _result = train_decision_tree(_dff, df_futures_prices, _pcol)
+    if _result is not None:
+        _dt_results[_mkt] = _result
+        _dir = "steigend" if _result["prediction"] == 1 else "fallend"
+        print(f"[DecisionTree] {_mkt}: Prognose {_dir} ({_result['n_samples']} Beobachtungen)")
+    else:
+        print(f"[DecisionTree] {_mkt}: zu wenige Daten – überspringe.")
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -2167,9 +2192,86 @@ Für $N = 4$ werden alle $2^4 = 16$ Koalitionen explizit berechnet (exakter Algo
         ], width=12)]),
 
         html.Hr(),  # Separator
+
+        # ----------------------------------------------------------------
+        # Preisprognose – Entscheidungsbaum
+        # ----------------------------------------------------------------
         dbc.Row([
             dbc.Col([
-                html.Footer('© 2024 Market Analysis Dashboard', className='text-center mt-4')
+                html.H1("Preisprognose – Entscheidungsbaum"),
+
+                dbc.Accordion(
+                    [
+                        dbc.AccordionItem(
+                            [
+                                dcc.Markdown(r"""
+                                Der **Entscheidungsbaum** (Decision Tree Classifier) prognostiziert auf Basis der aktuellen
+                                CoT-Positionierungsdaten, ob der Futures-Preis eines Rohstoffs in der **nächsten Woche
+                                steigen oder fallen** wird.
+
+                                Als **Features** dienen ausschliesslich CoT-Kennzahlen aus der bestehenden Datenbank:
+                                die Netto-Positionen der Händlergruppen (Managed Money, Producer/Merchant, Swap Dealer),
+                                deren prozentuale Anteile am Gesamt-Open-Interest, Wochenveränderungen sowie der
+                                rollende Z-Score der Managed-Money-Netto-Position.
+
+                                Das Modell wird für jeden Rohstoff **separat** auf dem vollständigen verfügbaren Datensatz
+                                trainiert. Die Prognose bezieht sich auf die aktuellste vorliegende CoT-Beobachtung.
+                                """, mathjax=True),
+                            ],
+                            title="Beschreibung",
+                        ),
+                        dbc.AccordionItem(
+                            [
+                                dcc.Markdown(r"""
+                                **Features (X):**
+
+                                | Feature | Formel |
+                                |---------|--------|
+                                | Netto MM | $\mathrm{MM}_L - \mathrm{MM}_S$ |
+                                | Netto Prod/Merc | $\mathrm{PMPU}_L - \mathrm{PMPU}_S$ |
+                                | Netto Swap | $\mathrm{SD}_L - \mathrm{SD}_S$ |
+                                | % MM Long (OI) | $\frac{\mathrm{MM}_L}{\mathrm{OI}} \cdot 100$ |
+                                | % MM Short (OI) | $\frac{\mathrm{MM}_S}{\mathrm{OI}} \cdot 100$ |
+                                | Δ Netto MM | $\Delta(\mathrm{MM}_L - \mathrm{MM}_S)$ |
+                                | Δ % MM Long | $\Delta\left(\frac{\mathrm{MM}_L}{\mathrm{OI}} \cdot 100\right)$ |
+                                | Z-Score Netto MM | $\frac{\mathrm{net\_mm} - \mu_{13W}}{\sigma_{13W}}$ |
+
+                                **Zielvariable (y):**
+                                $$
+                                y_t = \begin{cases} 1 & \text{wenn } P_{t+1} > P_t \\ 0 & \text{sonst} \end{cases}
+                                $$
+
+                                **Modellparameter:** max\_depth = 3, min\_samples\_leaf = 3, random\_state = 42
+                                """, mathjax=True),
+                            ],
+                            title="Berechnung",
+                        ),
+                    ],
+                    start_collapsed=True,
+                    always_open=True,
+                    flush=True,
+                    className="mb-4",
+                ),
+
+                html.Div(id='dt-prediction-text', className='mb-4'),
+
+                html.H2("Entscheidungsbaum", className="mt-2 mb-2"),
+                html.Img(
+                    id='dt-tree-image',
+                    style={'width': '100%', 'maxWidth': '1600px', 'display': 'block'},
+                ),
+
+                html.H2("Feature Importance", className="mt-4 mb-2"),
+                dcc.Graph(id='dt-feature-importance'),
+                html.Br(),
+
+            ], width=12)
+        ]),
+
+        html.Hr(),  # Separator
+        dbc.Row([
+            dbc.Col([
+                html.Footer('© 2026 Market Analysis Dashboard', className='text-center mt-4')
             ])
         ])
     ], fluid=True)
@@ -5371,6 +5473,60 @@ def update_shapley(selected_market, start_date, end_date):
     )
 
     return fig_ts, fig_bar, table_rows, r2_info
+
+
+# ---------------------------------------------------------------------------
+# Decision-Tree-Callback
+# ---------------------------------------------------------------------------
+@app.callback(
+    [
+        Output('dt-prediction-text',    'children'),
+        Output('dt-tree-image',         'src'),
+        Output('dt-feature-importance', 'figure'),
+    ],
+    [Input('market-dropdown', 'value')]
+)
+def update_decision_tree(selected_market):
+    """Rendert Prognosetext, Baum-Bild und Feature-Importance für den gewählten Markt."""
+    if selected_market not in _dt_results:
+        msg = html.P(
+            f"Für '{selected_market}' sind keine Preisdaten verfügbar – kein Modell berechnet.",
+            style={'color': '#888', 'fontStyle': 'italic'}
+        )
+        return msg, "", go.Figure()
+
+    result    = _dt_results[selected_market]
+    pred      = result["prediction"]
+    proba     = result["proba"]
+    last_date = pd.to_datetime(result["last_date"]).strftime('%d.%m.%Y')
+
+    direction  = "steigende" if pred == 1 else "fallende"
+    conf_pct   = proba[pred] * 100
+    text_color = "#2e7d32" if pred == 1 else "#c62828"   # grün / rot
+
+    prediction_card = dbc.Alert(
+        [
+            html.Span("Prognose: "),
+            html.Strong(
+                f"Das Entscheidungsbaum-Modell prognostiziert für {selected_market} "
+                f"in der nächsten Woche {direction} Preise.",
+                style={"color": text_color}
+            ),
+            html.Span(
+                f"  (Modell-Konfidenz: {conf_pct:.1f} %, "
+                f"basierend auf CoT-Daten vom {last_date})",
+                style={"fontSize": "14px", "color": "#555"}
+            ),
+        ],
+        color="success" if pred == 1 else "danger",
+        className="mb-3",
+        style={"fontSize": "16px"},
+    )
+
+    tree_src  = render_tree_image(result)
+    feat_fig  = dt_feature_importance_figure(result, selected_market)
+
+    return prediction_card, tree_src, feat_fig
 
 
 # Open browser automatically
