@@ -169,3 +169,69 @@ def compute_rolling_shapley(
     result = pd.DataFrame(records, columns=cols)
     result["Date"] = pd.to_datetime(result["Date"])
     return result
+
+
+def prepare_market_for_shapley(
+    df_market: pd.DataFrame,
+    df_prices: pd.DataFrame,
+    price_col: str,
+    net_cols: dict | None = None,
+) -> pd.DataFrame | None:
+    """Bereitet Marktdaten für die Shapley-Owen-Zerlegung vor.
+
+    Führt identisch zur Logik in `train_decision_tree` aus:
+    - Merge mit Futures-Preisen (merge_asof, 7-Tage-Toleranz)
+    - Absolute Preisänderung als Zielvariable (_price_change)
+    - First Differences der Netto-Positionierungen als Prädiktoren (Δ …)
+
+    Parameters
+    ----------
+    df_market : CoT-Daten für einen einzelnen Markt aus df_pivoted.
+                Muss 'Date' sowie alle Spalten aus net_cols-Werten enthalten.
+    df_prices : DataFrame mit mindestens den Spalten 'Date' und *price_col*.
+    price_col : Spaltenname des Futures-Schlusskurses in df_prices.
+    net_cols  : Mapping {Δ-Ausgabespalte: Quell-Netto-Spalte}, z. B.
+                {'Δ MM Net': 'MM Net', ...}.
+                Default: die vier Standard-CoT-Händlergruppen.
+
+    Returns
+    -------
+    DataFrame mit '_price_change' und allen Δ-Spalten, bereit für
+    compute_rolling_shapley – oder None wenn keine Preisdaten verfügbar.
+    """
+    if net_cols is None:
+        net_cols = {
+            "Δ PMPU Net": "PMPU Net",
+            "Δ SD Net":   "SD Net",
+            "Δ MM Net":   "MM Net",
+            "Δ OR Net":   "OR Net",
+        }
+
+    dff = df_market.copy().sort_values("Date").reset_index(drop=True)
+
+    prices_clean = (
+        df_prices[["Date", price_col]]
+        .dropna(subset=[price_col])
+        .rename(columns={"Date": "_pdate", price_col: "_close"})
+        .sort_values("_pdate")
+    )
+
+    dff = pd.merge_asof(
+        dff,
+        prices_clean,
+        left_on="Date",
+        right_on="_pdate",
+        direction="backward",
+        tolerance=pd.Timedelta(days=7),
+    )
+
+    if "_close" not in dff.columns or dff["_close"].isna().all():
+        return None
+
+    dff["_price_change"] = dff["_close"].diff()
+
+    for delta_col, src_col in net_cols.items():
+        if src_col in dff.columns:
+            dff[delta_col] = dff[src_col].diff()
+
+    return dff
