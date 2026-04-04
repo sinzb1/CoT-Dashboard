@@ -19,6 +19,9 @@ from src.analysis.decision_tree import (
     train_decision_tree,
     render_tree_image,
     feature_importance_figure as dt_feature_importance_figure,
+    confusion_matrix_figure as dt_confusion_matrix_figure,
+    roc_curve_figure as dt_roc_curve_figure,
+    pr_curve_figure as dt_pr_curve_figure,
 )
 from src.analysis.market_config import get_price_col, get_contract_size
 from src.analysis.cot_indicators import clustering_0_100, rel_concentration, calculate_ranges
@@ -3773,27 +3776,36 @@ def update_shapley(selected_market, start_date, end_date):
     [
         Output('dt-prediction-text',    'children'),
         Output('dt-tree-image',         'src'),
+        Output('dt-eval-info',          'children'),
+        Output('dt-confusion-matrix',   'figure'),
+        Output('dt-roc-curve',          'figure'),
+        Output('dt-pr-curve',           'figure'),
         Output('dt-feature-importance', 'figure'),
     ],
     [Input('market-dropdown', 'value')]
 )
 def update_decision_tree(selected_market):
-    """Rendert Prognosetext, Baum-Bild und Feature-Importance für den gewählten Markt."""
+    """Rendert alle Decision-Tree-Komponenten für den gewählten Markt."""
+    _empty = go.Figure()
     if selected_market not in _dt_results:
         msg = html.P(
             f"Für '{selected_market}' sind keine Preisdaten verfügbar – kein Modell berechnet.",
             style={'color': '#888', 'fontStyle': 'italic'}
         )
-        return msg, "", go.Figure()
+        return msg, "", "", _empty, _empty, _empty, _empty
 
     result    = _dt_results[selected_market]
     pred      = result["prediction"]
     proba     = result["proba"]
     last_date = pd.to_datetime(result["last_date"]).strftime('%d.%m.%Y')
+    ev        = result["eval"]
 
+    # ------------------------------------------------------------------
+    # Prognose-Alert
+    # ------------------------------------------------------------------
     direction  = "steigende" if pred == 1 else "fallende"
     conf_pct   = proba[pred] * 100
-    text_color = "#2e7d32" if pred == 1 else "#c62828"   # grün / rot
+    text_color = "#2e7d32" if pred == 1 else "#c62828"
 
     prediction_card = dbc.Alert(
         [
@@ -3814,10 +3826,37 @@ def update_decision_tree(selected_market):
         style={"fontSize": "16px"},
     )
 
-    tree_src  = render_tree_image(result)
-    feat_fig  = dt_feature_importance_figure(result, selected_market)
+    # ------------------------------------------------------------------
+    # Train/Test-Split-Info
+    # ------------------------------------------------------------------
+    train_start = pd.to_datetime(ev["train_start"]).strftime('%d.%m.%Y')
+    train_end   = pd.to_datetime(ev["train_end"]).strftime('%d.%m.%Y')
+    test_start  = pd.to_datetime(ev["test_start"]).strftime('%d.%m.%Y')
+    test_end    = pd.to_datetime(ev["test_end"]).strftime('%d.%m.%Y')
 
-    return prediction_card, tree_src, feat_fig
+    eval_info = html.Div([
+        dbc.Badge(
+            f"Trainingsset: {ev['n_train']} Beobachtungen  ({train_start} – {train_end})",
+            color="primary", className="me-3 p-2",
+            style={"fontSize": "13px", "fontWeight": "normal"},
+        ),
+        dbc.Badge(
+            f"Testset (Out-of-Sample): {ev['n_test']} Beobachtungen  ({test_start} – {test_end})",
+            color="secondary", className="p-2",
+            style={"fontSize": "13px", "fontWeight": "normal"},
+        ),
+    ])
+
+    # ------------------------------------------------------------------
+    # Evaluationsdiagramme (Out-of-Sample)
+    # ------------------------------------------------------------------
+    tree_src = render_tree_image(result)
+    cm_fig   = dt_confusion_matrix_figure(result, selected_market)
+    roc_fig  = dt_roc_curve_figure(result, selected_market)
+    pr_fig   = dt_pr_curve_figure(result, selected_market)
+    feat_fig = dt_feature_importance_figure(result, selected_market)
+
+    return prediction_card, tree_src, eval_info, cm_fig, roc_fig, pr_fig, feat_fig
 
 
 # Open browser automatically
