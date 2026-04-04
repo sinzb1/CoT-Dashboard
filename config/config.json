@@ -6,5 +6,13 @@
   },
   "pipeline": {
     "years_back": 4
+  },
+  "eia": {
+    "api_key": "XTt5fIXKToDSc0rk7asrZI84u6gwLdfKSya4G6Fs",
+    "base_url": "https://api.eia.gov/v2",
+    "petroleum_stocks_route": "/petroleum/stoc/wstk/data/",
+    "product_facet": "EPC0",
+    "process_facet": "SAX",
+    "duoarea_facet": "NUS"
   }
 }

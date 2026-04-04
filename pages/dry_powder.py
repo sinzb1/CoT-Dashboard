@@ -422,6 +422,78 @@ def layout():
 
         html.Hr(),
 
+        # DP Fundamental Indicator (Crude Oil Inventory)
+        dbc.Row([
+            dbc.Col([
+                html.H1("DP Fundamental Indicator (Crude Oil Inventory)"),
+
+                dbc.Accordion([
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Der **DP Fundamental Indicator** zeigt, wie sich das Long- bzw.
+                        Short-Open-Interest der Gruppe **Producer/Merchant/Processor/User (PMPU)**
+                        in Abhängigkeit von der Anzahl Trader und dem fundamentalen Rohöl-Lagerbestand
+                        verteilt. Als externer Faktor werden die wöchentlichen **US-Rohöl-Lagerbestände
+                        (Ending Stocks excl. SPR)** der U.S. Energy Information Administration (EIA)
+                        verwendet.
+
+                        Die PMPU-Gruppe umfasst physische Marktteilnehmer – Produzenten, Händler,
+                        Verarbeiter und Endverbraucher. Ihre Positionierung spiegelt daher direkt das
+                        operative Hedging-Verhalten gegenüber dem physischen Rohölmarkt wider.
+                        Ein Zusammenspiel zwischen der PMPU-Positionierung und dem Lagerbestandsniveau
+                        lässt Rückschlüsse auf Angebotserwartungen, Hedging-Druck und mögliche
+                        Trendwenden im physischen Markt zu.
+
+                        **Dieser Indikator ist ausschliesslich für Crude Oil (WTI) verfügbar.**
+
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des US-Rohöl-Lagerbestands
+                        in Tausend Barrel. Helle Farben stehen für tiefere Lagerbestände
+                        (knappes Angebot), dunklere Farben für höhere Lagerbestände (reichliches Angebot).
+                        """, mathjax=True),
+                    ], title="Beschreibung"),
+
+                    dbc.AccordionItem([
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                    **Für PMPU Long (PMPUL) und PMPU Short (PMPUS) gilt:**
+
+                    $$
+                    x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                    $$
+
+                    $$
+                    c(t) = \mathrm{Inventory}_{\mathrm{EIA}}(t)
+                    $$
+
+                    **Variablen und Begriffe:**
+                    - **$G$:** betrachtete Tradergruppe, $\mathrm{PMPUL}$ oder $\mathrm{PMPUS}$
+                    - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                    - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$ (in Kontrakten)
+                    - **$\mathrm{Inventory}_{\mathrm{EIA}}(t)$:** US-Rohöl-Lagerbestand (Ending Stocks excl. SPR) in Tausend Barrel,
+                      veröffentlicht wöchentlich durch die EIA; zeitlich auf den CoT-Stichtag (Dienstag) ausgerichtet
+                    - **Punktfarbe:** $c(t)$, d. h. das Lagerbestandsniveau zum Zeitpunkt $t$
+                    - **Schwarzer Punkt:** aktuellste verfügbare Woche
+                    """, mathjax=True), width=12),
+                        ], className="mb-2"),
+                    ], title="Berechnung"),
+                ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
+
+                dcc.RadioItems(
+                    id='dp-fundamental-radio',
+                    options=[
+                        {'label': 'PMPUL', 'value': 'PMPUL'},
+                        {'label': 'PMPUS', 'value': 'PMPUS'},
+                    ],
+                    value='PMPUL',
+                    className='mb-4'
+                ),
+                dcc.Graph(id='dp-fundamental-indicator-graph'),
+                html.Br(),
+            ], width=12)
+        ]),
+
+        html.Hr(),
+
         # DP Relative Concentration Indicator
         dbc.Row([
             dbc.Col([

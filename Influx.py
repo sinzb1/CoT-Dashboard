@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 from src.services.trades_category_service import TradesCategoryService
 from src.services.futures_price_service import FuturesPriceService
 from src.services.macro_price_service import MacroPriceService
+from src.services.eia_petroleum_service import EIAPetroleumService
 
 # ── Configuration ────────────────────────────────────────────────────────────
 with open("config/config.json") as _f:
@@ -205,6 +206,42 @@ if futures_points:
         print(f"Successfully wrote {len(futures_points)} futures price points.")
     except Exception as e:
         print(f"Error writing futures price batch: {e}")
+
+# ── 4. EIA Crude Oil Inventory Data ─────────────────────────────────────────
+eia_service = EIAPetroleumService()
+eia_df = eia_service.load_aligned(cot_dates=cot_dates)
+
+print(f"\n{len(eia_df)} EIA crude oil inventory points aligned to CoT dates.")
+
+# Targeted delete: remove old EIA inventory data
+delete_measurement_range(client, "eia_petroleum_stocks", delete_start, window_end)
+
+print(f"Writing {len(eia_df)} EIA inventory points to InfluxDB v3...")
+
+eia_points = []
+
+for index, row in eia_df.iterrows():
+    try:
+        p = Point("eia_petroleum_stocks").time(row["date"].to_pydatetime())
+
+        if pd.notna(row.get("crude_oil_stocks_kb")):
+            p = p.field("crude_oil_stocks_kb", float(row["crude_oil_stocks_kb"]))
+
+        if len(p._fields) > 0:
+            eia_points.append(p)
+
+    except Exception as e:
+        print(f"Error preparing EIA data point at index {index}: {e}")
+        continue
+
+if eia_points:
+    try:
+        client.write(record=eia_points)
+        print(f"Successfully wrote {len(eia_points)} EIA inventory points.")
+    except Exception as e:
+        print(f"Error writing EIA inventory data batch: {e}")
+
+print("EIA petroleum stocks write completed.")
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 client.close()

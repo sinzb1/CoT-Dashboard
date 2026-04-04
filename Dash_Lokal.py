@@ -131,6 +131,25 @@ try:
 except Exception as _fb_e:
     print(f"[Macro fallback] Error: {_fb_e}")
 
+# Fetch EIA crude oil inventory data (eia_petroleum_stocks measurement)
+query_eia = """
+SELECT time, crude_oil_stocks_kb
+FROM eia_petroleum_stocks
+WHERE time >= now() - INTERVAL '4 years'
+ORDER BY time ASC
+"""
+print("Fetching EIA crude oil inventory data from InfluxDB v3...")
+try:
+    table_eia = client.query(query=query_eia, language="sql")
+    df_eia = table_eia.to_pandas()
+    df_eia.rename(columns={'time': 'Date'}, inplace=True)
+    df_eia['Date'] = pd.to_datetime(df_eia['Date']).dt.tz_localize(None)
+    df_eia = df_eia.sort_values('Date').reset_index(drop=True)
+    print(f"[EIA] Loaded {len(df_eia)} crude oil inventory rows")
+except Exception as _e:
+    print(f"[EIA] Could not load EIA inventory data: {_e}")
+    df_eia = pd.DataFrame(columns=['Date'])
+
 # Close the client
 client.close()
 
@@ -3562,6 +3581,171 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         ))
 
     # Most Recent Week (identisch zu DXY/VIX)
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend_title='Legend',
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Fundamental Indicator (Crude Oil Inventory) – Callback
+# Nur für Crude Oil (WTI). X = PMPU Traders, Y = PMPU OI
+# Punktfarbe = EIA Crude Oil Ending Stocks excl. SPR (Tausend Barrel)
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-fundamental-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-fundamental-radio', 'value')]
+)
+def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
+    # Indikator nur für Crude Oil (WTI) verfügbar
+    if selected_market is None or 'WTI' not in selected_market.upper():
+        fig = go.Figure()
+        fig.add_annotation(
+            text=(
+                f"Der DP Fundamental Indicator ist ausschliesslich für "
+                f"<b>Crude Oil (WTI)</b> verfügbar.<br>"
+                f"Aktuell ausgewählt: <b>{selected_market or '–'}</b>"
+            ),
+            xref='paper', yref='paper',
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=15, color='#555'),
+            align='center',
+            bgcolor='#f8f9fa',
+            bordercolor='#dee2e6',
+            borderwidth=1,
+            borderpad=14,
+        )
+        fig.update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            height=250,
+        )
+        return fig
+
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if pmpu_side == 'PMPUL':
+        x_col   = 'Traders Prod/Merc Long'
+        y_col   = 'Producer/Merchant/Processor/User Long'
+        x_title = 'PMPU Number of Long Traders'
+        y_title = 'PMPU Long OI (Contracts)'
+        title   = 'DP Fundamental Indicator – Crude Oil Inventory (PMPUL)'
+        trend_col = '#e6550d'
+    else:
+        x_col   = 'Traders Prod/Merc Short'
+        y_col   = 'Producer/Merchant/Processor/User Short'
+        x_title = 'PMPU Number of Short Traders'
+        y_title = 'PMPU Short OI (Contracts)'
+        title   = 'DP Fundamental Indicator – Crude Oil Inventory (PMPUS)'
+        trend_col = '#fdae6b'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+
+    # EIA-Lagerbestand als Farbe (merge_asof identisch zu USD/CHF-Logik)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    if not df_eia.empty and 'crude_oil_stocks_kb' in df_eia.columns:
+        eia_ref = df_eia[['Date', 'crude_oil_stocks_kb']].dropna(subset=['crude_oil_stocks_kb']).copy()
+        eia_ref = eia_ref.rename(columns={'Date': '_edate'}).sort_values('_edate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+        y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+        dff = pd.merge_asof(
+            dff, eia_ref,
+            left_on='_date', right_on='_edate',
+            direction='nearest',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals     = pd.to_numeric(dff['crude_oil_stocks_kb'], errors='coerce')
+        colorbar_title = 'Inventory (kb)'
+    else:
+        color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'Inventory (n/a)'
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = [
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>EIA Inventory: {c:,.0f} kb'
+        for d, x, y, c in zip(
+            dates_str,
+            x_vals.fillna(0),
+            y_vals.fillna(0),
+            color_vals.fillna(0)
+        )
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=x_vals, y=y_vals,
+        mode='markers',
+        marker=dict(
+            size=14,
+            color=color_vals,
+            colorscale='YlOrBr',   # hell = tiefe Bestände, dunkel = hohe Bestände
+            showscale=True,
+            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+            opacity=0.85,
+            line=dict(width=0.6, color='black')
+        ),
+        text=hover_text,
+        hoverinfo='text',
+        showlegend=False
+    ))
+
+    # Trendlinie (identisch zu Currency/DXY/VIX)
+    mask_t = x_vals.notna() & y_vals.notna()
+    if mask_t.sum() >= 2:
+        xv = x_vals[mask_t].astype(float).values
+        yv = y_vals[mask_t].astype(float).values
+        xs = np.array([xv.min(), xv.max()])
+        m, b = np.polyfit(xv, yv, 1)
+        ys = m * xs + b
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color='white', width=7),
+            showlegend=False, hoverinfo='skip'
+        ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode='lines',
+            line=dict(color=trend_col, width=3),
+            name='Trend', showlegend=True
+        ))
+
+    # Most Recent Week
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
