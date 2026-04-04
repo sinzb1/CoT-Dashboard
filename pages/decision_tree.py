@@ -86,7 +86,6 @@ def layout():
                     # ---- Konfusionsmatrix ----
                     dbc.Col([
                         html.H4("Konfusionsmatrix", className="mb-2"),
-                        dcc.Graph(id='dt-confusion-matrix'),
                         dbc.Accordion([
                             dbc.AccordionItem([
                                 dcc.Markdown(r"""
@@ -106,13 +105,13 @@ def layout():
                                 - **Oben rechts (False Positives):** Modell prognostiziert *steigt* – Preis ist aber gefallen (Fehlsignal).
                                 """, mathjax=True),
                             ], title="Beschreibung"),
-                        ], start_collapsed=True, flush=True, className="mt-2"),
+                        ], start_collapsed=True, flush=True, className="mb-2"),
+                        dcc.Graph(id='dt-confusion-matrix'),
                     ], width=12, lg=4, className="mb-4"),
 
                     # ---- ROC-Kurve ----
                     dbc.Col([
                         html.H4("ROC-Kurve", className="mb-2"),
-                        dcc.Graph(id='dt-roc-curve'),
                         dbc.Accordion([
                             dbc.AccordionItem([
                                 dcc.Markdown(r"""
@@ -129,18 +128,15 @@ def layout():
                                 Eine hohe AUC bedeutet, dass das Modell aufsteigende von fallenden
                                 Preiswochen gut unterscheiden kann – unabhängig vom gewählten Schwellenwert.
                                 Die gestrichelte Linie repräsentiert einen zufälligen Klassifikator (AUC = 0.5).
-
-                                **Hinweis:** Bei kleinen Testsets (ca. 55–65 Beobachtungen) ist die Kurve
-                                naturgemäss stufig und die AUC mit entsprechender Unsicherheit behaftet.
                                 """, mathjax=True),
                             ], title="Beschreibung"),
-                        ], start_collapsed=True, flush=True, className="mt-2"),
+                        ], start_collapsed=True, flush=True, className="mb-2"),
+                        dcc.Graph(id='dt-roc-curve'),
                     ], width=12, lg=4, className="mb-4"),
 
                     # ---- Precision-Recall-Kurve ----
                     dbc.Col([
                         html.H4("Precision-Recall-Kurve", className="mb-2"),
-                        dcc.Graph(id='dt-pr-curve'),
                         dbc.Accordion([
                             dbc.AccordionItem([
                                 dcc.Markdown(r"""
@@ -160,7 +156,8 @@ def layout():
                                 (z. B. wenn eine Preisrichtung deutlich häufiger auftritt als die andere).
                                 """, mathjax=True),
                             ], title="Beschreibung"),
-                        ], start_collapsed=True, flush=True, className="mt-2"),
+                        ], start_collapsed=True, flush=True, className="mb-2"),
+                        dcc.Graph(id='dt-pr-curve'),
                     ], width=12, lg=4, className="mb-4"),
 
                 ]),
@@ -169,6 +166,49 @@ def layout():
                 # Feature Importance
                 # ----------------------------------------------------------
                 html.H2("Feature Importance", className="mt-2 mb-2"),
+                dbc.Accordion([
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Die **Feature Importance** zeigt, welche CoT-Kennzahlen das Modell als besonders
+                        relevant für seine Entscheidungen eingestuft hat. Je grösser der Balken, desto
+                        stärker hat dieses Feature zur Trennleistung des Entscheidungsbaums beigetragen.
+
+                        **Interpretation im Kontext der Preisprognose:**
+                        Ein Feature mit hoher Importance wurde an den entscheidenden Knoten des Baums
+                        für Splits verwendet. Ein Wert von 0 bedeutet, dass das Feature in keinem Split
+                        vorkam und damit keinen Beitrag zur Prognose leistet.
+
+                        Die Importances sind **modell- und rohstoffspezifisch**: Für Gold können völlig
+                        andere Features dominieren als für Palladium – je nachdem, welche CoT-Signale
+                        historisch den stärksten Zusammenhang mit der Preisrichtung aufweisen.
+                        """, mathjax=True),
+                    ], title="Beschreibung"),
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Die Feature Importance basiert auf der **mittleren Gini-Reduktion**
+                        (Mean Decrease in Impurity), die ein Feature über alle Splits im Baum bewirkt:
+
+                        $$
+                        \text{Importance}(f) =
+                        \sum_{t \,\in\, \text{Splits mit } f}
+                        \frac{n_t}{n} \cdot \Delta\text{Gini}(t)
+                        $$
+
+                        - $n_t$: Anzahl Beobachtungen im Knoten $t$
+                        - $n$: Gesamtzahl Trainingsbeobachtungen
+                        - $\Delta\text{Gini}(t)$: Reduktion des Gini-Koeffizienten durch den Split bei Knoten $t$
+
+                        Die Importances werden so normiert, dass ihre Summe **1.0** ergibt:
+
+                        $$\sum_{f} \text{Importance}(f) = 1.0$$
+
+                        **Gini-Koeffizient** eines Knotens mit Klassenverteilung $(p_0, p_1)$:
+                        $$
+                        \text{Gini} = 1 - p_0^2 - p_1^2 = 2 \cdot p_0 \cdot p_1
+                        $$
+                        """, mathjax=True),
+                    ], title="Berechnung"),
+                ], start_collapsed=True, always_open=True, flush=True, className="mb-3"),
                 dcc.Graph(id='dt-feature-importance'),
                 html.Br(),
 
