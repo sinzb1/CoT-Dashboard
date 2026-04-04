@@ -4,9 +4,6 @@
     "app_token": "tKpbT4h9BQSA8E3oCkVEgjpWK",
     "limit": 5000
   },
-  "fred": {
-    "app_token": "09d1c34176ad541eb8dc8370dd113b69"
-  },
   "pipeline": {
     "years_back": 4
   }

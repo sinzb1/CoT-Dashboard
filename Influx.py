@@ -56,7 +56,7 @@ delete_start = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 # ── 1. CoT Data ──────────────────────────────────────────────────────────────
 print(f"\n{'='*60}")
-print(f"Pipeline: loading CoT + FRED + Futures data for last {YEARS_BACK} years")
+print(f"Pipeline: loading CoT + Macro (yfinance) + Futures data for last {YEARS_BACK} years")
 print(f"Window:   {window_start.date()} → {window_end.date()}")
 print(f"{'='*60}\n")
 
@@ -66,7 +66,7 @@ tc_df = service.filter_and_rename(tc_df)
 
 print(f"Loaded {len(tc_df)} CoT data points from Socrata.\n")
 
-# Extract unique CoT dates for FRED alignment
+# Extract unique CoT dates for macro alignment
 cot_dates = tc_df["Date"].drop_duplicates().sort_values()
 print(f"Unique CoT report dates: {len(cot_dates)}")
 
@@ -189,6 +189,8 @@ for index, row in futures_df.iterrows():
             p = p.field("platinum_close", float(row["platinum"]))
         if pd.notna(row.get("palladium")):
             p = p.field("palladium_close", float(row["palladium"]))
+        if pd.notna(row.get("crude_oil_wti")):
+            p = p.field("crude_oil_close", float(row["crude_oil_wti"]))
 
         if len(p._fields) > 0:
             futures_points.append(p)

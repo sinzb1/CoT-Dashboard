@@ -56,6 +56,7 @@ class SocrataClient:
             "PLATINUM - NEW YORK MERCANTILE EXCHANGE",
             "PALLADIUM - NEW YORK MERCANTILE EXCHANGE",
             "COPPER- #1 - COMMODITY EXCHANGE INC.",
+            "WTI-PHYSICAL - NEW YORK MERCANTILE EXCHANGE",
         ]
 
         end = date.today()

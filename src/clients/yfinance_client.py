@@ -6,11 +6,12 @@ from datetime import date
 
 # Yahoo Finance continuous futures tickers for the relevant commodities
 COMMODITY_TICKERS = {
-    "Gold":      "GC=F",
-    "Silver":    "SI=F",
-    "Copper":    "HG=F",
-    "Platinum":  "PL=F",
-    "Palladium": "PA=F",
+    "Gold":           "GC=F",
+    "Silver":         "SI=F",
+    "Copper":         "HG=F",
+    "Platinum":       "PL=F",
+    "Palladium":      "PA=F",
+    "Crude_Oil_WTI":  "CL=F",
 }
 
 # Yahoo Finance tickers for macro factors (replaces FRED)

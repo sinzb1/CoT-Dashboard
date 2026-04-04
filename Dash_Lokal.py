@@ -72,22 +72,22 @@ except Exception as _e:
     print(f"[PPCI] Could not load futures prices: {_e}")
     df_futures_prices = pd.DataFrame(columns=['Date'])
 
-# Fetch FRED macro data (VIX, USD Index etc.) – stored by pipeline in macro_by_date
+# Fetch macro data (VIX, USD Index etc.) – stored by pipeline in macro_by_date
 query_macro = """
 SELECT *
 FROM macro_by_date
 WHERE time >= now() - INTERVAL '2 years'
 """
-print("Fetching macro data (FRED) from InfluxDB v3...")
+print("Fetching macro data (yfinance) from InfluxDB v3...")
 try:
     table_macro = client.query(query=query_macro, language="sql")
     df_macro = table_macro.to_pandas()
     df_macro.rename(columns={'time': 'Date'}, inplace=True)
     df_macro['Date'] = pd.to_datetime(df_macro['Date']).dt.tz_localize(None)
     df_macro = df_macro.sort_values('Date').reset_index(drop=True)
-    print(f"[FRED] Loaded {len(df_macro)} macro rows")
+    print(f"[Macro] Loaded {len(df_macro)} macro rows")
 except Exception as _e:
-    print(f"[FRED] Could not load macro data: {_e}")
+    print(f"[Macro] Could not load macro data: {_e}")
     df_macro = pd.DataFrame(columns=['Date'])
 
 # Fill macro gaps: fetch 4 years from yfinance as base, InfluxDB values take precedence
@@ -1240,7 +1240,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
             title='Open Interest',
             showgrid=True,
             tick0=0,
-            dtick=20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000,
+            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000),
         ),
         legend=dict(
             title=dict(text="Number of Traders"),
@@ -1342,7 +1342,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
             title='Open Interest',
             showgrid=True,
             tick0=0,
-            dtick=20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000,
+            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000),
         ),
         legend=dict(
             title=dict(text="Number of Traders"),
@@ -1632,7 +1632,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         ),
         yaxis=dict(
             title='Open Interest', showgrid=True, tick0=0,
-            dtick=20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000
+            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000)
         ),
         legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.2, y=0.5, font=dict(size=12)),
         margin=dict(l=60, r=160, t=60, b=60)
@@ -1722,7 +1722,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         ),
         yaxis=dict(
             title='Open Interest', showgrid=True, tick0=0,
-            dtick=20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000
+            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000)
         ),
         legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.2, y=0.5, font=dict(size=12)),
         margin=dict(l=60, r=160, t=60, b=60)
@@ -3184,7 +3184,7 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
 # ---------------------------------------------------------------------------
 # DP Factor (VIX) – Callback
 # X = MM Long/Short Traders, Y = MM Long/Short OI
-# Punktfarbe = VIX-Wert (FRED via macro_by_date), merge_asof 7-Tage-Toleranz
+# Punktfarbe = VIX-Wert (yfinance via macro_by_date), merge_asof 7-Tage-Toleranz
 # Struktur identisch zu DP Price Indicator (ohne Trendlinie)
 # ---------------------------------------------------------------------------
 @app.callback(
@@ -3220,7 +3220,7 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
 
-    # VIX-Wert als Farbe (FRED via df_macro, merge_asof identisch zu df_futures_prices)
+    # VIX-Wert als Farbe (yfinance via df_macro, merge_asof identisch zu df_futures_prices)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_macro.empty and 'vix' in df_macro.columns:
@@ -3355,7 +3355,7 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
 
-    # DXY-Wert als Farbe (FRED via df_macro, merge_asof identisch zu VIX)
+    # DXY-Wert als Farbe (yfinance via df_macro, merge_asof identisch zu VIX)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_macro.empty and 'usd_index' in df_macro.columns:

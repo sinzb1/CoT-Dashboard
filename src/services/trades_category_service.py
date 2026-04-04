@@ -22,7 +22,8 @@ class TradesCategoryService:
             "SILVER - COMMODITY EXCHANGE INC.": "Silver",
             "PLATINUM - NEW YORK MERCANTILE EXCHANGE": "Platinum",
             "PALLADIUM - NEW YORK MERCANTILE EXCHANGE": "Palladium",
-            "COPPER- #1 - COMMODITY EXCHANGE INC.": "Copper"
+            "COPPER- #1 - COMMODITY EXCHANGE INC.": "Copper",
+            "WTI-PHYSICAL - NEW YORK MERCANTILE EXCHANGE": "Crude Oil (WTI)",
         }
 
         # Rename column

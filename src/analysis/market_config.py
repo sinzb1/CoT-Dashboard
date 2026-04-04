@@ -13,6 +13,8 @@ MARKET_TO_PRICE_COL: dict[str, str] = {
     "COPPER":    "copper_close",
     "PLATINUM":  "platinum_close",
     "PALLADIUM": "palladium_close",
+    "CRUDE OIL": "crude_oil_close",
+    "WTI":       "crude_oil_close",
 }
 
 # Kontraktgrössen in Einheiten pro Kontrakt (für Notional-Berechnungen).
@@ -22,6 +24,8 @@ CONTRACT_SIZES: dict[str, float] = {
     "PLATINUM":  50.0,     # troy ounces
     "PALLADIUM": 100.0,    # troy ounces
     "COPPER":    25000.0,  # pounds
+    "CRUDE OIL": 1000.0,   # barrels
+    "WTI":       1000.0,   # barrels
 }
 
 

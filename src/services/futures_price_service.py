@@ -31,7 +31,7 @@ class FuturesPriceService:
     def align_to_cot_dates(self, prices_df: pd.DataFrame, cot_dates: pd.Series) -> pd.DataFrame:
         """Align daily futures prices to CoT weekly dates (Tuesday).
 
-        Strategy (identical to FredMacroService):
+        Strategy (identical to MacroPriceService):
         1. If concrete CoT dates are provided, use merge_asof to pick
            the closest preceding price (tolerance 4 days).
         2. Fallback: keep only Tuesday observations.
