@@ -23,7 +23,7 @@ from src.analysis.decision_tree import (
     roc_curve_figure as dt_roc_curve_figure,
     pr_curve_figure as dt_pr_curve_figure,
 )
-from src.analysis.market_config import get_price_col, get_contract_size
+from src.analysis.market_config import get_price_col, get_contract_size, get_2nd_nearby_price_col
 from src.analysis.cot_indicators import clustering_0_100, rel_concentration, calculate_ranges
 
 # Function to open the web browser
@@ -149,6 +149,24 @@ try:
 except Exception as _e:
     print(f"[EIA] Could not load EIA inventory data: {_e}")
     df_eia = pd.DataFrame(columns=['Date'])
+
+# Fetch Databento 2nd-nearby deferred futures prices
+query_deferred = """
+SELECT *
+FROM futures_deferred_prices
+WHERE time >= now() - INTERVAL '4 years'
+"""
+print("Fetching Databento deferred futures prices from InfluxDB v3...")
+try:
+    table_deferred = client.query(query=query_deferred, language="sql")
+    df_deferred_prices = table_deferred.to_pandas()
+    df_deferred_prices.rename(columns={'time': 'Date'}, inplace=True)
+    df_deferred_prices['Date'] = pd.to_datetime(df_deferred_prices['Date']).dt.tz_localize(None)
+    df_deferred_prices = df_deferred_prices.sort_values('Date').reset_index(drop=True)
+    print(f"[Deferred] Loaded {len(df_deferred_prices)} deferred futures price rows")
+except Exception as _e:
+    print(f"[Deferred] Could not load deferred futures prices: {_e}")
+    df_deferred_prices = pd.DataFrame(columns=['Date'])
 
 # Close the client
 client.close()
@@ -307,8 +325,9 @@ default_start_date = default_end_date - timedelta(days=182)
 # Markt-Konfiguration und Lookup-Funktionen: siehe src/analysis/market_config.py
 # Lokale Aliase für Rückwärtskompatibilität innerhalb dieser Datei.
 # ---------------------------------------------------------------------------
-_ppci_get_price_col    = get_price_col
-_ppci_get_contract_size = get_contract_size
+_ppci_get_price_col          = get_price_col
+_ppci_get_contract_size      = get_contract_size
+_ppci_get_2nd_nearby_col     = get_2nd_nearby_price_col
 
 
 def get_global_xaxis():
@@ -2332,12 +2351,12 @@ def update_ppci(selected_market, start_date, end_date, direction):
         color_col      = '_short_conc'
         colorbar_title = 'MMS Concentration (%)'
 
-    # Merge futures prices from InfluxDB (continuous contract proxy for 2nd Nearby)
-    price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
+    # Merge Databento 2nd-nearby prices (futures_deferred_prices)
+    price_col = _ppci_get_2nd_nearby_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
 
-    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
-        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+    if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
+        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
         prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
         dff = dff.sort_values('_date')
 
@@ -2467,8 +2486,7 @@ def update_ppci(selected_market, start_date, end_date, direction):
 
 # ---------------------------------------------------------------------------
 # PP Clustering Indicator – Callback
-# Wiederverwendet: _ppci_get_price_col, df_futures_prices, merge_asof,
-# scaled_diameters, OI-Legende und Letzter-Punkt-Highlight aus dem PPCI.
+# Preisquelle: df_deferred_prices via _ppci_get_2nd_nearby_col (Databento .c.1).
 # Unterschied zum PPCI: Farbe = Long/Short Clustering statt Concentration (%).
 # ---------------------------------------------------------------------------
 @app.callback(
@@ -2498,12 +2516,12 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         color_col      = 'Short Clustering'
         colorbar_title = 'MMS Clustering'
 
-    # 2nd-Nearby-Preislogik identisch zum PPCI
-    price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
+    # Databento 2nd-nearby prices (futures_deferred_prices)
+    price_col = _ppci_get_2nd_nearby_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
 
-    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
-        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+    if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
+        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
         prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
         dff = dff.sort_values('_date')
         dff = pd.merge_asof(
@@ -2630,8 +2648,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
 
 # ---------------------------------------------------------------------------
 # PP Position Size Indicator – Callback
-# Wiederverwendet: _ppci_get_price_col, df_futures_prices, merge_asof,
-# scaled_diameters, Letzter-Punkt-Highlight aus dem PPCI.
+# Preisquelle: df_deferred_prices via _ppci_get_2nd_nearby_col (Databento .c.1).
 # Bubble-Größe = Anzahl MM-Trader (statt OI), Farbe = Position Size in USD.
 # Position Size ($) = MML/MMS Position Size (Kontrakte/Trader) × Price.
 # ---------------------------------------------------------------------------
@@ -2655,12 +2672,12 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     # Normalize Date to tz-naive for merging (identisch zu PPCI)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
-    # 2nd-Nearby-Preislogik identisch zum PPCI
-    price_col = _ppci_get_price_col(selected_market)
-    y_title = 'Price (Continuous Front-Month Proxy) (Report Date)'
+    # Databento 2nd-nearby prices (futures_deferred_prices)
+    price_col = _ppci_get_2nd_nearby_col(selected_market)
+    y_title = 'Price (2nd Nearby) (Report Date)'
 
-    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
-        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+    if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
+        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
         prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
         dff = dff.sort_values('_date')
         dff = pd.merge_asof(
@@ -2809,7 +2826,7 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
 # Y-Achse: Notional Exposure in USD bn = (MM OI × Kontraktgröße × Price) / 1e9
 #   MML (Long):  positiv (oberhalb Nulllinie)
 #   MMS (Short): negativ (unterhalb Nulllinie)
-# Preisquelle: df_futures_prices via _ppci_get_price_col (identisch zu PPCI).
+# Preisquelle: df_futures_prices via _ppci_get_price_col (Front-Month, yfinance).
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-notional-indicator-graph', 'figure'),
@@ -2827,7 +2844,7 @@ def update_dp_notional(selected_market, start_date, end_date):
     if dff.empty:
         return go.Figure()
 
-    # 2nd-Nearby-Preis (identisch zu PPCI)
+    # Front-Month-Preis (yfinance, futures_prices)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
     price_col = _ppci_get_price_col(selected_market)
 
@@ -3085,7 +3102,7 @@ def update_dp_time(selected_market, start_date, end_date):
 # ---------------------------------------------------------------------------
 # DP Price Indicator – Callback
 # X = PMPU Long/Short Traders, Y = PMPU Long/Short OI
-# Punktfarbe = Futures-Preis (Continuous Front-Month Proxy, Report Date)
+# Punktfarbe = Futures-Preis (Databento 2nd Nearby .c.1, Report Date)
 # Trendlinie + Most-Recent-Week-Marker identisch zu DP Notional/Time Indicator
 # ---------------------------------------------------------------------------
 @app.callback(
@@ -3121,12 +3138,12 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce')
 
-    # Futures-Preis als Farbe (identisch zu PPCI: merge_asof, 7-Tage-Toleranz)
+    # Databento 2nd-nearby price als Farbe (merge_asof, 7-Tage-Toleranz)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
-    price_col = _ppci_get_price_col(selected_market)
+    price_col = _ppci_get_2nd_nearby_col(selected_market)
 
-    if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
-        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
+    if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
+        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
         prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
         dff = dff.sort_values('_date').reset_index(drop=True)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
@@ -3138,7 +3155,7 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
             tolerance=pd.Timedelta(days=7)
         )
         color_vals    = pd.to_numeric(dff[price_col], errors='coerce')
-        colorbar_title = 'Price (USD)'
+        colorbar_title = 'Price 2nd Nearby (USD)'
     else:
         color_vals    = pd.Series([np.nan] * len(dff), index=dff.index)
         colorbar_title = 'Price (n/a)'

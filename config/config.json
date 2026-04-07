@@ -1,4 +1,7 @@
 {
+  "databento": {
+    "api_key": "db-gFwQFpMYC93CLTXYFTjEqtDLY8hLx"
+  },
   "socrata": {
     "domain": "publicreporting.cftc.gov",
     "app_token": "tKpbT4h9BQSA8E3oCkVEgjpWK",

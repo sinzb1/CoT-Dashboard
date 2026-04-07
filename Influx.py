@@ -7,6 +7,7 @@ from src.services.trades_category_service import TradesCategoryService
 from src.services.futures_price_service import FuturesPriceService
 from src.services.macro_price_service import MacroPriceService
 from src.services.eia_petroleum_service import EIAPetroleumService
+from src.services.databento_continuous_service import DatabentoContinuousService
 
 # ── Configuration ────────────────────────────────────────────────────────────
 with open("config/config.json") as _f:
@@ -58,7 +59,7 @@ delete_start = datetime(2000, 1, 1, tzinfo=timezone.utc)
 # ── 1. CoT Data ──────────────────────────────────────────────────────────────
 print(f"\n{'='*60}")
 print(f"Pipeline: loading CoT + Macro (yfinance) + Futures data for last {YEARS_BACK} years")
-print(f"Window:   {window_start.date()} → {window_end.date()}")
+print(f"Window:   {window_start.date()} -> {window_end.date()}")
 print(f"{'='*60}\n")
 
 service = TradesCategoryService()
@@ -242,6 +243,52 @@ if eia_points:
         print(f"Error writing EIA inventory data batch: {e}")
 
 print("EIA petroleum stocks write completed.")
+
+# ── 5. Databento Deferred Futures Prices (2nd & 3rd nearby, calendar roll) ───
+databento_service = DatabentoContinuousService()
+deferred_df = databento_service.load_aligned(cot_dates=cot_dates)
+
+print(f"\n{len(deferred_df)} deferred futures price points aligned to CoT dates.")
+
+# Targeted delete: remove old deferred futures data
+delete_measurement_range(client, "futures_deferred_prices", delete_start, window_end)
+
+print(f"Writing {len(deferred_df)} deferred futures price points to InfluxDB v3...")
+
+deferred_fields = [
+    "gold_2nd_close",      "gold_3rd_close",
+    "silver_2nd_close",    "silver_3rd_close",
+    "copper_2nd_close",    "copper_3rd_close",
+    "platinum_2nd_close",  "platinum_3rd_close",
+    "palladium_2nd_close", "palladium_3rd_close",
+    "crude_oil_2nd_close", "crude_oil_3rd_close",
+]
+
+deferred_points = []
+
+for index, row in deferred_df.iterrows():
+    try:
+        p = Point("futures_deferred_prices").time(row["date"].to_pydatetime())
+
+        for field in deferred_fields:
+            if pd.notna(row.get(field)):
+                p = p.field(field, float(row[field]))
+
+        if len(p._fields) > 0:
+            deferred_points.append(p)
+
+    except Exception as e:
+        print(f"Error preparing deferred futures point at index {index}: {e}")
+        continue
+
+if deferred_points:
+    try:
+        client.write(record=deferred_points)
+        print(f"Successfully wrote {len(deferred_points)} deferred futures price points.")
+    except Exception as e:
+        print(f"Error writing deferred futures price batch: {e}")
+
+print("Databento deferred futures prices write completed.")
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 client.close()
