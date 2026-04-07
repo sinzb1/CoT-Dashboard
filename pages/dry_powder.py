@@ -4,11 +4,34 @@ import dash_bootstrap_components as dbc
 
 def layout():
     return html.Div([
+        # Sprungnavigation
+        html.Div(
+            [html.Span("Schnellnavigation: ", className="fw-semibold text-muted me-2 small align-middle")]
+            + [html.A(lbl, href=f"#{anc}", className="btn btn-sm btn-outline-secondary me-2 mb-1")
+               for lbl, anc in [
+                   ("DP Indicator", "section-dp"),
+                   ("DP Notional", "section-dp-notional"),
+                   ("DP Time", "section-dp-time"),
+                   ("DP Price", "section-dp-price"),
+                   ("DP Curve", "section-dp-curve"),
+                   ("DP Factor (VIX)", "section-dp-vix"),
+                   ("DP Factor (DXY)", "section-dp-dxy"),
+                   ("DP Currency", "section-dp-currency"),
+                   ("DP Fundamental", "section-dp-fundamental"),
+                   ("DP Rel. Concentration", "section-dp-rel-concentration"),
+                   ("DP Seasonal", "section-dp-seasonal"),
+                   ("DP Net", "section-dp-net"),
+                   ("DP Position Size", "section-dp-position-size"),
+                   ("DP Hedging", "section-dp-hedging"),
+                   ("DP Conc./Clustering", "section-dp-conc-clustering"),
+               ]],
+            className="p-3 mb-4 bg-light border rounded"
+        ),
 
         # DP Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Indicator"),
+                html.H1("DP Indicator", id="section-dp"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -50,7 +73,7 @@ def layout():
         # DP Notional Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Notional Indicator"),
+                html.H1("DP Notional Indicator", id="section-dp-notional"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -102,7 +125,7 @@ def layout():
         # DP Time Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Time Indicator"),
+                html.H1("DP Time Indicator", id="section-dp-time"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -168,7 +191,7 @@ def layout():
         # DP Price Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Price Indicator"),
+                html.H1("DP Price Indicator", id="section-dp-price"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -185,8 +208,14 @@ def layout():
                         vielen oder wenigen Tradern getragen werden. Dadurch lassen sich typische Preisbereiche
                         identifizieren, in denen eine Gruppe besonders aktiv ist.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des Continuous Front-Month Futures
-                        (2nd Nearby). Helle Farben stehen für tiefere Preise, dunklere Farben für höhere Preise.
+                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des 2nd Nearby Futures
+                        am Report Date. Rote Farben stehen für tiefere Preise, grüne Farben für höhere Preise.
+
+                        **Graue Punkte** (Keine Preisdaten) erscheinen bei Märkten oder Wochen, für die kein
+                        2nd-Nearby-Schlusskurs von Databento verfügbar ist. Dies betrifft typischerweise die
+                        weniger liquiden Märkte Platin (PL) und Palladium (PA), bei denen der deferred Kontrakt
+                        an einzelnen Handelstagen kein Volumen verzeichnet und daher kein Schlusskurs
+                        vorliegt.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -226,10 +255,81 @@ def layout():
 
         html.Hr(),
 
+        # DP Curve Indicator
+        dbc.Row([
+            dbc.Col([
+                html.H1("DP Curve Indicator", id="section-dp-curve"),
+
+                dbc.Accordion([
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Der **DP Curve Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest
+                        der Managed-Money-Gruppe in Abhängigkeit von der Anzahl Trader und der
+                        Terminstruktur (Curve Structure) des jeweiligen Futures-Markts verteilt. Die
+                        Terminstruktur wird als prozentualer Spread zwischen dem 2nd Nearby und dem
+                        3rd Nearby Kontrakt am Report Date ausgedrückt.
+
+                        Das **Ziel des Indikators** ist es, die Positionierung der Managed-Money-Gruppe
+                        im Zusammenhang mit dem Preisgefälle entlang der Futures-Kurve sichtbar zu
+                        machen. Er hilft zu beurteilen, ob hohe oder tiefe Long- bzw.
+                        Short-Positionierungen eher in Phasen von Contango oder Backwardation auftreten.
+
+                        **Punktfarbe:** Rote Punkte stehen für Wochen in Backwardation (negativer Spread,
+                        2nd Nearby teurer als 3rd Nearby), grüne Punkte für Wochen in Contango (positiver
+                        Spread, 3rd Nearby teurer als 2nd Nearby). Die Legende zeigt zudem die tatsächliche
+                        Bandbreite der Curve Range (%) über den gesamten dargestellten Zeitraum.
+                        Der schwarze Punkt markiert die aktuellste Berichtswoche.
+
+                        **Hellblaue Punkte** (Keine Kurvendaten) erscheinen bei Märkten, bei denen der
+                        3rd-Nearby-Kontrakt an einzelnen Handelstagen kein Volumen verzeichnet – dies
+                        betrifft typischerweise die weniger liquiden Märkte Platin (PL) und Palladium (PA).
+                        In solchen Wochen fehlt der Databento-Schlusskurs für den 3rd Nearby, weshalb
+                        die Curve Range nicht berechnet werden kann.
+                        """, mathjax=True),
+                    ], title="Beschreibung"),
+
+                    dbc.AccordionItem([
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                        **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
+
+                        $$
+                        c(t) = \frac{P_{\text{3rd Nearby}}(t) - P_{\text{2nd Nearby}}(t)}{P_{\text{2nd Nearby}}(t)} \times 100
+                        $$
+
+                        **Variablen und Begriffe:**
+                        - **MML:** Managed Money Long
+                        - **MMS:** Managed Money Short
+                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
+                        - **Punktfarbe:** $c(t)$, d. h. die Curve Range (%) zum Zeitpunkt $t$
+                        - **Contango:** $c(t) > 0$ – 3rd Nearby teurer als 2nd Nearby (normale Kurvenstruktur)
+                        - **Backwardation:** $c(t) < 0$ – 2nd Nearby teurer als 3rd Nearby (invertierte Kurve)
+                        """, mathjax=True), width=12),
+                        ], className="mb-2"),
+                    ], title="Berechnung"),
+                ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
+
+                dcc.RadioItems(
+                    id='dp-curve-radio',
+                    options=[
+                        {'label': 'MML', 'value': 'MML'},
+                        {'label': 'MMS', 'value': 'MMS'},
+                    ],
+                    value='MML',
+                    className='mb-4'
+                ),
+                dcc.Graph(id='dp-curve-indicator-graph'),
+                html.Br(),
+            ], width=12)
+        ]),
+
+        html.Hr(),
+
         # DP Factor (VIX) Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Factor (VIX) Indicator"),
+                html.H1("DP Factor (VIX) Indicator", id="section-dp-vix"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -293,7 +393,7 @@ def layout():
         # DP Factor (DXY) Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Factor (DXY) Indicator"),
+                html.H1("DP Factor (DXY) Indicator", id="section-dp-dxy"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -358,7 +458,7 @@ def layout():
         # DP Currency Indicator (USD/CHF)
         dbc.Row([
             dbc.Col([
-                html.H1("DP Currency Indicator (USD/CHF)"),
+                html.H1("DP Currency Indicator (USD/CHF)", id="section-dp-currency"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -425,7 +525,7 @@ def layout():
         # DP Fundamental Indicator (Crude Oil Inventory)
         dbc.Row([
             dbc.Col([
-                html.H1("DP Fundamental Indicator (Crude Oil Inventory)"),
+                html.H1("DP Fundamental Indicator (Crude Oil Inventory)", id="section-dp-fundamental"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -497,7 +597,7 @@ def layout():
         # DP Relative Concentration Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Relative Concentration Indicator"),
+                html.H1("DP Relative Concentration Indicator", id="section-dp-rel-concentration"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -557,7 +657,7 @@ def layout():
         # DP Seasonal Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Seasonal Indicator"),
+                html.H1("DP Seasonal Indicator", id="section-dp-seasonal"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -596,7 +696,7 @@ def layout():
         # DP Net Indicator with Median
         dbc.Row([
             dbc.Col([
-                html.H1("DP Net Indicator with Median"),
+                html.H1("DP Net Indicator with Median", id="section-dp-net"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -649,7 +749,7 @@ def layout():
         # DP Position Size Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Position Size Indicator"),
+                html.H1("DP Position Size Indicator", id="section-dp-position-size"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -709,7 +809,7 @@ def layout():
         # DP Hedging Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Hedging Indicator"),
+                html.H1("DP Hedging Indicator", id="section-dp-hedging"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -772,7 +872,7 @@ def layout():
         # DP Concentration / Clustering Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("DP Concentration / Clustering Indicator"),
+                html.H1("DP Concentration / Clustering Indicator", id="section-dp-conc-clustering"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([

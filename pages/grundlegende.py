@@ -4,10 +4,22 @@ import dash_bootstrap_components as dbc
 
 def layout():
     return html.Div([
+        # Sprungnavigation
+        html.Div(
+            [html.Span("Schnellnavigation: ", className="fw-semibold text-muted me-2 small align-middle")]
+            + [html.A(lbl, href=f"#{anc}", className="btn btn-sm btn-outline-secondary me-2 mb-1")
+               for lbl, anc in [
+                   ("Market Overview", "section-market-overview"),
+                   ("Clustering Indicator", "section-clustering"),
+                   ("Position Size Indicator", "section-position-size"),
+               ]],
+            className="p-3 mb-4 bg-light border rounded"
+        ),
+
         # Übersichtstabelle
         dbc.Row([
             dbc.Col([
-                html.H2("Market Overview", className="mt-3 mb-3"),
+                html.H2("Market Overview", className="mt-3 mb-3", id="section-market-overview"),
                 dash_table.DataTable(
                     id='overview-table',
                     columns=[
@@ -106,7 +118,7 @@ def layout():
         # Clustering Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("Clustering Indicator"),
+                html.H1("Clustering Indicator", id="section-clustering"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -170,7 +182,7 @@ def layout():
         # Position Size Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("Position Size Indicator"),
+                html.H1("Position Size Indicator", id="section-position-size"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([

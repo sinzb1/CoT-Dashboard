@@ -4,11 +4,22 @@ import dash_bootstrap_components as dbc
 
 def layout():
     return html.Div([
+        # Sprungnavigation
+        html.Div(
+            [html.Span("Schnellnavigation: ", className="fw-semibold text-muted me-2 small align-middle")]
+            + [html.A(lbl, href=f"#{anc}", className="btn btn-sm btn-outline-secondary me-2 mb-1")
+               for lbl, anc in [
+                   ("PP Concentration", "section-pp-concentration"),
+                   ("PP Clustering", "section-pp-clustering"),
+                   ("PP Position Size", "section-pp-position-size"),
+               ]],
+            className="p-3 mb-4 bg-light border rounded"
+        ),
 
         # PP Concentration Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("PP Concentration Indicator", className="mt-3"),
+                html.H1("PP Concentration Indicator", className="mt-3", id="section-pp-concentration"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -67,7 +78,7 @@ def layout():
         # PP Clustering Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("PP Clustering Indicator"),
+                html.H1("PP Clustering Indicator", id="section-pp-clustering"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
@@ -126,7 +137,7 @@ def layout():
         # PP Position Size Indicator
         dbc.Row([
             dbc.Col([
-                html.H1("PP Position Size Indicator"),
+                html.H1("PP Position Size Indicator", id="section-pp-position-size"),
 
                 dbc.Accordion([
                     dbc.AccordionItem([
