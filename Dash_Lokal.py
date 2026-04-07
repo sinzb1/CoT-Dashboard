@@ -4,11 +4,13 @@ from dash.dependencies import Input, Output
 from pages.grundlegende import layout as grundlegende_layout
 from pages.dry_powder import layout as dry_powder_layout
 from pages.positioning_price import layout as positioning_price_layout
+from pages.obos import layout as obos_layout
 from pages.shapley import layout as shapley_layout
 from pages.decision_tree import layout as decision_tree_layout
 import pandas as pd
 from influxdb_client_3 import InfluxDBClient3
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 import webbrowser
 from threading import Timer
 from datetime import datetime as dt, timedelta
@@ -23,7 +25,7 @@ from src.analysis.decision_tree import (
     roc_curve_figure as dt_roc_curve_figure,
     pr_curve_figure as dt_pr_curve_figure,
 )
-from src.analysis.market_config import get_price_col, get_contract_size, get_2nd_nearby_price_col
+from src.analysis.market_config import get_price_col, get_contract_size, get_2nd_nearby_price_col, get_3rd_nearby_price_col
 from src.analysis.cot_indicators import clustering_0_100, rel_concentration, calculate_ranges
 
 # Function to open the web browser
@@ -328,6 +330,7 @@ default_start_date = default_end_date - timedelta(days=182)
 _ppci_get_price_col          = get_price_col
 _ppci_get_contract_size      = get_contract_size
 _ppci_get_2nd_nearby_col     = get_2nd_nearby_price_col
+_ppci_get_3rd_nearby_col     = get_3rd_nearby_price_col
 
 
 def get_global_xaxis():
@@ -584,6 +587,7 @@ app.layout = html.Div([
                 dbc.Tab(grundlegende_layout(),    label="Grundlegende Indikatoren",        tab_id="tab-grundlegende"),
                 dbc.Tab(dry_powder_layout(),      label="Dry Powder Indikatoren",           tab_id="tab-dry-powder"),
                 dbc.Tab(positioning_price_layout(), label="Positioning Price Indikatoren", tab_id="tab-pp"),
+                dbc.Tab(obos_layout(),            label="Overbought / Oversold Analyse",   tab_id="tab-obos"),
                 dbc.Tab(shapley_layout(),         label="Shapley-Owen Zerlegung",           tab_id="tab-shapley"),
                 dbc.Tab(decision_tree_layout(),   label="Preisprognose (Entscheidungsbaum)", tab_id="tab-dt"),
             ],
@@ -3163,33 +3167,49 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     # Hover
     dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
     hover_text = [
-        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>Price: {c:.2f}'
-        for d, x, y, c in zip(
-            dates_str,
-            x_vals.fillna(0),
-            y_vals.fillna(0),
-            color_vals.fillna(0)
-        )
+        f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}<br>'
+        + (f'Price 2nd Nearby: {c:.2f} USD' if pd.notna(c) else 'Price 2nd Nearby: n/a')
+        for d, x, y, c in zip(dates_str, x_vals, y_vals, color_vals)
     ]
+
+    hover_arr   = np.array(hover_text, dtype=object)
+    mask_price  = color_vals.notna().values   # Wochen mit Preisdaten
+    mask_noprice = color_vals.isna().values   # Wochen ohne Preisdaten
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=x_vals, y=y_vals,
-        mode='markers',
-        marker=dict(
-            size=14,
-            color=color_vals,
-            colorscale='RdYlGn',
-            showscale=True,
-            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-            opacity=0.85,
-            line=dict(width=0.6, color='black')
-        ),
-        text=hover_text,
-        hoverinfo='text',
-        showlegend=False
-    ))
+    # Graue Punkte: keine 2nd-Nearby-Preisdaten verfügbar
+    if mask_noprice.any():
+        fig.add_trace(go.Scatter(
+            x=x_vals.values[mask_noprice], y=y_vals.values[mask_noprice],
+            mode='markers',
+            marker=dict(size=14, color='lightgrey', opacity=0.7,
+                        line=dict(width=0.6, color='black')),
+            text=hover_arr[mask_noprice],
+            hoverinfo='text',
+            name='Keine Preisdaten',
+            showlegend=True
+        ))
+
+    # Farbige Punkte: Preisniveau als Farbskala
+    if mask_price.any():
+        fig.add_trace(go.Scatter(
+            x=x_vals.values[mask_price], y=y_vals.values[mask_price],
+            mode='markers',
+            marker=dict(
+                size=14,
+                color=color_vals.values[mask_price],
+                colorscale='RdYlGn',
+                showscale=True,
+                colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
+                opacity=0.85,
+                line=dict(width=0.6, color='black')
+            ),
+            text=hover_arr[mask_price],
+            hoverinfo='text',
+            name='Price 2nd Nearby',
+            showlegend=False
+        ))
 
     # Most Recent Week (identisch zu DP Notional/Time)
     fig.add_trace(go.Scatter(
@@ -3210,7 +3230,190 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
             showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
         ),
         plot_bgcolor='white',
-        legend_title='Legend',
+        legend=dict(title='Legend', itemsizing='constant'),
+        height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# DP Curve Indicator – Callback
+# X = MM Long/Short Traders, Y = MM Long/Short OI
+# Punktfarbe = Curve Range (%) = (3rd Nearby − 2nd Nearby) / 2nd Nearby × 100
+#   Positiv → Contango (grün), Negativ → Backwardation (rot)
+# Colorscale: RdYlGn (identisch zu DP Price Indicator)
+# ---------------------------------------------------------------------------
+@app.callback(
+    Output('dp-curve-indicator-graph', 'figure'),
+    [Input('market-dropdown', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('dp-curve-radio', 'value')]
+)
+def update_dp_curve(selected_market, start_date, end_date, mm_side):
+    dff = df_pivoted[
+        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted['Date'] >= start_date) &
+        (df_pivoted['Date'] <= end_date)
+    ].copy().reset_index(drop=True)
+
+    if dff.empty:
+        return go.Figure()
+
+    if mm_side == 'MML':
+        x_col    = 'MML Traders'
+        y_col    = 'MML Long OI'
+        x_title  = 'MM Number of Long Traders'
+        y_title  = 'MM Long OI (Contracts)'
+        pt_title = 'DP Curve Indicator (MM Long)'
+    else:
+        x_col    = 'MMS Traders'
+        y_col    = 'MMS Short OI'
+        x_title  = 'MM Number of Short Traders'
+        y_title  = 'MM Short OI (Contracts)'
+        pt_title = 'DP Curve Indicator (MM Short)'
+
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+
+    # Curve Range (%) = (3rd Nearby − 2nd Nearby) / 2nd Nearby × 100
+    price_col_2nd = _ppci_get_2nd_nearby_col(selected_market)
+    price_col_3rd = _ppci_get_3rd_nearby_col(selected_market)
+
+    if (price_col_2nd and price_col_3rd
+            and not df_deferred_prices.empty
+            and price_col_2nd in df_deferred_prices.columns
+            and price_col_3rd in df_deferred_prices.columns):
+        prices = df_deferred_prices[['Date', price_col_2nd, price_col_3rd]].dropna(
+            subset=[price_col_2nd, price_col_3rd]
+        ).copy()
+        prices['_curve_range'] = (
+            (prices[price_col_3rd] - prices[price_col_2nd]) / prices[price_col_2nd] * 100
+        )
+        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
+        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = pd.merge_asof(
+            dff, prices[['_pdate', '_curve_range']],
+            left_on='_date', right_on='_pdate',
+            direction='backward',
+            tolerance=pd.Timedelta(days=7)
+        )
+        color_vals     = pd.to_numeric(dff['_curve_range'], errors='coerce')
+        colorbar_title = 'Curve Range (%)'
+    else:
+        color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
+        colorbar_title = 'Curve Range (n/a)'
+
+    x_vals = pd.to_numeric(dff[x_col], errors='coerce')
+    y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
+
+    # Hover
+    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = []
+    for d, x, y, c in zip(dates_str, x_vals.fillna(0), y_vals.fillna(0), color_vals):
+        if pd.notna(c):
+            structure = 'Contango' if c > 0 else 'Backwardation'
+            curve_str = f'{c:.2f}%'
+        else:
+            structure = 'n/a'
+            curve_str = 'n/a'
+        hover_text.append(
+            f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}'
+            f'<br>Curve Range: {curve_str} ({structure})'
+        )
+
+    # Binäre Farb-Logik: Grün = Contango (c > 0), Rot = Backwardation (c < 0)
+    _COL_CONTANGO      = '#2ca02c'   # grün
+    _COL_BACKWARDATION = '#d62728'   # rot
+    _COL_NODATA        = '#aec7e8'   # hellblau (keine Kurvendaten verfügbar)
+    _MARKER_SIZE       = 20
+
+    hover_arr  = np.array(hover_text, dtype=object)
+    mask_c = (color_vals > 0).fillna(False).values   # Contango
+    mask_b = (color_vals < 0).fillna(False).values   # Backwardation
+    mask_n = color_vals.isna().values                 # keine Daten
+
+    fig = go.Figure()
+
+    if mask_n.any():
+        fig.add_trace(go.Scatter(
+            x=x_vals.values[mask_n], y=y_vals.values[mask_n],
+            mode='markers',
+            marker=dict(size=_MARKER_SIZE, color=_COL_NODATA, opacity=0.6,
+                        line=dict(width=0.6, color='black')),
+            text=hover_arr[mask_n],
+            hoverinfo='text',
+            name='Keine Kurvendaten',
+            showlegend=True
+        ))
+
+    if mask_b.any():
+        fig.add_trace(go.Scatter(
+            x=x_vals.values[mask_b], y=y_vals.values[mask_b],
+            mode='markers',
+            marker=dict(size=_MARKER_SIZE, color=_COL_BACKWARDATION, opacity=0.85,
+                        line=dict(width=0.6, color='black')),
+            text=hover_arr[mask_b],
+            hoverinfo='text',
+            name='Backwardation',
+            showlegend=True
+        ))
+
+    if mask_c.any():
+        fig.add_trace(go.Scatter(
+            x=x_vals.values[mask_c], y=y_vals.values[mask_c],
+            mode='markers',
+            marker=dict(size=_MARKER_SIZE, color=_COL_CONTANGO, opacity=0.85,
+                        line=dict(width=0.6, color='black')),
+            text=hover_arr[mask_c],
+            hoverinfo='text',
+            name='Contango',
+            showlegend=True
+        ))
+
+    # Colorbar-Range: unsichtbarer Dummy-Trace – Rot (min) direkt zu Grün (max), nur Extremwerte
+    c_min = float(color_vals.min()) if color_vals.notna().any() else -1.0
+    c_max = float(color_vals.max()) if color_vals.notna().any() else  1.0
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='markers',
+        marker=dict(
+            colorscale=[[0, '#d62728'], [1, '#2ca02c']],
+            showscale=True,
+            cmin=c_min,
+            cmax=c_max,
+            colorbar=dict(
+                title='Curve Range (%)<br>(Report Date)',
+                thickness=15,
+                len=0.5,
+                tickvals=[c_min, c_max],
+                ticktext=[f'{c_min:.2f}', f'{c_max:.2f}'],
+            )
+        ),
+        hoverinfo='skip',
+        showlegend=False
+    ))
+
+    # Most Recent Week
+    fig.add_trace(go.Scatter(
+        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
+        mode='markers',
+        marker=dict(size=_MARKER_SIZE + 4, color='black', line=dict(width=2, color='white')),
+        name='Most Recent Week'
+    ))
+
+    fig.update_layout(
+        title=pt_title,
+        xaxis=dict(
+            title=x_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        yaxis=dict(
+            title=y_title,
+            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
+        ),
+        plot_bgcolor='white',
+        legend=dict(title='Curve Structure', itemsizing='constant'),
         height=600,
     )
 
@@ -3783,6 +3986,290 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
         plot_bgcolor='white',
         legend_title='Legend',
         height=600,
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# OBOS Concentration Indicator – Callback
+# Zeigt alle Märkte gleichzeitig als Snapshot für das letzte Reportdatum
+# innerhalb des gewählten Zeitraums. Keine Marktauswahl via Dropdown.
+# ---------------------------------------------------------------------------
+
+# Ticker-Kürzel für die Marktnamen (UPPERCASE-Substring → Ticker)
+_OBOS_TICKERS: dict[str, str] = {
+    "GOLD":      "GC",
+    "SILVER":    "SI",
+    "COPPER":    "HG",
+    "PLATINUM":  "PL",
+    "PALLADIUM": "PA",
+    "CRUDE OIL": "CL",
+    "WTI":       "CL",
+}
+
+_OBOS_COLOR_CONTANGO      = '#1f77b4'   # Blau
+_OBOS_COLOR_BACKWARDATION = '#2ca02c'   # Grün
+_OBOS_COLOR_NA            = '#aaaaaa'   # Grau – Kurvenstruktur nicht ermittelbar
+
+
+def _obos_get_ticker(market_name: str) -> str:
+    mn = (market_name or "").upper()
+    for key, ticker in _OBOS_TICKERS.items():
+        if key in mn:
+            return ticker
+    return mn[:3]
+
+
+@app.callback(
+    Output('obos-concentration-graph', 'figure'),
+    [Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date')]
+)
+def update_obos(start_date, end_date):
+    report_end = pd.to_datetime(end_date)
+    report_start = pd.to_datetime(start_date)
+
+    rows = []
+    for market in df_pivoted['Market Names'].unique():
+        # --- CoT-Daten: alle verfügbaren Daten bis end_date für korrekte Rolling-Berechnung ---
+        dff = df_pivoted[
+            (df_pivoted['Market Names'] == market) &
+            (df_pivoted['Date'] <= report_end)
+        ].copy().sort_values('Date')
+
+        if len(dff) < 10:
+            continue
+
+        # Concentration berechnen
+        total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
+        dff['_mml_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
+        dff['_mms_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
+
+        # Rolling 52-Wochen-Range für Concentration
+        dff['_mml_range'] = clustering_0_100(dff['_mml_conc'], window=52)
+        dff['_mms_range'] = clustering_0_100(dff['_mms_conc'], window=52)
+
+        # 2nd- und 3rd-Nearby-Preise mergen
+        col_2nd = _ppci_get_2nd_nearby_col(market)
+        col_3rd = _ppci_get_3rd_nearby_col(market)
+
+        if col_2nd and not df_deferred_prices.empty and col_2nd in df_deferred_prices.columns:
+            cols_deferred = ['Date', col_2nd]
+            if col_3rd and col_3rd in df_deferred_prices.columns:
+                cols_deferred.append(col_3rd)
+
+            prices = df_deferred_prices[cols_deferred].copy()
+            prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None)
+            prices = prices.sort_values('_pdate')
+
+            # Umbenennen BEVOR merge, damit keine _x/_y-Suffixe entstehen
+            prices_ren = prices.drop(columns=['Date']).rename(
+                columns={
+                    col_2nd: '_price2',
+                    **({col_3rd: '_price3'} if col_3rd and col_3rd in df_deferred_prices.columns else {}),
+                }
+            )
+
+            dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+            dff = dff.sort_values('_date')
+
+            dff = pd.merge_asof(
+                dff, prices_ren,
+                left_on='_date', right_on='_pdate',
+                direction='backward',
+                tolerance=pd.Timedelta(days=7),
+            )
+        else:
+            dff['_price2'] = np.nan
+            dff['_price3'] = np.nan
+
+        # Rolling 52-Wochen-Range für Preis 2nd Nearby
+        dff['_price2_range'] = clustering_0_100(
+            pd.to_numeric(dff.get('_price2', np.nan), errors='coerce'), window=52
+        )
+
+        # Snapshot: letzter verfügbarer Datenpunkt innerhalb [start_date, end_date]
+        dff_window = dff[dff['Date'] >= report_start]
+        if dff_window.empty:
+            dff_window = dff   # Fallback: letzter insgesamt verfügbarer Punkt
+
+        last = dff_window.iloc[-1]
+
+        # Contango / Backwardation
+        p2 = float(last.get('_price2', np.nan)) if '_price2' in last.index else np.nan
+        p3 = float(last.get('_price3', np.nan)) if '_price3' in last.index else np.nan
+
+        if pd.notna(p2) and pd.notna(p3):
+            spread = p2 - p3   # Positiv = Backwardation, Negativ = Contango
+            color       = _OBOS_COLOR_BACKWARDATION if spread > 0 else _OBOS_COLOR_CONTANGO
+            curve_label = 'Backwardation' if spread > 0 else 'Contango'
+        else:
+            color       = _OBOS_COLOR_NA
+            curve_label = 'Kurvenstruktur n/a'
+
+        rows.append({
+            'market':      market,
+            'ticker':      _obos_get_ticker(market),
+            'mml_range':   float(last['_mml_range'])   if pd.notna(last['_mml_range'])   else np.nan,
+            'mms_range':   float(last['_mms_range'])   if pd.notna(last['_mms_range'])   else np.nan,
+            'price_range': float(last['_price2_range']) if pd.notna(last['_price2_range']) else np.nan,
+            'color':       color,
+            'curve_label': curve_label,
+            'report_date': last['Date'],
+        })
+
+    if not rows:
+        return go.Figure()
+
+    rdf = pd.DataFrame(rows)
+    report_date_str = pd.to_datetime(rdf['report_date'].max()).strftime('%d/%m/%Y')
+
+    # --- Subplot: links = Short, rechts = Long, Y-Achse geteilt ---
+    fig = make_subplots(
+        rows=1, cols=2,
+        shared_yaxes=True,
+        subplot_titles=(
+            'Rolling One-year Range – MM Short Concentration',
+            'Rolling One-year Range – MM Long Concentration',
+        ),
+        horizontal_spacing=0.02,
+    )
+
+    # Graue Eckzonen (Overbought/Oversold) für beide Panels
+    for col_idx, xref, yref in [(1, 'x', 'y'), (2, 'x2', 'y')]:
+        for x0, x1, y0, y1 in [(75, 100, 75, 100), (0, 25, 0, 25)]:
+            fig.add_shape(
+                type='rect',
+                x0=x0, x1=x1, y0=y0, y1=y1,
+                xref=xref, yref=yref,
+                fillcolor='lightgray', opacity=0.35,
+                line_width=0,
+            )
+
+    # Referenzlinien (Mittellinie bei 50)
+    for col_idx, xref, yref in [(1, 'x', 'y'), (2, 'x2', 'y')]:
+        fig.add_shape(type='line', x0=50, x1=50, y0=0, y1=100,
+                      xref=xref, yref=yref,
+                      line=dict(color='#888', width=1, dash='dot'))
+        fig.add_shape(type='line', x0=0, x1=100, y0=50, y1=50,
+                      xref=xref, yref=yref,
+                      line=dict(color='#888', width=1, dash='dot'))
+
+    # Datenpunkte plotten
+    for _, row in rdf.iterrows():
+        common_marker = dict(
+            size=32,
+            color=row['color'],
+            opacity=0.90,
+            line=dict(width=1, color='white'),
+        )
+        common_text  = dict(size=9, color='white', family='Arial Black, Arial, sans-serif')
+        hover_base   = (
+            f"<b>{row['market']}</b> ({row['ticker']})<br>"
+            f"Kurve: {row['curve_label']}<br>"
+            f"Price Range (2nd Nearby): {row['price_range']:.0f} %<br>"
+        )
+
+        # --- Linkes Panel: Short-Seite ---
+        if pd.notna(row['mms_range']) and pd.notna(row['price_range']):
+            fig.add_trace(
+                go.Scatter(
+                    x=[row['mms_range']],
+                    y=[row['price_range']],
+                    mode='markers+text',
+                    marker=common_marker,
+                    text=[row['ticker']],
+                    textposition='middle center',
+                    textfont=common_text,
+                    showlegend=False,
+                    hovertemplate=hover_base + f"MMS Range: {row['mms_range']:.0f} %<extra></extra>",
+                ),
+                row=1, col=1,
+            )
+
+        # --- Rechtes Panel: Long-Seite ---
+        if pd.notna(row['mml_range']) and pd.notna(row['price_range']):
+            fig.add_trace(
+                go.Scatter(
+                    x=[row['mml_range']],
+                    y=[row['price_range']],
+                    mode='markers+text',
+                    marker=common_marker,
+                    text=[row['ticker']],
+                    textposition='middle center',
+                    textfont=common_text,
+                    showlegend=False,
+                    hovertemplate=hover_base + f"MML Range: {row['mml_range']:.0f} %<extra></extra>",
+                ),
+                row=1, col=2,
+            )
+
+    # Legende (Contango / Backwardation / n/a)
+    for label, color in [
+        ('Contango (2nd < 3rd)',           _OBOS_COLOR_CONTANGO),
+        ('Backwardation (2nd > 3rd)',      _OBOS_COLOR_BACKWARDATION),
+        ('Kurvenstruktur n/a (kein 3rd)',  _OBOS_COLOR_NA),
+    ]:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(size=12, color=color),
+            name=label,
+            showlegend=True,
+        ))
+
+    # Achsen konfigurieren
+    fig.update_xaxes(
+        range=[100, 0],          # Reversed: Short-Konz. steigt nach links
+        showgrid=True,
+        dtick=25,
+        ticksuffix=' %',
+        row=1, col=1,
+    )
+    fig.update_xaxes(
+        range=[0, 100],
+        showgrid=True,
+        dtick=25,
+        ticksuffix=' %',
+        row=1, col=2,
+    )
+    fig.update_yaxes(
+        range=[0, 100],
+        showgrid=True,
+        dtick=25,
+        ticksuffix=' %',
+        title_text='Rolling One-year Range – Price (2nd Nearby)',
+        row=1, col=1,
+    )
+    fig.update_yaxes(
+        range=[0, 100],
+        showgrid=True,
+        dtick=25,
+        ticksuffix=' %',
+        row=1, col=2,
+    )
+
+    fig.update_layout(
+        title=dict(
+            text=(
+                f'OBOS Concentration Indicator \u2013 {report_date_str}<br>'
+                f'<sup>Colour: Blue\u00a0=\u00a0Contango (2nd\u00a0\u2013\u00a03rd Nearby),\u00a0'
+                f'Green\u00a0=\u00a0Backwardation (2nd\u00a0\u2013\u00a03rd Nearby)</sup>'
+            ),
+            x=0,
+            xanchor='left',
+            font=dict(size=14),
+        ),
+        height=620,
+        showlegend=True,
+        legend=dict(
+            x=1.01,
+            y=0.5,
+            yanchor='middle',
+            font=dict(size=12),
+        ),
+        margin=dict(l=60, r=180, t=90, b=60),
     )
 
     return fig

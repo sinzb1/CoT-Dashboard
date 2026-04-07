@@ -42,6 +42,19 @@ MARKET_TO_2ND_NEARBY_COL: dict[str, str] = {
 }
 
 
+# Substring im Marktnamen (UPPERCASE) → Feldname in der futures_deferred_prices-Tabelle.
+# Databento 3rd-nearby continuous contract (.c.2).
+MARKET_TO_3RD_NEARBY_COL: dict[str, str] = {
+    "GOLD":      "gold_3rd_close",
+    "SILVER":    "silver_3rd_close",
+    "COPPER":    "copper_3rd_close",
+    "PLATINUM":  "platinum_3rd_close",
+    "PALLADIUM": "palladium_3rd_close",
+    "CRUDE OIL": "crude_oil_3rd_close",
+    "WTI":       "crude_oil_3rd_close",
+}
+
+
 def get_price_col(market_name: str) -> str | None:
     """Gibt den Spaltennamen in df_futures_prices zurück, oder None wenn nicht gefunden."""
     mn = (market_name or "").upper()
@@ -55,6 +68,15 @@ def get_2nd_nearby_price_col(market_name: str) -> str | None:
     """Gibt den Spaltennamen in df_deferred_prices (Databento .c.1) zurück, oder None."""
     mn = (market_name or "").upper()
     for key, col in MARKET_TO_2ND_NEARBY_COL.items():
+        if key in mn:
+            return col
+    return None
+
+
+def get_3rd_nearby_price_col(market_name: str) -> str | None:
+    """Gibt den Spaltennamen in df_deferred_prices (Databento .c.2) zurück, oder None."""
+    mn = (market_name or "").upper()
+    for key, col in MARKET_TO_3RD_NEARBY_COL.items():
         if key in mn:
             return col
     return None
