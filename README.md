@@ -1,36 +1,47 @@
-# CoT Dashboard - InfluxDB V3
+# CoT Dashboard – InfluxDB V3
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue.svg)
 ![Dash](https://img.shields.io/badge/Dash-2.18-green.svg)
 ![InfluxDB](https://img.shields.io/badge/InfluxDB-V3-orange.svg)
 
-Ein interaktives Dashboard zur Visualisierung von **Commitment of Traders (CoT)** Daten, gespeichert in InfluxDB v3 Core, erstellt mit Plotly Dash.
+Interaktives Multi-Page-Dashboard zur Analyse von **Commitment of Traders (CoT)**-Daten der CFTC. Daten werden in einer lokalen InfluxDB v3 Core-Instanz gespeichert und mit Plotly Dash visualisiert.
 
-## 🎯 Features
+---
 
-- **Real-time Data Visualization**: Interaktive Dashboards mit Plotly/Dash
-- **InfluxDB v3 Integration**: Moderne SQL-basierte Zeitreihendatenbank
-- **Multi-Source Data**: Integration von FRED API und Socrata API
-- **Responsive Design**: Bootstrap-basiertes responsives Layout
-- **Cloud-Ready**: Heroku-Deployment mit Procfile
+## Features
 
-## 🏗️ Technologie-Stack
+- **Multi-Page-Dashboard**: Separate Seiten je Indikatorgruppe (Positionierung, Dry Powder, OB/OS, Decision Tree, Shapley-Analyse)
+- **InfluxDB v3 Core**: SQL-basierte Zeitreihendatenbank als lokales Backend
+- **Multi-Source-Daten**: CFTC CoT-Reports (Socrata), Futures-Preise (Databento), Rohöl-Lagerdaten (EIA), Marktpreise (yfinance)
+- **ML-Analyse**: Scikit-learn Decision Trees, SHAP/Shapley-Owen Feature Importance
+- **Responsive Layout**: Dash Bootstrap Components
 
-- **Backend**: Python 3.12
-- **Web Framework**: Dash 2.18, Flask 3.0
-- **Database**: InfluxDB v3 Core (SQL)
-- **Data Processing**: Pandas, NumPy
-- **Visualization**: Plotly, Dash Bootstrap Components
-- **APIs**: FRED API, Socrata API
-- **Deployment**: Gunicorn, Heroku
+---
 
-## 📋 Voraussetzungen
+## Technologie-Stack
+
+| Bereich | Technologie |
+|---|---|
+| Backend | Python 3.12 |
+| Web Framework | Dash 2.18, Flask 3.0 |
+| Datenbank | InfluxDB v3 Core (SQL) |
+| Datenverarbeitung | Pandas, NumPy, SciPy |
+| Visualisierung | Plotly, Dash Bootstrap Components |
+| ML / Analyse | scikit-learn, SHAP, Keras |
+| Datenquellen | Socrata (CFTC), Databento, EIA, yfinance |
+| Laufzeit | Gunicorn |
+
+---
+
+## Voraussetzungen
 
 - Python 3.12+
-- InfluxDB v3 Core Server
-- API-Keys (FRED, ggf. andere Datenquellen)
+- Laufende InfluxDB v3 Core-Instanz (Standard: `http://localhost:8181`)
+- API-Keys: Databento, Socrata App Token, EIA API Key
 
-## 🚀 Installation
+---
+
+## Installation
 
 ### 1. Repository klonen
 
@@ -43,9 +54,8 @@ cd CoT-Dashboard_InfluxDB-V3
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# oder
-venv\Scripts\activate  # Windows
+source venv/bin/activate        # Linux/Mac
+venv\Scripts\activate           # Windows
 ```
 
 ### 3. Dependencies installieren
@@ -54,100 +64,106 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-### 4. InfluxDB v3 konfigurieren
+### 4. Umgebungsvariablen konfigurieren
 
-Stelle sicher, dass ein InfluxDB v3 Core Server läuft:
+Kopiere `.env.example` zu `.env` und trage deine Credentials ein:
 
 ```bash
-# Default Configuration:
-Host: http://localhost:8181
-Database: CoT-Data
-Token: [Dein InfluxDB Token]
+cp .env.example .env
 ```
 
-### 5. Umgebungsvariablen setzen
-
-Erstelle eine `.env` Datei im Projekt-Root:
-
 ```env
+# InfluxDB v3
 INFLUXDB_HOST=http://localhost:8181
 INFLUXDB_TOKEN=your_token_here
 INFLUXDB_DATABASE=CoT-Data
-FRED_API_KEY=your_fred_api_key
+
+# Databento (Futures-Preise)
+DATABENTO_API_KEY=your_databento_key
+
+# Socrata (CFTC CoT-Reports)
+SOCRATA_APP_TOKEN=your_socrata_token
+
+# EIA (Rohöl-Lagerdaten)
+EIA_API_KEY=your_eia_key
 ```
 
-## 💻 Verwendung
+---
 
-### Daten laden und schreiben
+## Verwendung
+
+### Daten laden und in InfluxDB schreiben
 
 ```bash
 python Influx.py
 ```
 
-### Dashboard starten (lokal)
+### Dashboard starten
 
 ```bash
 python Dash_Lokal.py
 ```
 
-Das Dashboard ist dann verfügbar unter: **http://127.0.0.1:8051/**
+Dashboard aufrufbar unter: **http://127.0.0.1:8051/**
 
-### Produktion (Heroku)
+---
 
-```bash
-python app.py
-```
-
-## 📊 Projektstruktur
+## Projektstruktur
 
 ```
-CoT-Dashboard_InfluxDB-V3/
-├── app.py                  # Haupt-Applikation (Production)
-├── Dash_Lokal.py          # Lokale Entwicklungsversion
-├── Influx.py              # InfluxDB Daten-Management
-├── requirements.txt       # Python Dependencies
-├── Procfile               # Heroku Deployment
+DIFA_influxv3/
+├── Dash_Lokal.py               # Dashboard-Applikation (Einstiegspunkt)
+├── Influx.py                   # Daten laden & in InfluxDB schreiben
+├── app.py                      # Minimaler Dash-Prototyp
+├── requirements.txt
+├── .env                        # Credentials (nicht im Repo)
+├── .env.example                # Vorlage für Umgebungsvariablen
 ├── config/
-│   └── config.json        # Konfigurationsdateien
+│   └── config.json             # App-Konfiguration
+├── pages/                      # Dash-Seiten (Multi-Page)
+│   ├── grundlegende.py         # Grundlegende CoT-Indikatoren
+│   ├── positioning_price.py    # Positionierung & Preis (PP/DP)
+│   ├── dry_powder.py           # Dry-Powder-Indikator
+│   ├── obos.py                 # Overbought/Oversold-Indikator
+│   ├── decision_tree.py        # Decision-Tree-Analyse
+│   └── shapley.py              # Shapley-Owen Feature Importance
 └── src/
-    ├── clients/           # API-Clients (FRED, Socrata)
-    ├── mappings/          # Daten-Mappings
-    └── services/          # Business Logic Services
+    ├── analysis/               # Analyse-Module
+    │   ├── cot_indicators.py
+    │   ├── decision_tree.py
+    │   ├── market_config.py
+    │   └── shapley_owen.py
+    ├── clients/                # API-Clients
+    │   ├── databento_client.py
+    │   ├── eia_client.py
+    │   ├── socrata_client.py
+    │   └── yfinance_client.py
+    ├── mappings/               # Daten-Mappings
+    └── services/               # Business-Logic
+        ├── databento_continuous_service.py
+        ├── eia_petroleum_service.py
+        ├── futures_price_service.py
+        ├── macro_price_service.py
+        └── trades_category_service.py
 ```
 
-## 🔧 Konfiguration
+---
 
-Die Konfiguration erfolgt über:
+## Datenquellen
 
-1. **config/config.json**: Allgemeine App-Konfiguration
-2. **.env**: Sensitive Daten (API-Keys, Tokens)
-3. **requirements.txt**: Python-Abhängigkeiten
+| Quelle | Inhalt | Client |
+|---|---|---|
+| [CFTC via Socrata](https://publicreporting.cftc.gov/) | CoT-Reports (Disaggregated, Legacy, TFF) | `socrata_client.py` |
+| [Databento](https://databento.com/) | Kontinuierliche Futures-Preise (2nd Nearby) | `databento_client.py` |
+| [EIA](https://www.eia.gov/opendata/) | Rohöl-Lagerbestände (WTI) | `eia_client.py` |
+| [yfinance](https://github.com/ranaroussi/yfinance) | Marktpreise & Makro-Daten | `yfinance_client.py` |
 
-## 🌐 API-Integrationen
+---
 
-### FRED API (Federal Reserve Economic Data)
-- Economic indicators
-- Rate: Nach API-Key-Typ
-
-### Socrata API
-- Open Data Platform
-- CoT Report Data
-
-## 🚢 Deployment
-
-### Heroku Deployment
-
-```bash
-heroku create your-app-name
-git push heroku main
-heroku config:set INFLUXDB_TOKEN=your_token
-heroku config:set FRED_API_KEY=your_key
-```
-
-## 📝 Migration Notes
+## Migration
 
 Dieses Projekt wurde von **InfluxDB v2 (Flux)** auf **InfluxDB v3 Core (SQL)** migriert:
 
 - **Client**: `influxdb-client` → `influxdb3-python`
-- **Query Language**: Flux → SQL
-- **Data Structure**: Automatisches Pivoting
+- **Query-Sprache**: Flux → SQL
+- Details: siehe `docs_lokal/MIGRATION_GUIDE.md`
