@@ -1,17 +1,12 @@
 {
-  "databento": {
-    "api_key": "db-gFwQFpMYC93CLTXYFTjEqtDLY8hLx"
-  },
   "socrata": {
     "domain": "publicreporting.cftc.gov",
-    "app_token": "tKpbT4h9BQSA8E3oCkVEgjpWK",
     "limit": 5000
   },
   "pipeline": {
     "years_back": 4
   },
   "eia": {
-    "api_key": "XTt5fIXKToDSc0rk7asrZI84u6gwLdfKSya4G6Fs",
     "base_url": "https://api.eia.gov/v2",
     "petroleum_stocks_route": "/petroleum/stoc/wstk/data/",
     "product_facet": "EPC0",

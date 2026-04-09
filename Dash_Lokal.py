@@ -1,4 +1,6 @@
+import os
 import dash
+from dotenv import load_dotenv
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 from pages.grundlegende import layout as grundlegende_layout
@@ -32,10 +34,12 @@ from src.analysis.cot_indicators import clustering_0_100, rel_concentration, cal
 def open_browser():
     webbrowser.open_new("http://127.0.0.1:8051/")
 
+load_dotenv()
+
 # Connect to InfluxDB v3
-host = "http://localhost:8181"  # InfluxDB v3 Core default port
-token = "apiv3_m8zHCYoKyZwSHfrt4oPUMMMDCGD4XZMS6KEV2C9SMchecjhVig4y_27rcHE58uiSSqCjBJby95dsaSNtMYnscA"
-database = "CoT-Data"
+host = os.environ.get("INFLUXDB_HOST", "http://localhost:8181")
+token = os.environ["INFLUXDB_TOKEN"]
+database = os.environ.get("INFLUXDB_DATABASE", "CoT-Data")
 
 print("Connecting to InfluxDB v3...")
 client = InfluxDBClient3(host=host, token=token, database=database)

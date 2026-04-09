@@ -1,4 +1,5 @@
 import json
+import os
 import requests
 import pandas as pd
 from datetime import date
@@ -20,7 +21,7 @@ class EIAClient:
             config = json.load(f)
 
         eia_cfg = config["eia"]
-        self.api_key = eia_cfg["api_key"]
+        self.api_key = os.environ["EIA_API_KEY"]
         self.base_url = eia_cfg.get("base_url", "https://api.eia.gov/v2").rstrip("/")
         self.route = eia_cfg.get("petroleum_stocks_route", "/petroleum/stocks/data/")
         self.product_facet = eia_cfg.get("product_facet", "EPC0")

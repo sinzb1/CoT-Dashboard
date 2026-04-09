@@ -154,3 +154,8 @@ check_db.py
 local_setup_guide.md
 SETUP_GUIDE.md
 NEXT_STEPS.md
+
+# Docs & Secrets
+docs/
+docs_lokal/
+config/config.json

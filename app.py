@@ -1,8 +1,12 @@
+import os
 from dash import Dash, dash_table, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
 import dash_mantine_components as dmc
+from dotenv import load_dotenv
 from influxdb_client_3 import InfluxDBClient3
+
+load_dotenv()
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -11,9 +15,9 @@ df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapmi
 
 app = Dash()
 
-token = "apiv3_m8zHCYoKyZwSHfrt4oPUMMMDCGD4XZMS6KEV2C9SMchecjhVig4y_27rcHE58uiSSqCjBJby95dsaSNtMYnscA"
-host = "http://localhost:8181"  # InfluxDB v3 Core default port
-database = "CoT-Data"
+token = os.environ["INFLUXDB_TOKEN"]
+host = os.environ.get("INFLUXDB_HOST", "http://localhost:8181")
+database = os.environ.get("INFLUXDB_DATABASE", "CoT-Data")
 
 client = InfluxDBClient3(host=host, token=token, database=database)
 

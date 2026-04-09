@@ -1,4 +1,5 @@
 import json
+import os
 from sodapy import Socrata
 from datetime import date
 
@@ -10,7 +11,7 @@ class SocrataClient:
 
         self.api = config["socrata"]
         self.years_back = config.get("pipeline", {}).get("years_back", 4)
-        self.client = Socrata(self.api["domain"], self.api["app_token"], timeout=600)
+        self.client = Socrata(self.api["domain"], os.environ["SOCRATA_APP_TOKEN"], timeout=600)
         self.limit = self.api["limit"]
         self.max_rows = self.api.get("max_rows", None) # remove property socrata.max_rows for full data fetching
         

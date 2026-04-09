@@ -1,5 +1,7 @@
 import json
+import os
 import pandas as pd
+from dotenv import load_dotenv
 from influxdb_client_3 import InfluxDBClient3, Point
 from datetime import date, datetime, timezone
 
@@ -9,15 +11,17 @@ from src.services.macro_price_service import MacroPriceService
 from src.services.eia_petroleum_service import EIAPetroleumService
 from src.services.databento_continuous_service import DatabentoContinuousService
 
+load_dotenv()
+
 # ── Configuration ────────────────────────────────────────────────────────────
 with open("config/config.json") as _f:
     _cfg = json.load(_f)
 
 YEARS_BACK = _cfg.get("pipeline", {}).get("years_back", 4)
 
-token = "apiv3_m8zHCYoKyZwSHfrt4oPUMMMDCGD4XZMS6KEV2C9SMchecjhVig4y_27rcHE58uiSSqCjBJby95dsaSNtMYnscA"
-database = "CoT-Data"
-host = "http://localhost:8181"  # InfluxDB v3 Core default port
+token = os.environ["INFLUXDB_TOKEN"]
+database = os.environ.get("INFLUXDB_DATABASE", "CoT-Data")
+host = os.environ.get("INFLUXDB_HOST", "http://localhost:8181")
 
 client = InfluxDBClient3(host=host, token=token, database=database)
 

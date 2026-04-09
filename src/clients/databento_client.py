@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import databento as db
 import pandas as pd
@@ -49,7 +50,7 @@ class DatabentoClient:
         with open(config_path) as f:
             config = json.load(f)
 
-        self.api_key = config["databento"]["api_key"]
+        self.api_key = os.environ["DATABENTO_API_KEY"]
         self.years_back = config.get("pipeline", {}).get("years_back", 4)
         self._client = db.Historical(self.api_key)
 
