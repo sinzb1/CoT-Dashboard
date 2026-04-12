@@ -36,6 +36,89 @@ def open_browser():
 
 load_dotenv()
 
+# ---------------------------------------------------------------------------
+# String-Konstanten (SonarQube S1192 – duplizierte Literale vermeiden)
+# ---------------------------------------------------------------------------
+# DataFrame-Spalten
+MARKET_NAMES_COL         = 'Market Names'
+OPEN_INTEREST_LABEL      = 'Open Interest'
+NUMBER_OF_TRADERS_LABEL  = 'Number of Traders'
+TOTAL_TRADERS_LABEL      = 'Total Number of Traders'
+MANAGED_MONEY_LONG_COL   = 'Managed Money Long'
+MANAGED_MONEY_SHORT_COL  = 'Managed Money Short'
+TRADERS_MM_LONG_COL      = 'Traders M Money Long'
+TRADERS_MM_SHORT_COL     = 'Traders M Money Short'
+PMPU_LONG_COL            = 'Producer/Merchant/Processor/User Long'
+PMPU_SHORT_COL           = 'Producer/Merchant/Processor/User Short'
+TRADERS_PROD_MERC_LONG   = 'Traders Prod/Merc Long'
+TRADERS_PROD_MERC_SHORT  = 'Traders Prod/Merc Short'
+TRADERS_SWAP_LONG_COL    = 'Traders Swap Long'
+TRADERS_SWAP_SHORT_COL   = 'Traders Swap Short'
+TRADERS_OTHER_REPT_LONG  = 'Traders Other Rept Long'
+TRADERS_OTHER_REPT_SHORT = 'Traders Other Rept Short'
+SWAP_DEALER_LONG_COL     = 'Swap Dealer Long'
+SWAP_DEALER_SHORT_COL    = 'Swap Dealer Short'
+SWAP_DEALER_SPREAD_COL   = 'Swap Dealer Spread'
+OTHER_REPT_LONG_COL      = 'Other Reportables Long'
+OTHER_REPT_SHORT_COL     = 'Other Reportables Short'
+MML_LONG_OI_COL          = 'MML Long OI'
+MML_SHORT_OI_COL         = 'MML Short OI'
+MMS_SHORT_OI_COL         = 'MMS Short OI'
+MML_TRADERS_COL          = 'MML Traders'
+MMS_TRADERS_COL          = 'MMS Traders'
+MML_POSITION_SIZE_COL    = 'MML Position Size'
+MMS_POSITION_SIZE_COL    = 'MMS Position Size'
+PMPUL_REL_CONC_COL       = 'PMPUL Relative Concentration'
+MML_REL_CONC_COL         = 'MML Relative Concentration'
+MM_NET_OI_COL            = 'MM Net OI'
+MM_NET_TRADERS_COL       = 'MM Net Traders'
+# Dash-Komponenten-IDs
+DATE_PICKER_ID           = 'date-picker-range'
+MARKET_DROPDOWN_ID       = 'market-dropdown'
+# Plotly / UI-Labels
+MOST_RECENT_WEEK         = 'Most Recent Week'
+DEFAULT_COLORSCALE       = 'Viridis'
+LIGHTGRAY                = 'LightGray'
+HOVER_OPEN_INTEREST      = '<br>Open Interest: '
+HOVER_POS_SIZE           = '<br>PosSize (avg): '
+# ---------------------------------------------------------------------------
+
+# weitere Spalten-Konstanten (zweite Runde)
+LONG_CLUSTERING_COL        = 'Long Clustering'
+SHORT_CLUSTERING_COL       = 'Short Clustering'
+PMPUL_POSITION_SIZE_COL    = 'PMPUL Position Size'
+PMPUS_POSITION_SIZE_COL    = 'PMPUS Position Size'
+SDL_POSITION_SIZE_COL      = 'SDL Position Size'
+SDS_POSITION_SIZE_COL      = 'SDS Position Size'
+ORL_POSITION_SIZE_COL      = 'ORL Position Size'
+ORS_POSITION_SIZE_COL      = 'ORS Position Size'
+PMPUS_REL_CONC_COL         = 'PMPUS Relative Concentration'
+SDL_REL_CONC_COL           = 'SDL Relative Concentration'
+MMS_REL_CONC_COL           = 'MMS Relative Concentration'
+ORL_REL_CONC_COL           = 'ORL Relative Concentration'
+SDS_REL_CONC_COL           = 'SDS Relative Concentration'
+ORS_REL_CONC_COL           = 'ORS Relative Concentration'
+PMPUL_TRADERS_COL          = 'PMPUL Traders'
+TRADER_GROUP_COL           = 'Trader Group'
+MM_LONG_OI_CONTRACTS_COL   = 'MM Long OI (Contracts)'
+MM_SHORT_OI_CONTRACTS_COL  = 'MM Short OI (Contracts)'
+CRUDE_OIL_STOCKS_COL       = 'crude_oil_stocks_kb'
+MM_NUM_LONG_TRADERS_COL    = 'MM Number of Long Traders'
+MM_NUM_SHORT_TRADERS_COL   = 'MM Number of Short Traders'
+LONG_POSITION_SIZE_COL     = 'Long Position Size'
+SHORT_POSITION_SIZE_COL    = 'Short Position Size'
+MANAGED_MONEY_SPREAD_COL   = 'Managed Money Spread'
+OTHER_REPT_SPREAD_COL      = 'Other Reportables Spread'
+FIRST_WEEK_LABEL           = 'First Week'
+MARKERS_TEXT_MODE          = 'markers+text'
+PRICE_2ND_NEARBY_LABEL     = 'Price (2nd Nearby) (Report Date)'
+REPORT_DATE_LABEL          = 'Report Date'
+SHAPLEY_COL_PMPU           = 'Δ PMPU Net'
+SHAPLEY_COL_SD             = 'Δ SD Net'
+SHAPLEY_COL_MM             = 'Δ MM Net'
+SHAPLEY_COL_OR             = 'Δ OR Net'
+
+
 # Connect to InfluxDB v3
 host = os.environ.get("INFLUXDB_HOST", "http://localhost:8181")
 token = os.environ["INFLUXDB_TOKEN"]
@@ -105,7 +188,7 @@ _MACRO_FALLBACK = {
 try:
     import yfinance as yf
     from datetime import date as _date
-    _fb_start = _date.today().replace(year=_date.today().year - 4)
+    _fb_start = _date.today().replace(year=_date.today().year - 10)
     for _col, _ticker in _MACRO_FALLBACK.items():
         _raw = yf.download(_ticker, start=_fb_start.isoformat(), progress=False, auto_adjust=True)
         if _raw.empty:
@@ -126,13 +209,13 @@ try:
         elif _col in df_macro.columns:
             # Merge yfinance (4yr base) with InfluxDB; InfluxDB values take precedence
             _tmp = pd.merge(_fb, df_macro[['Date', _col]].rename(columns={_col: f'{_col}_db'}),
-                            on="Date", how="outer")
+                            on="Date", how="outer", validate="1:1")
             _tmp[_col] = _tmp[f'{_col}_db'].combine_first(_tmp[_col])
             _tmp.drop(columns=[f'{_col}_db'], inplace=True)
             df_macro = pd.merge(df_macro.drop(columns=[_col]), _tmp[['Date', _col]],
-                                on="Date", how="outer").sort_values("Date").reset_index(drop=True)
+                                on="Date", how="outer", validate="1:1").sort_values("Date").reset_index(drop=True)
         else:
-            df_macro = pd.merge(df_macro, _fb, on="Date", how="outer").sort_values("Date").reset_index(drop=True)
+            df_macro = pd.merge(df_macro, _fb, on="Date", how="outer", validate="1:1").sort_values("Date").reset_index(drop=True)
         print(f"[Macro fallback] Loaded {len(_fb)} rows for {_col} from yfinance")
 except Exception as _fb_e:
     print(f"[Macro fallback] Error: {_fb_e}")
@@ -179,36 +262,36 @@ client.close()
 
 # Rename columns for convenience
 # v3 uses 'time' instead of '_time', data is already pivoted
-df_pivoted.rename(columns={'time': 'Date', 'market_names': 'Market Names'}, inplace=True)
+df_pivoted.rename(columns={'time': 'Date', 'market_names': MARKET_NAMES_COL}, inplace=True)
 
-# Berechnung der Spalte 'Total Number of Traders'
-df_pivoted = df_pivoted.sort_values(['Market Names', 'Date'])
+# Berechnung der Spalte TOTAL_TRADERS_LABEL
+df_pivoted = df_pivoted.sort_values([MARKET_NAMES_COL, 'Date'])
 
 # 1) Total Traders (TTF)
 TOTAL_TRADERS_COL = 'Total Traders'
-df_pivoted['Total Number of Traders'] = df_pivoted[TOTAL_TRADERS_COL]
+df_pivoted[TOTAL_TRADERS_LABEL] = df_pivoted[TOTAL_TRADERS_COL]
 
 # 2) Anteil Trader in Gruppe (nicht Open Interest!)
-df_pivoted['MM_Long_share']  = df_pivoted['Traders M Money Long']  / df_pivoted['Total Number of Traders']
-df_pivoted['MM_Short_share'] = df_pivoted['Traders M Money Short'] / df_pivoted['Total Number of Traders']
+df_pivoted['MM_Long_share']  = df_pivoted[TRADERS_MM_LONG_COL]  / df_pivoted[TOTAL_TRADERS_LABEL]
+df_pivoted['MM_Short_share'] = df_pivoted[TRADERS_MM_SHORT_COL] / df_pivoted[TOTAL_TRADERS_LABEL]
 
 # 3) 1 Jahr = ~52 Wochen, und pro Markt (keine Markt-Mischung)
-df_pivoted['Long Clustering'] = (
-    df_pivoted.groupby('Market Names')['MM_Long_share']
+df_pivoted[LONG_CLUSTERING_COL] = (
+    df_pivoted.groupby(MARKET_NAMES_COL)['MM_Long_share']
     .transform(lambda s: clustering_0_100(s, window=52))
 )
 
-df_pivoted['Short Clustering'] = (
-    df_pivoted.groupby('Market Names')['MM_Short_share']
+df_pivoted[SHORT_CLUSTERING_COL] = (
+    df_pivoted.groupby(MARKET_NAMES_COL)['MM_Short_share']
     .transform(lambda s: clustering_0_100(s, window=52))
 )
 
-df_pivoted['Rolling Min'] = df_pivoted['Producer/Merchant/Processor/User Long'].rolling(365, min_periods=1).min()
-df_pivoted['Rolling Max'] = df_pivoted['Producer/Merchant/Processor/User Long'].rolling(365, min_periods=1).max()
+df_pivoted['Rolling Min'] = df_pivoted[PMPU_LONG_COL].rolling(365, min_periods=1).min()
+df_pivoted['Rolling Max'] = df_pivoted[PMPU_LONG_COL].rolling(365, min_periods=1).max()
 
 # Define size categories for traders
 df_pivoted['Trader Size'] = pd.cut(
-    df_pivoted['Total Number of Traders'],
+    df_pivoted[TOTAL_TRADERS_LABEL],
     bins=[0, 50, 100, 150],
     labels=['≤ 50 Traders', '51–100 Traders', '101–150 Traders']
 )
@@ -218,95 +301,94 @@ print(df_pivoted.head())   # Zeigt die ersten Zeilen
 
 
 # Additional calculations for the new graphs
-df_pivoted['Total Long Traders'] = df_pivoted[['Traders Prod/Merc Short', 'Traders Swap Long', 'Traders M Money Long']].sum(axis=1)
-df_pivoted['Total Short Traders'] = df_pivoted[['Traders Prod/Merc Short', 'Traders Swap Short', 'Traders M Money Short']].sum(axis=1)
-df_pivoted['Long Position Size'] = df_pivoted['Producer/Merchant/Processor/User Long']
-df_pivoted['Short Position Size'] = df_pivoted['Producer/Merchant/Processor/User Short']
-df_pivoted['MML Position Size'] = (
-    df_pivoted['Managed Money Long'] / df_pivoted['Traders M Money Long']
+df_pivoted['Total Long Traders'] = df_pivoted[[TRADERS_PROD_MERC_SHORT, TRADERS_SWAP_LONG_COL, TRADERS_MM_LONG_COL]].sum(axis=1)
+df_pivoted['Total Short Traders'] = df_pivoted[[TRADERS_PROD_MERC_SHORT, TRADERS_SWAP_SHORT_COL, TRADERS_MM_SHORT_COL]].sum(axis=1)
+df_pivoted[LONG_POSITION_SIZE_COL] = df_pivoted[PMPU_LONG_COL]
+df_pivoted[SHORT_POSITION_SIZE_COL] = df_pivoted[PMPU_SHORT_COL]
+df_pivoted[MML_POSITION_SIZE_COL] = (
+    df_pivoted[MANAGED_MONEY_LONG_COL] / df_pivoted[TRADERS_MM_LONG_COL]
 ).replace([np.inf, -np.inf], np.nan)
-df_pivoted['MMS Position Size'] = (
-    df_pivoted['Managed Money Short'] / df_pivoted['Traders M Money Short']
+df_pivoted[MMS_POSITION_SIZE_COL] = (
+    df_pivoted[MANAGED_MONEY_SHORT_COL] / df_pivoted[TRADERS_MM_SHORT_COL]
 ).replace([np.inf, -np.inf], np.nan)
 
 df_pivoted['Net Short Position Size'] = (
-    df_pivoted['Short Position Size'] - df_pivoted['Long Position Size']
+    df_pivoted[SHORT_POSITION_SIZE_COL] - df_pivoted[LONG_POSITION_SIZE_COL]
 )
-df_pivoted['PMPUL Position Size'] = (
-    df_pivoted['Producer/Merchant/Processor/User Long'] / df_pivoted['Traders Prod/Merc Long']
+df_pivoted[PMPUL_POSITION_SIZE_COL] = (
+    df_pivoted[PMPU_LONG_COL] / df_pivoted[TRADERS_PROD_MERC_LONG]
 ).replace([np.inf, -np.inf], np.nan)
 
-df_pivoted['PMPUS Position Size'] = (
-    df_pivoted['Producer/Merchant/Processor/User Short'] / df_pivoted['Traders Prod/Merc Short']
+df_pivoted[PMPUS_POSITION_SIZE_COL] = (
+    df_pivoted[PMPU_SHORT_COL] / df_pivoted[TRADERS_PROD_MERC_SHORT]
 ).replace([np.inf, -np.inf], np.nan)
-df_pivoted['SDL Position Size'] = (
-    df_pivoted['Swap Dealer Long'] / df_pivoted['Traders Swap Long']
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted['SDS Position Size'] = (
-    df_pivoted['Swap Dealer Short'] / df_pivoted['Traders Swap Short']
-).replace([np.inf, -np.inf], np.nan)
-df_pivoted['ORL Position Size'] = (
-    df_pivoted['Other Reportables Long'] / df_pivoted['Traders Other Rept Long']
+df_pivoted[SDL_POSITION_SIZE_COL] = (
+    df_pivoted[SWAP_DEALER_LONG_COL] / df_pivoted[TRADERS_SWAP_LONG_COL]
 ).replace([np.inf, -np.inf], np.nan)
 
-df_pivoted['ORS Position Size'] = (
-    df_pivoted['Other Reportables Short'] / df_pivoted['Traders Other Rept Short']
+df_pivoted[SDS_POSITION_SIZE_COL] = (
+    df_pivoted[SWAP_DEALER_SHORT_COL] / df_pivoted[TRADERS_SWAP_SHORT_COL]
+).replace([np.inf, -np.inf], np.nan)
+df_pivoted[ORL_POSITION_SIZE_COL] = (
+    df_pivoted[OTHER_REPT_LONG_COL] / df_pivoted[TRADERS_OTHER_REPT_LONG]
 ).replace([np.inf, -np.inf], np.nan)
 
-df_pivoted['MML Long OI'] = df_pivoted['Managed Money Long']
-df_pivoted['MML Short OI'] = -df_pivoted['Managed Money Short']
-df_pivoted['MMS Long OI'] = df_pivoted['Managed Money Long']
-df_pivoted['MMS Short OI'] = -df_pivoted['Managed Money Short']
-df_pivoted['MML Traders'] = df_pivoted['Traders M Money Long']
-df_pivoted['MMS Traders'] = df_pivoted['Traders M Money Short']
+df_pivoted[ORS_POSITION_SIZE_COL] = (
+    df_pivoted[OTHER_REPT_SHORT_COL] / df_pivoted[TRADERS_OTHER_REPT_SHORT]
+).replace([np.inf, -np.inf], np.nan)
+
+df_pivoted[MML_LONG_OI_COL] = df_pivoted[MANAGED_MONEY_LONG_COL]
+df_pivoted[MML_SHORT_OI_COL] = -df_pivoted[MANAGED_MONEY_SHORT_COL]
+df_pivoted['MMS Long OI'] = df_pivoted[MANAGED_MONEY_LONG_COL]
+df_pivoted[MMS_SHORT_OI_COL] = -df_pivoted[MANAGED_MONEY_SHORT_COL]
+df_pivoted[MML_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL]
+df_pivoted[MMS_TRADERS_COL] = df_pivoted[TRADERS_MM_SHORT_COL]
 
 max_bubble_size = 100
-max_oi = max(df_pivoted['MML Long OI'].max(), abs(df_pivoted['MML Short OI'].max()))
-max_oi = max(df_pivoted['MMS Short OI'].max(), abs(df_pivoted['MML Short OI'].max()))
+max_oi = max(df_pivoted[MML_LONG_OI_COL].max(), abs(df_pivoted[MML_SHORT_OI_COL].max()))
+max_oi = max(df_pivoted[MMS_SHORT_OI_COL].max(), abs(df_pivoted[MML_SHORT_OI_COL].max()))
 
 sizeref = 2. * max_oi / (max_bubble_size**3.2)
 
 # Calculate relative concentration for each trader group
-df_pivoted['PMPUL Relative Concentration'] = df_pivoted['Producer/Merchant/Processor/User Long'] - df_pivoted['Producer/Merchant/Processor/User Short']
-df_pivoted['PMPUS Relative Concentration'] = df_pivoted['Producer/Merchant/Processor/User Short'] - df_pivoted['Producer/Merchant/Processor/User Long']
-df_pivoted['SDL Relative Concentration'] = df_pivoted['Swap Dealer Long'] - df_pivoted['Swap Dealer Short']
-df_pivoted['SDS Relative Concentration'] = df_pivoted['Swap Dealer Short'] - df_pivoted['Swap Dealer Long']
-df_pivoted['MML Relative Concentration'] = df_pivoted['Managed Money Long'] - df_pivoted['Managed Money Short']
-df_pivoted['MMS Relative Concentration'] = df_pivoted['Managed Money Short'] - df_pivoted['Managed Money Long']
-df_pivoted['ORL Relative Concentration'] = df_pivoted['Other Reportables Long'] - df_pivoted['Other Reportables Short']
-df_pivoted['ORS Relative Concentration'] = df_pivoted['Other Reportables Short'] - df_pivoted['Other Reportables Long']
+df_pivoted[PMPUL_REL_CONC_COL] = df_pivoted[PMPU_LONG_COL] - df_pivoted[PMPU_SHORT_COL]
+df_pivoted[PMPUS_REL_CONC_COL] = df_pivoted[PMPU_SHORT_COL] - df_pivoted[PMPU_LONG_COL]
+df_pivoted[SDL_REL_CONC_COL] = df_pivoted[SWAP_DEALER_LONG_COL] - df_pivoted[SWAP_DEALER_SHORT_COL]
+df_pivoted[SDS_REL_CONC_COL] = df_pivoted[SWAP_DEALER_SHORT_COL] - df_pivoted[SWAP_DEALER_LONG_COL]
+df_pivoted[MML_REL_CONC_COL] = df_pivoted[MANAGED_MONEY_LONG_COL] - df_pivoted[MANAGED_MONEY_SHORT_COL]
+df_pivoted[MMS_REL_CONC_COL] = df_pivoted[MANAGED_MONEY_SHORT_COL] - df_pivoted[MANAGED_MONEY_LONG_COL]
+df_pivoted[ORL_REL_CONC_COL] = df_pivoted[OTHER_REPT_LONG_COL] - df_pivoted[OTHER_REPT_SHORT_COL]
+df_pivoted[ORS_REL_CONC_COL] = df_pivoted[OTHER_REPT_SHORT_COL] - df_pivoted[OTHER_REPT_LONG_COL]
 
 # Aliase für Shapley-Owen: lesbare Kurzbezeichnungen der Netto-Positionierungen
-df_pivoted['PMPU Net'] = df_pivoted['PMPUL Relative Concentration']
-df_pivoted['SD Net']   = df_pivoted['SDL Relative Concentration']
-df_pivoted['MM Net']   = df_pivoted['MML Relative Concentration']
-df_pivoted['OR Net']   = df_pivoted['ORL Relative Concentration']
+df_pivoted['PMPU Net'] = df_pivoted[PMPUL_REL_CONC_COL]
+df_pivoted['SD Net']   = df_pivoted[SDL_REL_CONC_COL]
+df_pivoted['MM Net']   = df_pivoted[MML_REL_CONC_COL]
+df_pivoted['OR Net']   = df_pivoted[ORL_REL_CONC_COL]
 
 # Columns for the number of traders for each group
-df_pivoted['PMPUL Traders'] = df_pivoted['Traders Prod/Merc Long']
-df_pivoted['PMPUS Traders'] = df_pivoted['Traders Prod/Merc Short']
-df_pivoted['SDL Traders'] = df_pivoted['Traders Swap Long']
-df_pivoted['SDS Traders'] = df_pivoted['Traders Swap Short']
-df_pivoted['MML Traders'] = df_pivoted['Traders M Money Long']
-df_pivoted['MMS Traders'] = df_pivoted['Traders M Money Short']
-df_pivoted['ORL Traders'] = df_pivoted['Traders Other Rept Long']
-df_pivoted['ORS Traders'] = df_pivoted['Traders Other Rept Short']
+df_pivoted[PMPUL_TRADERS_COL] = df_pivoted[TRADERS_PROD_MERC_LONG]
+df_pivoted['PMPUS Traders'] = df_pivoted[TRADERS_PROD_MERC_SHORT]
+df_pivoted['SDL Traders'] = df_pivoted[TRADERS_SWAP_LONG_COL]
+df_pivoted['SDS Traders'] = df_pivoted[TRADERS_SWAP_SHORT_COL]
+df_pivoted[MML_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL]
+df_pivoted[MMS_TRADERS_COL] = df_pivoted[TRADERS_MM_SHORT_COL]
+df_pivoted['ORL Traders'] = df_pivoted[TRADERS_OTHER_REPT_LONG]
+df_pivoted['ORS Traders'] = df_pivoted[TRADERS_OTHER_REPT_SHORT]
 
 # Determine the quarter for each date
 df_pivoted['Quarter'] = df_pivoted['Date'].dt.quarter.map({1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4'})
 
 # Calculate a global sizeref to ensure consistency across markets
 max_bubble_size = 100  # Adjusted for better visualization
-max_oi = max(df_pivoted[['PMPUL Relative Concentration', 'PMPUS Relative Concentration', 
-                         'SDL Relative Concentration', 'SDS Relative Concentration', 
-                         'MML Relative Concentration', 'MMS Relative Concentration', 
-                         'ORL Relative Concentration', 'ORS Relative Concentration']].max().max(),
-             abs(df_pivoted[['PMPUL R'
-                             'elative Concentration', 'PMPUS Relative Concentration',
-                             'SDL Relative Concentration', 'SDS Relative Concentration', 
-                             'MML Relative Concentration', 'MMS Relative Concentration', 
-                             'ORL Relative Concentration', 'ORS Relative Concentration']].min().min()))
+max_oi = max(df_pivoted[[PMPUL_REL_CONC_COL, PMPUS_REL_CONC_COL, 
+                         SDL_REL_CONC_COL, SDS_REL_CONC_COL, 
+                         MML_REL_CONC_COL, MMS_REL_CONC_COL, 
+                         ORL_REL_CONC_COL, ORS_REL_CONC_COL]].max().max(),
+             abs(df_pivoted[[PMPUL_REL_CONC_COL, PMPUS_REL_CONC_COL,
+                             SDL_REL_CONC_COL, SDS_REL_CONC_COL, 
+                             MML_REL_CONC_COL, MMS_REL_CONC_COL, 
+                             ORL_REL_CONC_COL, ORS_REL_CONC_COL]].min().min()))
 sizeref = 2. * max_oi / (max_bubble_size**2.5)
 
 min_bubble_size = 10  # Set minimum bubble size
@@ -315,10 +397,10 @@ min_bubble_size = 10  # Set minimum bubble size
 df_pivoted['Year'] = df_pivoted['Date'].dt.year
 
 # Calculate Net OI for Managed Money (MM)
-df_pivoted['MM Net OI'] = df_pivoted['Managed Money Long'] - df_pivoted['Managed Money Short']
+df_pivoted[MM_NET_OI_COL] = df_pivoted[MANAGED_MONEY_LONG_COL] - df_pivoted[MANAGED_MONEY_SHORT_COL]
 
 # Calculate Net Number of Traders for MM
-df_pivoted['MM Net Traders'] = df_pivoted['Traders M Money Long'] - df_pivoted['Traders M Money Short']
+df_pivoted[MM_NET_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL] - df_pivoted[TRADERS_MM_SHORT_COL]
 
 # Define the default end date (most recent date)
 default_end_date = df_pivoted['Date'].max()
@@ -338,23 +420,23 @@ _ppci_get_3rd_nearby_col     = get_3rd_nearby_price_col
 
 
 def get_global_xaxis():
-    return dict(
-        tickmode='array',
-        tickvals=df_pivoted['Date'].dt.year.unique(),
-        ticktext=[str(year) for year in df_pivoted['Date'].dt.year.unique()],
-        showgrid=True,
-        ticks="outside",
-        tickangle=45
-    )
+    return {
+        "tickmode": 'array',
+        "tickvals": df_pivoted['Date'].dt.year.unique(),
+        "ticktext": [str(year) for year in df_pivoted['Date'].dt.year.unique()],
+        "showgrid": True,
+        "ticks": "outside",
+        "tickangle": 45
+    }
 
-global_xaxis = dict(
-    tickmode='array',
-    tickvals=df_pivoted['Date'].dt.year.unique(),  # Unique years
-    ticktext=[str(year) for year in df_pivoted['Date'].dt.year.unique()],  # Format as strings
-    showgrid=True,
-    ticks="outside",
-    tickangle=45  # Rotate for better visibility
-)
+global_xaxis = {
+    "tickmode": 'array',
+    "tickvals": df_pivoted['Date'].dt.year.unique(),  # Unique years
+    "ticktext": [str(year) for year in df_pivoted['Date'].dt.year.unique()],  # Format as strings
+    "showgrid": True,
+    "ticks": "outside",
+    "tickangle": 45  # Rotate for better visibility
+}
 
 def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_width=4, outer_color='red', inner_color='black'):
     if not df.empty:  # Sicherstellen, dass die Daten nicht leer sind
@@ -365,15 +447,15 @@ def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_wi
             x=[last_point[x_col]],
             y=[last_point[y_col]],
             mode='markers',
-            marker=dict(
-                size=inner_size,  # Größe des inneren Punkts
-                color=inner_color,  # Farbe des inneren Punkts
-                opacity=1.0,
-                line=dict(
-                    width=outer_line_width,  # Breite des äußeren Rands
-                    color=outer_color  # Farbe des äußeren Rands
-                )
-            ),
+            marker={
+                "size": inner_size,  # Größe des inneren Punkts
+                "color": inner_color,  # Farbe des inneren Punkts
+                "opacity": 1.0,
+                "line": {
+                    "width": outer_line_width,  # Breite des äußeren Rands
+                    "color": outer_color  # Farbe des äußeren Rands
+                }
+            },
             showlegend=False  # Spur nicht in der Legende anzeigen
         ))
 
@@ -408,14 +490,14 @@ def safe_colors(series):
 
 # Function to calculate medians
 def calculate_medians(df):
-    median_oi = df['MM Net OI'].median()
-    median_traders = df['MM Net Traders'].median()
+    median_oi = df[MM_NET_OI_COL].median()
+    median_traders = df[MM_NET_TRADERS_COL].median()
     return median_oi, median_traders
 
 # Function to calculate the scaling factors for long and short positions
 def calculate_scaling_factors(df):
-    max_long_position_size = df['Long Position Size'].max()
-    max_short_position_size = df['Short Position Size'].max()
+    max_long_position_size = df[LONG_POSITION_SIZE_COL].max()
+    max_short_position_size = df[SHORT_POSITION_SIZE_COL].max()
     long_scaling_factor = max_long_position_size / 50  # Adjust divisor as needed
     short_scaling_factor = max_short_position_size / 50  # Adjust divisor as needed
     return long_scaling_factor, short_scaling_factor
@@ -423,9 +505,9 @@ def calculate_scaling_factors(df):
 def _indicator_cols(indicator: str) -> tuple[str, str]:
     """Gibt (concentration_col, clustering_col) für 'MML' oder 'MMS' zurück."""
     if indicator == 'MML':
-        return 'MML Relative Concentration', 'Long Clustering'
+        return MML_REL_CONC_COL, LONG_CLUSTERING_COL
     elif indicator == 'MMS':
-        return 'MMS Relative Concentration', 'Short Clustering'
+        return MMS_REL_CONC_COL, SHORT_CLUSTERING_COL
     raise ValueError("Invalid indicator. Must be 'MML' or 'MMS'.")
 
 def nz(series):
@@ -484,26 +566,34 @@ def scaled_diameters_rank(vals, min_px=6, max_px=45, gamma=0.8):
     # in Pixel mappen
     return (min_px + (p ** gamma) * (max_px - min_px)).astype(float)
 
+def _oi_dtick(market: str) -> int:
+    """dtick-Wert für OI-Achse je nach Markt (S3358: kein verschachtelter Ternary)."""
+    if 'WTI' in market.upper():
+        return 500000
+    if market in ['Gold', 'Silver', 'Copper']:
+        return 20000
+    return 5000
+
 # Example calculation
 median_oi, median_traders = calculate_medians(df_pivoted)
 
 # ---------------------------------------------------------------------------
 # Shapley-Owen: Rollende Zerlegung des R² für alle Märkte vorberechnen
 # ---------------------------------------------------------------------------
-_SHAPLEY_X_COLS      = ['Δ PMPU Net', 'Δ SD Net', 'Δ MM Net', 'Δ OR Net']
+_SHAPLEY_X_COLS      = [SHAPLEY_COL_PMPU, SHAPLEY_COL_SD, SHAPLEY_COL_MM, SHAPLEY_COL_OR]
 _SHAPLEY_Y_COL       = '_price_change'
 _SHAPLEY_WINDOW      = 52
 _SHAPLEY_MIN_PERIODS = 26
 
 _shapley_results: dict = {}   # market_name → DataFrame (Shapley-Resultate)
 
-for _mkt in df_pivoted['Market Names'].unique():
+for _mkt in df_pivoted[MARKET_NAMES_COL].unique():
     _pcol = get_price_col(_mkt)
     if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
         print(f"[Shapley] Kein Preisdaten für {_mkt} – überspringe.")
         continue
 
-    _dff = df_pivoted[df_pivoted['Market Names'] == _mkt].copy()
+    _dff = df_pivoted[df_pivoted[MARKET_NAMES_COL] == _mkt].copy()
     _dff = prepare_market_for_shapley(_dff, df_futures_prices, _pcol)
     if _dff is None:
         print(f"[Shapley] {_mkt}: Keine Preisdaten nach Merge – überspringe.")
@@ -524,13 +614,13 @@ for _mkt in df_pivoted['Market Names'].unique():
 # ---------------------------------------------------------------------------
 _dt_results: dict = {}   # market_name → dict (Modell + Prognose)
 
-for _mkt in df_pivoted['Market Names'].unique():
+for _mkt in df_pivoted[MARKET_NAMES_COL].unique():
     _pcol = get_price_col(_mkt)
     if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
         print(f"[DecisionTree] Keine Preisdaten für {_mkt} – überspringe.")
         continue
 
-    _dff = df_pivoted[df_pivoted['Market Names'] == _mkt].copy()
+    _dff = df_pivoted[df_pivoted[MARKET_NAMES_COL] == _mkt].copy()
     _result = train_decision_tree(_dff, df_futures_prices, _pcol)
     if _result is not None:
         _dt_results[_mkt] = _result
@@ -565,8 +655,8 @@ app.layout = html.Div([
             dbc.Col([
                 html.Label("Markt", className="fw-semibold mb-1"),
                 dcc.Dropdown(
-                    id='market-dropdown',
-                    options=[{'label': market, 'value': market} for market in df_pivoted['Market Names'].unique()],
+                    id=MARKET_DROPDOWN_ID,
+                    options=[{'label': market, 'value': market} for market in df_pivoted[MARKET_NAMES_COL].unique()],
                     value='Palladium',
                     clearable=False,
                     style={'width': '100%'}
@@ -575,7 +665,7 @@ app.layout = html.Div([
             dbc.Col([
                 html.Label("Zeitraum", className="fw-semibold mb-1 d-block"),
                 dcc.DatePickerRange(
-                    id='date-picker-range',
+                    id=DATE_PICKER_ID,
                     start_date=df_pivoted['Date'].min(),
                     end_date=df_pivoted['Date'].max(),
                     display_format='YYYY-MM-DD',
@@ -680,14 +770,14 @@ def traders_bar(long_val, short_val, spread_val=None, bar_width_px=220, height_p
 @app.callback(
     Output('overview-table', 'data'),
     [
-        Input('market-dropdown', 'value'),
-        Input('date-picker-range', 'start_date'),
-        Input('date-picker-range', 'end_date')
+        Input(MARKET_DROPDOWN_ID, 'value'),
+        Input(DATE_PICKER_ID, 'start_date'),
+        Input(DATE_PICKER_ID, 'end_date')
     ]
 )
 def update_table(selected_market, start_date, end_date):
     filtered_df = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ]
@@ -705,7 +795,7 @@ def update_table(selected_market, start_date, end_date):
         return round(((float(curr) - float(first)) / float(first)) * 100, 2)
 
     data = {
-        'Trader Group': [
+        TRADER_GROUP_COL: [
             'Producer/Merchant/Processor/User',
             'Swap Dealer',
             'Managed Money',
@@ -713,78 +803,293 @@ def update_table(selected_market, start_date, end_date):
         ],
         'Positions': [
             positions_bar(
-                first_row['Producer/Merchant/Processor/User Long'],
-                first_row['Producer/Merchant/Processor/User Short'],
+                first_row[PMPU_LONG_COL],
+                first_row[PMPU_SHORT_COL],
                 None
             ),
             positions_bar(
-                first_row['Swap Dealer Long'],
-                first_row['Swap Dealer Short'],
-                first_row['Swap Dealer Spread']
+                first_row[SWAP_DEALER_LONG_COL],
+                first_row[SWAP_DEALER_SHORT_COL],
+                first_row[SWAP_DEALER_SPREAD_COL]
             ),
             positions_bar(
-                first_row['Managed Money Long'],
-                first_row['Managed Money Short'],
-                first_row['Managed Money Spread']
+                first_row[MANAGED_MONEY_LONG_COL],
+                first_row[MANAGED_MONEY_SHORT_COL],
+                first_row[MANAGED_MONEY_SPREAD_COL]
             ),
             positions_bar(
-                first_row['Other Reportables Long'],
-                first_row['Other Reportables Short'],
-                first_row['Other Reportables Spread']
+                first_row[OTHER_REPT_LONG_COL],
+                first_row[OTHER_REPT_SHORT_COL],
+                first_row[OTHER_REPT_SPREAD_COL]
             ),
         ],
 
         'Difference (Long %)': [
-            safe_pct_change(current_row['Producer/Merchant/Processor/User Long'], first_row['Producer/Merchant/Processor/User Long']),
-            safe_pct_change(current_row['Swap Dealer Long'], first_row['Swap Dealer Long']),
-            safe_pct_change(current_row['Managed Money Long'], first_row['Managed Money Long']),
-            safe_pct_change(current_row['Other Reportables Long'], first_row['Other Reportables Long'])
+            safe_pct_change(current_row[PMPU_LONG_COL], first_row[PMPU_LONG_COL]),
+            safe_pct_change(current_row[SWAP_DEALER_LONG_COL], first_row[SWAP_DEALER_LONG_COL]),
+            safe_pct_change(current_row[MANAGED_MONEY_LONG_COL], first_row[MANAGED_MONEY_LONG_COL]),
+            safe_pct_change(current_row[OTHER_REPT_LONG_COL], first_row[OTHER_REPT_LONG_COL])
         ],
         'Difference (Short %)': [
-            safe_pct_change(current_row['Producer/Merchant/Processor/User Short'], first_row['Producer/Merchant/Processor/User Short']),
-            safe_pct_change(current_row['Swap Dealer Short'], first_row['Swap Dealer Short']),
-            safe_pct_change(current_row['Managed Money Short'], first_row['Managed Money Short']),
-            safe_pct_change(current_row['Other Reportables Short'], first_row['Other Reportables Short'])
+            safe_pct_change(current_row[PMPU_SHORT_COL], first_row[PMPU_SHORT_COL]),
+            safe_pct_change(current_row[SWAP_DEALER_SHORT_COL], first_row[SWAP_DEALER_SHORT_COL]),
+            safe_pct_change(current_row[MANAGED_MONEY_SHORT_COL], first_row[MANAGED_MONEY_SHORT_COL]),
+            safe_pct_change(current_row[OTHER_REPT_SHORT_COL], first_row[OTHER_REPT_SHORT_COL])
         ],
         'Difference (Spread %)': [
             None,  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
-            safe_pct_change(current_row['Swap Dealer Spread'], first_row['Swap Dealer Spread']),
-            safe_pct_change(current_row['Managed Money Spread'], first_row['Managed Money Spread']),
-            safe_pct_change(current_row['Other Reportables Spread'], first_row['Other Reportables Spread'])
+            safe_pct_change(current_row[SWAP_DEALER_SPREAD_COL], first_row[SWAP_DEALER_SPREAD_COL]),
+            safe_pct_change(current_row[MANAGED_MONEY_SPREAD_COL], first_row[MANAGED_MONEY_SPREAD_COL]),
+            safe_pct_change(current_row[OTHER_REPT_SPREAD_COL], first_row[OTHER_REPT_SPREAD_COL])
         ],
 
         'Total Traders': [
-            current_row['Traders Prod/Merc Long'] + current_row['Traders Prod/Merc Short'],
-            current_row['Traders Swap Long'] + current_row['Traders Swap Short'] + current_row['Traders Swap Spread'],
-            current_row['Traders M Money Long'] + current_row['Traders M Money Short'] + current_row['Traders M Money Spread'],
-            current_row['Traders Other Rept Long'] + current_row['Traders Other Rept Short'] + current_row['Traders Other Rept Spread']
+            current_row[TRADERS_PROD_MERC_LONG] + current_row[TRADERS_PROD_MERC_SHORT],
+            current_row[TRADERS_SWAP_LONG_COL] + current_row[TRADERS_SWAP_SHORT_COL] + current_row['Traders Swap Spread'],
+            current_row[TRADERS_MM_LONG_COL] + current_row[TRADERS_MM_SHORT_COL] + current_row['Traders M Money Spread'],
+            current_row[TRADERS_OTHER_REPT_LONG] + current_row[TRADERS_OTHER_REPT_SHORT] + current_row['Traders Other Rept Spread']
         ],
         '% of Traders': [
-            f"Long: {round(current_row['Traders Prod/Merc Long'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Short: {round(current_row['Traders Prod/Merc Short'] / current_row['Total Number of Traders'] * 100, 2)}%",
+            f"Long: {round(current_row[TRADERS_PROD_MERC_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Short: {round(current_row[TRADERS_PROD_MERC_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
 
-            f"Long: {round(current_row['Traders Swap Long'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Short: {round(current_row['Traders Swap Short'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders Swap Spread'] / current_row['Total Number of Traders'] * 100, 2)}%",
+            f"Long: {round(current_row[TRADERS_SWAP_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Short: {round(current_row[TRADERS_SWAP_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Spread: {round(current_row['Traders Swap Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
 
-            f"Long: {round(current_row['Traders M Money Long'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Short: {round(current_row['Traders M Money Short'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders M Money Spread'] / current_row['Total Number of Traders'] * 100, 2)}%",
+            f"Long: {round(current_row[TRADERS_MM_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Short: {round(current_row[TRADERS_MM_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Spread: {round(current_row['Traders M Money Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
 
-            f"Long: {round(current_row['Traders Other Rept Long'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Short: {round(current_row['Traders Other Rept Short'] / current_row['Total Number of Traders'] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders Other Rept Spread'] / current_row['Total Number of Traders'] * 100, 2)}%"
+            f"Long: {round(current_row[TRADERS_OTHER_REPT_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Short: {round(current_row[TRADERS_OTHER_REPT_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
+            f"Spread: {round(current_row['Traders Other Rept Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%"
         ],
 
-        'Number of Traders': [
-            traders_bar(current_row['Traders Prod/Merc Long'],  current_row['Traders Prod/Merc Short'],  None),
-            traders_bar(current_row['Traders Swap Long'],       current_row['Traders Swap Short'],       current_row['Traders Swap Spread']),
-            traders_bar(current_row['Traders M Money Long'],    current_row['Traders M Money Short'],    current_row['Traders M Money Spread']),
-            traders_bar(current_row['Traders Other Rept Long'], current_row['Traders Other Rept Short'], current_row['Traders Other Rept Spread'])
+        NUMBER_OF_TRADERS_LABEL: [
+            traders_bar(current_row[TRADERS_PROD_MERC_LONG],  current_row[TRADERS_PROD_MERC_SHORT],  None),
+            traders_bar(current_row[TRADERS_SWAP_LONG_COL],       current_row[TRADERS_SWAP_SHORT_COL],       current_row['Traders Swap Spread']),
+            traders_bar(current_row[TRADERS_MM_LONG_COL],    current_row[TRADERS_MM_SHORT_COL],    current_row['Traders M Money Spread']),
+            traders_bar(current_row[TRADERS_OTHER_REPT_LONG], current_row[TRADERS_OTHER_REPT_SHORT], current_row['Traders Other Rept Spread'])
         ],
     }
 
     return pd.DataFrame(data).to_dict('records')
+
+def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_title,
+                              title, use_year_ticks=False, selected_market=None):
+    """Build a position-size bubble chart. Shared by PMPU/SD/OR/MM long & short variants."""
+    fig = go.Figure()
+
+    tr = pd.to_numeric(df[traders_col], errors='coerce').fillna(0).clip(lower=0).astype(float)
+
+    try:
+        col = safe_colors(df[pos_size_col])
+    except Exception:
+        col = pd.to_numeric(df[pos_size_col], errors='coerce').fillna(0)
+
+    _pos = tr[tr > 0]
+    lo = float(_pos.min()) if _pos.size > 0 else 1.0
+    hi = float(tr.max()) if tr.max() > 0 else 1.0
+    sizes = scaled_diameters(tr, min_px=6, max_px=26, lo=lo, hi=hi)
+
+    fig.add_trace(go.Scatter(
+        x=df['Date'],
+        y=df[OPEN_INTEREST_LABEL],
+        mode='markers',
+        marker={
+            "size": sizes, "sizemode": 'diameter', "sizeref": 1,
+            "color": col, "colorscale": DEFAULT_COLORSCALE, "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75, "yanchor": 'middle', "y": 0.5}
+        },
+        text=[
+            f"Date: {d:%Y-%m-%d}<br>Open Interest: {int(oi):,}<br>"
+            f"Traders ({direction}): {int(t)}<br>PosSize (avg): {float(ps):,.0f}"
+            for d, oi, t, ps in zip(
+                df['Date'],
+                pd.to_numeric(df[OPEN_INTEREST_LABEL], errors='coerce').fillna(0),
+                tr,
+                pd.to_numeric(df[pos_size_col], errors='coerce').fillna(0)
+            )
+        ],
+        hoverinfo='text', showlegend=False
+    ))
+
+    base = tr[tr > 0]
+    if base.size >= 3 and base.max() > 1:
+        legend_vals = np.unique(np.round(np.quantile(base, [0.25, 0.5, 0.75, 1.0])).astype(int))
+        legend_vals = legend_vals[legend_vals > 0]
+    else:
+        legend_vals = np.array([10, 20, 35], dtype=int)
+
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
+    for v, s in zip(legend_vals, legend_sizes):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='markers',
+            marker={"size": float(s), "sizemode": 'diameter', "sizeref": 1, "color": 'gray', "opacity": 0.6},
+            showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
+        ))
+
+    if use_year_ticks:
+        xaxis_cfg = {
+            "tickmode": 'array',
+            "tickvals": df['Date'].dt.year.unique(),
+            "ticktext": [str(y) for y in df['Date'].dt.year.unique()],
+            "showgrid": True, "ticks": "outside", "tickangle": 45
+        }
+        yaxis_cfg = {"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0,
+                     "dtick": _oi_dtick(selected_market)}
+        legend_x = 1.2
+    else:
+        xaxis_cfg = {"showgrid": True, "ticks": "outside", "tickangle": 45}
+        yaxis_cfg = {"title": OPEN_INTEREST_LABEL, "showgrid": True}
+        legend_x = 1.18
+
+    fig.update_layout(
+        title=title, xaxis_title='Date', yaxis_title=OPEN_INTEREST_LABEL,
+        xaxis=xaxis_cfg, yaxis=yaxis_cfg,
+        legend={"title": {"text": NUMBER_OF_TRADERS_LABEL}, "itemsizing": 'trace',
+                "x": legend_x, "y": 0.5, "font": {"size": 12}},
+        margin={"l": 60, "r": 160, "t": 60, "b": 60}
+    )
+
+    try:
+        add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
+                                 inner_size=2, inner_color='black')
+    except Exception:
+        pass
+
+    return fig
+
+
+def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_market):
+    """Build a clustering bubble chart. Shared by Long/Short Clustering variants."""
+    fig = go.Figure()
+
+    tr_total = pd.to_numeric(df[TOTAL_TRADERS_LABEL], errors='coerce').fillna(0).clip(lower=0).astype(float)
+
+    _tr_pos = tr_total[tr_total > 0]
+    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
+    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
+    sizes_total = scaled_diameters(tr_total, min_px=8, max_px=30, lo=tr_lo, hi=tr_hi)
+
+    fig.add_trace(go.Scatter(
+        x=df['Date'],
+        y=df[OPEN_INTEREST_LABEL],
+        mode='markers',
+        marker={
+            "size": sizes_total, "sizemode": 'diameter', "sizeref": 1,
+            "color": df[clustering_col], "colorscale": DEFAULT_COLORSCALE, "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75, "yanchor": 'middle', "y": 0.5},
+        },
+        text=[
+            f"Date: {d:%Y-%m-%d}<br>Traders: {int(t)}"
+            for d, t in zip(df['Date'], tr_total)
+        ],
+        hoverinfo='text', showlegend=False
+    ))
+
+    base = tr_total[tr_total > 0]
+    if base.size >= 3:
+        legend_vals = np.unique(np.round(np.quantile(base, [0.10, 0.30, 0.50, 0.70, 0.90])).astype(int))
+        legend_vals = legend_vals[legend_vals > 0]
+    else:
+        legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
+
+    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
+    for v, s in zip(legend_vals, legend_sizes):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='markers',
+            marker={"size": float(s), "sizemode": 'diameter', "sizeref": 1, "color": 'gray', "opacity": 0.6},
+            showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
+        ))
+
+    fig.update_layout(
+        title=title, xaxis_title='Date', yaxis_title=OPEN_INTEREST_LABEL,
+        xaxis={
+            "tickmode": 'array',
+            "tickvals": df['Date'].dt.year.unique(),
+            "ticktext": [str(year) for year in df['Date'].dt.year.unique()],
+            "showgrid": True, "ticks": "outside", "tickangle": 45
+        },
+        yaxis={"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0,
+               "dtick": _oi_dtick(selected_market)},
+        legend={"title": {"text": NUMBER_OF_TRADERS_LABEL}, "itemsizing": 'trace',
+                "x": 1.2, "y": 0.5, "font": {"size": 12}},
+        margin={"l": 60, "r": 160, "t": 60, "b": 60}
+    )
+
+    add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
+                             inner_size=2, inner_color='black')
+    return fig
+
+
+def _build_dp_rc_fig(filtered_df):
+    """Baut den DP Relative Concentration Indicator (8 Gruppen, je historische + letzter Punkt)."""
+    fig_rc = go.Figure()
+
+    total_oi = pd.to_numeric(filtered_df.get(OPEN_INTEREST_LABEL), errors='coerce')
+
+    def _rc(long_col, short_col):
+        return rel_concentration(filtered_df.get(long_col), filtered_df.get(short_col), total_oi)
+
+    groups = [
+        {"name": 'MML',   "x": TRADERS_MM_LONG_COL,     "rc": _rc(MANAGED_MONEY_LONG_COL,  MANAGED_MONEY_SHORT_COL), "color": '#2c7fb8'},
+        {"name": 'MMS',   "x": TRADERS_MM_SHORT_COL,    "rc": _rc(MANAGED_MONEY_SHORT_COL, MANAGED_MONEY_LONG_COL),  "color": '#7fcdbb'},
+        {"name": 'ORL',   "x": TRADERS_OTHER_REPT_LONG,  "rc": _rc(OTHER_REPT_LONG_COL,     OTHER_REPT_SHORT_COL),    "color": '#f39c12'},
+        {"name": 'ORS',   "x": TRADERS_OTHER_REPT_SHORT, "rc": _rc(OTHER_REPT_SHORT_COL,    OTHER_REPT_LONG_COL),     "color": '#f1c40f'},
+        {"name": 'PMPUL', "x": TRADERS_PROD_MERC_LONG,   "rc": _rc(PMPU_LONG_COL,           PMPU_SHORT_COL),          "color": '#27ae60'},
+        {"name": 'PMPUS', "x": TRADERS_PROD_MERC_SHORT,  "rc": _rc(PMPU_SHORT_COL,          PMPU_LONG_COL),           "color": '#2ecc71'},
+        {"name": 'SDL',   "x": TRADERS_SWAP_LONG_COL,    "rc": _rc(SWAP_DEALER_LONG_COL,    SWAP_DEALER_SHORT_COL),   "color": '#e67e22'},
+        {"name": 'SDS',   "x": TRADERS_SWAP_SHORT_COL,   "rc": _rc(SWAP_DEALER_SHORT_COL,   SWAP_DEALER_LONG_COL),    "color": '#e74c3c'},
+    ]
+
+    bubble_px = 14
+    recent_px = bubble_px + 6
+
+    # 1) Historische Punkte je Gruppe
+    for g in groups:
+        x = pd.to_numeric(filtered_df.get(g['x']), errors='coerce')
+        y = g['rc']
+        mask = x.notna() & y.notna()
+        if mask.sum() == 0:
+            continue
+        fig_rc.add_trace(go.Scatter(
+            x=x[mask], y=y[mask], mode='markers',
+            marker={"size": bubble_px, "color": g['color'], "opacity": 0.8,
+                    "line": {"width": 0.6, "color": 'black'}},
+            name=g['name']
+        ))
+
+    # 2) Schwarzer Punkt für die letzte verfügbare Beobachtung je Gruppe
+    first_legend_done = False
+    for g in groups:
+        x_series = pd.to_numeric(filtered_df.get(g['x']), errors='coerce')
+        y_series = g['rc']
+        mask = x_series.notna() & y_series.notna()
+        if mask.sum() == 0:
+            continue
+        last_idx = y_series[mask].index[-1]
+        x_last = x_series.loc[last_idx]
+        y_last = y_series.loc[last_idx]
+        if pd.notna(x_last) and pd.notna(y_last):
+            fig_rc.add_trace(go.Scatter(
+                x=[x_last], y=[y_last], mode='markers',
+                marker={"size": recent_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+                name=MOST_RECENT_WEEK, legendgroup='recent',
+                showlegend=not first_legend_done
+            ))
+            first_legend_done = True
+
+    fig_rc.update_layout(
+        title="DP Relative Concentration Indicator",
+        xaxis={"title": NUMBER_OF_TRADERS_LABEL, "showgrid": True, "gridcolor": LIGHTGRAY},
+        yaxis={"title": 'Long and Short Concentration', "showgrid": True, "gridcolor": LIGHTGRAY},
+        plot_bgcolor='white',
+        legend_title=TRADER_GROUP_COL
+    )
+    return fig_rc
+
 
 # Callback to update graphs based on selected market and date range
 @app.callback(
@@ -806,980 +1111,63 @@ def update_table(selected_market, start_date, end_date):
         Output('dp-position-size-indicator', 'figure'),
         Output('hedging-indicator-graph', 'figure')
     ],
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('mm-radio', 'value'),
      Input('trader-group-radio', 'value')]
 )
 
 def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
-    filtered_df = df_pivoted[(df_pivoted['Market Names'] == selected_market) &
-                             (df_pivoted['Date'] >= start_date) & 
+    filtered_df = df_pivoted[(df_pivoted[MARKET_NAMES_COL] == selected_market) &
+                             (df_pivoted['Date'] >= start_date) &
                              (df_pivoted['Date'] <= end_date)]
 
-    # PMPU Long Position Size Indicator
-    pmpu_long_position_size_fig = go.Figure()
-
-    # Daten vorbereiten
-    tr_long_raw = pd.to_numeric(filtered_df['Traders Prod/Merc Long'], errors='coerce')
-    tr_long = tr_long_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Long)
-    try:
-        col_long = safe_colors(filtered_df['PMPUL Position Size'])
-    except Exception:
-        col_long = pd.to_numeric(filtered_df['PMPUL Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen (z.B. 6–26 px)
-    _pmpu_l_pos = tr_long[tr_long > 0]
-    pmpu_l_lo = float(_pmpu_l_pos.min()) if _pmpu_l_pos.size > 0 else 1.0
-    pmpu_l_hi = float(tr_long.max()) if tr_long.max() > 0 else 1.0
-    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26, lo=pmpu_l_lo, hi=pmpu_l_hi)
-
-    # 3) Punkte plotten
-    pmpu_long_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sizes_long,
-                sizemode='diameter',
-                sizeref=1,
-                color=col_long,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="PMPU Long Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Long): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    tr_long,
-                    pd.to_numeric(filtered_df['PMPUL Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
+    pmpu_long_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_PROD_MERC_LONG, PMPUL_POSITION_SIZE_COL,
+        'Long', 'PMPU Long Position Size', 'Long Position Size Indicator (PMPU)'
+    )
+    pmpu_short_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_PROD_MERC_SHORT, PMPUS_POSITION_SIZE_COL,
+        'Short', 'PMPU Short Position Size', 'Short Position Size Indicator (PMPU)'
+    )
+    sd_long_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_SWAP_LONG_COL, SDL_POSITION_SIZE_COL,
+        'Long', 'SD Long Position Size', 'Long Position Size Indicator (Swap Dealers)'
+    )
+    sd_short_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_SWAP_SHORT_COL, SDS_POSITION_SIZE_COL,
+        'Short', 'SD Short Position Size', 'Short Position Size Indicator (Swap Dealers)'
+    )
+    or_long_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_OTHER_REPT_LONG, ORL_POSITION_SIZE_COL,
+        'Long', 'OR Long Position Size', 'Long Position Size Indicator (Other Reportables)'
+    )
+    or_short_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_OTHER_REPT_SHORT, ORS_POSITION_SIZE_COL,
+        'Short', 'OR Short Position Size', 'Short Position Size Indicator (Other Reportables)'
+    )
+    long_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_MM_LONG_COL, MML_POSITION_SIZE_COL,
+        'Long', 'MM Long Position Size', 'Long Position Size Indicator (Money Managers)',
+        use_year_ticks=True, selected_market=selected_market
+    )
+    short_position_size_fig = _build_position_size_fig(
+        filtered_df, TRADERS_MM_SHORT_COL, MMS_POSITION_SIZE_COL,
+        'Short', 'MM Short Position Size', 'Short Position Size Indicator (Money Managers)',
+        use_year_ticks=True, selected_market=selected_market
     )
 
-    # 4) Bubble-Size-Legende
-    base = tr_long[tr_long > 0]
-    if base.size >= 3 and base.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
+    _, _ = calculate_scaling_factors(filtered_df)
 
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-
-    for v, s in zip(legend_vals, legend_sizes):
-        pmpu_long_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    pmpu_long_position_size_fig.update_layout(
-        title='Long Position Size Indicator (PMPU)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
+    long_clustering_fig = _build_clustering_fig(
+        filtered_df, LONG_CLUSTERING_COL,
+        'Long Clustering (%)', 'Long Positions Clustering Indicator', selected_market
     )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=pmpu_long_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    # PMPU Short Position Size Indicator
-    pmpu_short_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten
-    tr_short_raw = pd.to_numeric(filtered_df['Traders Prod/Merc Short'], errors='coerce')
-    tr_short = tr_short_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Short)
-    try:
-        col_short = safe_colors(filtered_df['PMPUS Position Size'])
-    except Exception:
-        col_short = pd.to_numeric(filtered_df['PMPUS Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _pmpu_s_pos = tr_short[tr_short > 0]
-    pmpu_s_lo = float(_pmpu_s_pos.min()) if _pmpu_s_pos.size > 0 else 1.0
-    pmpu_s_hi = float(tr_short.max()) if tr_short.max() > 0 else 1.0
-    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26, lo=pmpu_s_lo, hi=pmpu_s_hi)
-
-    # 3) Punkte plotten
-    pmpu_short_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sizes_short,
-                sizemode='diameter',
-                sizeref=1,
-                color=col_short,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="PMPU Short Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Short): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    tr_short,
-                    pd.to_numeric(filtered_df['PMPUS Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
+    short_clustering_fig = _build_clustering_fig(
+        filtered_df, SHORT_CLUSTERING_COL,
+        'Short Clustering (%)', 'Short Positions Clustering Indicator', selected_market
     )
-
-    # 4) Bubble-Size-Legende
-    base_s = tr_short[tr_short > 0]
-    if base_s.size >= 3 and base_s.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base_s, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-
-    for v, s in zip(legend_vals, legend_sizes):
-        pmpu_short_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    pmpu_short_position_size_fig.update_layout(
-        title='Short Position Size Indicator (PMPU)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=pmpu_short_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    sd_long_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten
-    sd_tr_long_raw = pd.to_numeric(filtered_df['Traders Swap Long'], errors='coerce')
-    sd_tr_long = sd_tr_long_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Long)
-    try:
-        sd_col_long = safe_colors(filtered_df['SDL Position Size'])
-    except Exception:
-        sd_col_long = pd.to_numeric(filtered_df['SDL Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _sd_l_pos = sd_tr_long[sd_tr_long > 0]
-    sd_l_lo = float(_sd_l_pos.min()) if _sd_l_pos.size > 0 else 1.0
-    sd_l_hi = float(sd_tr_long.max()) if sd_tr_long.max() > 0 else 1.0
-    sd_sizes_long = scaled_diameters(sd_tr_long, min_px=6, max_px=26, lo=sd_l_lo, hi=sd_l_hi)
-
-    # 3) Punkte plotten
-    sd_long_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sd_sizes_long,
-                sizemode='diameter',
-                sizeref=1,
-                color=sd_col_long,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="SD Long Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Long): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    sd_tr_long,
-                    pd.to_numeric(filtered_df['SDL Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
-    )
-
-    # 4) Bubble-Size-Legende (gleiche Skalierung wie oben)
-    sd_baseL = sd_tr_long[sd_tr_long > 0]
-    if sd_baseL.size >= 3 and sd_baseL.max() > 1:
-        sd_legend_valsL = np.unique(np.round(np.quantile(sd_baseL, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        sd_legend_valsL = sd_legend_valsL[sd_legend_valsL > 0]
-    else:
-        sd_legend_valsL = np.array([10, 20, 35], dtype=int)
-
-    sd_legend_sizesL = np.linspace(7, 20, len(sd_legend_valsL)) if len(sd_legend_valsL) > 1 else np.array([13.0])
-    for v, s in zip(sd_legend_valsL, sd_legend_sizesL):
-        sd_long_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    sd_long_position_size_fig.update_layout(
-        title='Long Position Size Indicator (Swap Dealers)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=sd_long_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    # SD Short Position Size Indicator
-    sd_short_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten
-    sd_tr_short_raw = pd.to_numeric(filtered_df['Traders Swap Short'], errors='coerce')
-    sd_tr_short = sd_tr_short_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Short)
-    try:
-        sd_col_short = safe_colors(filtered_df['SDS Position Size'])
-    except Exception:
-        sd_col_short = pd.to_numeric(filtered_df['SDS Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _sd_s_pos = sd_tr_short[sd_tr_short > 0]
-    sd_s_lo = float(_sd_s_pos.min()) if _sd_s_pos.size > 0 else 1.0
-    sd_s_hi = float(sd_tr_short.max()) if sd_tr_short.max() > 0 else 1.0
-    sd_sizes_short = scaled_diameters(sd_tr_short, min_px=6, max_px=26, lo=sd_s_lo, hi=sd_s_hi)
-
-    # 3) Punkte plotten
-    sd_short_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sd_sizes_short,
-                sizemode='diameter',
-                sizeref=1,
-                color=sd_col_short,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="SD Short Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Short): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    sd_tr_short,
-                    pd.to_numeric(filtered_df['SDS Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
-    )
-
-    # 4) Bubble-Size-Legende
-    sd_baseS = sd_tr_short[sd_tr_short > 0]
-    if sd_baseS.size >= 3 and sd_baseS.max() > 1:
-        sd_legend_valsS = np.unique(np.round(np.quantile(sd_baseS, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        sd_legend_valsS = sd_legend_valsS[sd_legend_valsS > 0]
-    else:
-        sd_legend_valsS = np.array([10, 20, 35], dtype=int)
-
-    sd_legend_sizesS = np.linspace(7, 20, len(sd_legend_valsS)) if len(sd_legend_valsS) > 1 else np.array([13.0])
-    for v, s in zip(sd_legend_valsS, sd_legend_sizesS):
-        sd_short_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    sd_short_position_size_fig.update_layout(
-        title='Short Position Size Indicator (Swap Dealers)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=sd_short_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    long_scaling_factor, short_scaling_factor = calculate_scaling_factors(filtered_df)
-
-    # Long Positions Clustering
-    long_clustering_fig = go.Figure()
-
-    # 1) Trader-Serie sauber vorbereiten
-    tr_total = pd.to_numeric(filtered_df['Total Number of Traders'], errors='coerce') \
-        .fillna(0).clip(lower=0).astype(float)
-
-    # 2) Marker-Grössen robust auf fixen Pixelbereich mappen
-    MIN_PX = 8
-    MAX_PX = 30
-    _tr_pos = tr_total[tr_total > 0]
-    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
-    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
-    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
-
-    # 3) Scatter
-    long_clustering_fig.add_trace(go.Scatter(
-        x=filtered_df['Date'],
-        y=filtered_df['Open Interest'],
-        mode='markers',
-        marker=dict(
-            size=sizes_total,
-            sizemode='diameter',
-            sizeref=1,
-            color=filtered_df['Long Clustering'],
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(
-                title="Long Clustering (%)",
-                thickness=15,
-                len=0.75,
-                yanchor='middle',
-                y=0.5
-            ),
-        ),
-        text=[
-            f"Date: {d:%Y-%m-%d}<br>Traders: {int(t)}"
-            for d, t in zip(filtered_df['Date'], tr_total)
-        ],
-        hoverinfo='text',
-        showlegend=False
-    ))
-
-    # 4) Bubble-Size-Legende dynamisch (aus der Verteilung des selektierten Marktes)
-    base = tr_total[tr_total > 0]
-    if base.size >= 3:
-        q = [0.10, 0.30, 0.50, 0.70, 0.90]  # 5 Legendenstufen
-        legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-
-    for v, s in zip(legend_vals, legend_sizes):
-        long_clustering_fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode='markers',
-            marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-            showlegend=True,
-            name=f"{int(v)} Traders",
-            hoverinfo='skip'
-        ))
-
-    # 5) Layout
-    long_clustering_fig.update_layout(
-        title='Long Positions Clustering Indicator',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(
-            tickmode='array',
-            tickvals=filtered_df['Date'].dt.year.unique(),
-            ticktext=[str(year) for year in filtered_df['Date'].dt.year.unique()],
-            showgrid=True,
-            ticks="outside",
-            tickangle=45
-        ),
-        yaxis=dict(
-            title='Open Interest',
-            showgrid=True,
-            tick0=0,
-            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000),
-        ),
-        legend=dict(
-            title=dict(text="Number of Traders"),
-            itemsizing='trace',
-            x=1.2,
-            y=0.5,
-            font=dict(size=12)
-        ),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    add_last_point_highlight(
-        fig=long_clustering_fig,
-        df=filtered_df,
-        x_col='Date',
-        y_col='Open Interest',
-        inner_size=2,
-        inner_color='black'
-    )
-
-    # Short Positions Clustering
-    short_clustering_fig = go.Figure()
-
-    # 1) Trader-Serie (gleich wie Long)
-    tr_total = pd.to_numeric(filtered_df['Total Number of Traders'], errors='coerce') \
-        .fillna(0).clip(lower=0).astype(float)
-
-    # 2) gleiche Pixel-Skalierung
-    MIN_PX = 8
-    MAX_PX = 30
-    _tr_pos = tr_total[tr_total > 0]
-    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
-    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
-    sizes_total = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
-
-    # 3) Scatter
-    short_clustering_fig.add_trace(go.Scatter(
-        x=filtered_df['Date'],
-        y=filtered_df['Open Interest'],
-        mode='markers',
-        marker=dict(
-            size=sizes_total,
-            sizemode='diameter',
-            sizeref=1,
-            color=filtered_df['Short Clustering'],
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(
-                title="Short Clustering (%)",
-                thickness=15,
-                len=0.75,
-                yanchor='middle',
-                y=0.5
-            ),
-        ),
-        text=[
-            f"Date: {d:%Y-%m-%d}<br>Traders: {int(t)}"
-            for d, t in zip(filtered_df['Date'], tr_total)
-        ],
-        hoverinfo='text',
-        showlegend=False
-    ))
-
-    # 4) Bubble-Size-Legende dynamisch
-    base = tr_total[tr_total > 0]
-    if base.size >= 3:
-        q = [0.10, 0.30, 0.50, 0.70, 0.90]
-        legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-
-    for v, s in zip(legend_vals, legend_sizes):
-        short_clustering_fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode='markers',
-            marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-            showlegend=True,
-            name=f"{int(v)} Traders",
-            hoverinfo='skip'
-        ))
-
-    # 5) Layout
-    short_clustering_fig.update_layout(
-        title='Short Positions Clustering Indicator',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(
-            tickmode='array',
-            tickvals=filtered_df['Date'].dt.year.unique(),
-            ticktext=[str(year) for year in filtered_df['Date'].dt.year.unique()],
-            showgrid=True,
-            ticks="outside",
-            tickangle=45
-        ),
-        yaxis=dict(
-            title='Open Interest',
-            showgrid=True,
-            tick0=0,
-            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000),
-        ),
-        legend=dict(
-            title=dict(text="Number of Traders"),
-            itemsizing='trace',
-            x=1.2,
-            y=0.5,
-            font=dict(size=12)
-        ),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    add_last_point_highlight(
-        fig=short_clustering_fig,
-        df=filtered_df,
-        x_col='Date',
-        y_col='Open Interest',
-        inner_size=2,
-        inner_color='black'
-    )
-
-    # OR Long Position Size Indicator
-    or_long_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten
-    tr_long_raw  = pd.to_numeric(filtered_df['Traders Other Rept Long'], errors='coerce')
-    tr_long = tr_long_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Long)
-    try:
-        col_long = safe_colors(filtered_df['ORL Position Size'])
-    except Exception:
-        col_long = pd.to_numeric(filtered_df['ORL Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _or_l_pos = tr_long[tr_long > 0]
-    or_l_lo = float(_or_l_pos.min()) if _or_l_pos.size > 0 else 1.0
-    or_l_hi = float(tr_long.max()) if tr_long.max() > 0 else 1.0
-    sizes_long = scaled_diameters(tr_long, min_px=6, max_px=26, lo=or_l_lo, hi=or_l_hi)
-
-    # 3) Punkte plotten
-    or_long_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sizes_long,
-                sizemode='diameter',
-                sizeref=1,
-                color=col_long,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="OR Long Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Long): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    tr_long,
-                    pd.to_numeric(filtered_df['ORL Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
-    )
-
-    # 4) Bubble-Size-Legende (gleiche Skalierung wie oben)
-    base = tr_long[tr_long > 0]
-    if base.size >= 3 and base.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-    for v, s in zip(legend_vals, legend_sizes):
-        or_long_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    or_long_position_size_fig.update_layout(
-        title='Long Position Size Indicator (Other Reportables)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=or_long_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    # OR Short Position Size Indicator
-    or_short_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten
-    tr_short_raw = pd.to_numeric(filtered_df['Traders Other Rept Short'], errors='coerce')
-    tr_short = tr_short_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Short)
-    try:
-        col_short = safe_colors(filtered_df['ORS Position Size'])
-    except Exception:
-        col_short = pd.to_numeric(filtered_df['ORS Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _or_s_pos = tr_short[tr_short > 0]
-    or_s_lo = float(_or_s_pos.min()) if _or_s_pos.size > 0 else 1.0
-    or_s_hi = float(tr_short.max()) if tr_short.max() > 0 else 1.0
-    sizes_short = scaled_diameters(tr_short, min_px=6, max_px=26, lo=or_s_lo, hi=or_s_hi)
-
-    # 3) Punkte plotten
-    or_short_position_size_fig.add_trace(
-        go.Scatter(
-            x=filtered_df['Date'],
-            y=filtered_df['Open Interest'],
-            mode='markers',
-            marker=dict(
-                size=sizes_short,
-                sizemode='diameter',
-                sizeref=1,
-                color=col_short,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="OR Short Position Size",
-                    thickness=15, len=0.75, yanchor='middle', y=0.5
-                )
-            ),
-            text=[
-                f"Date: {d:%Y-%m-%d}<br>"
-                f"Open Interest: {int(oi):,}<br>"
-                f"Traders (Short): {int(t)}<br>"
-                f"PosSize (avg): {float(ps):,.0f}"
-                for d, oi, t, ps in zip(
-                    filtered_df['Date'],
-                    pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                    tr_short,
-                    pd.to_numeric(filtered_df['ORS Position Size'], errors='coerce').fillna(0)
-                )
-            ],
-            hoverinfo='text',
-            showlegend=False
-        )
-    )
-
-    # 4) Bubble-Size-Legende (gleiche Skalierung wie oben)
-    base_s = tr_short[tr_short > 0]
-    if base_s.size >= 3 and base_s.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base_s, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-    for v, s in zip(legend_vals, legend_sizes):
-        or_short_position_size_fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode='markers',
-                marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-                showlegend=True,
-                name=f"{int(v)} Traders",
-                hoverinfo='skip'
-            )
-        )
-
-    # 5) Layout
-    or_short_position_size_fig.update_layout(
-        title='Short Position Size Indicator (Other Reportables)',
-        xaxis_title='Date',
-        yaxis_title='Open Interest',
-        xaxis=dict(showgrid=True, ticks="outside", tickangle=45),
-        yaxis=dict(title='Open Interest', showgrid=True),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.18, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(
-            fig=or_short_position_size_fig,
-            df=filtered_df, x_col='Date', y_col='Open Interest',
-            inner_size=2, inner_color='black'
-        )
-    except Exception:
-        pass
-
-    # --- MM Long Position Size Indicator ---
-    long_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten (Größe = Anzahl Trader)
-    mm_tr_long_raw = pd.to_numeric(filtered_df['Traders M Money Long'], errors='coerce')
-    mm_tr_long = mm_tr_long_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Long)
-    try:
-        mm_col_long = safe_colors(filtered_df['MML Position Size'])
-    except Exception:
-        mm_col_long = pd.to_numeric(filtered_df['MML Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen (z.B. 6–26 px)
-    _mm_l_pos = mm_tr_long[mm_tr_long > 0]
-    mm_l_lo = float(_mm_l_pos.min()) if _mm_l_pos.size > 0 else 1.0
-    mm_l_hi = float(mm_tr_long.max()) if mm_tr_long.max() > 0 else 1.0
-    mm_sizes_long = scaled_diameters(mm_tr_long, min_px=6, max_px=26, lo=mm_l_lo, hi=mm_l_hi)
-
-    # 3) Punkte plotten
-    long_position_size_fig.add_trace(go.Scatter(
-        x=filtered_df['Date'],
-        y=filtered_df['Open Interest'],
-        mode='markers',
-        marker=dict(
-            size=mm_sizes_long,
-            sizemode='diameter',
-            sizeref=1,
-            color=mm_col_long,
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(title="MM Long Position Size", thickness=15, len=0.75, yanchor='middle', y=0.5)
-        ),
-        text=[
-            f"Date: {d:%Y-%m-%d}<br>"
-            f"Open Interest: {int(oi):,}<br>"
-            f"Traders (Long): {int(t)}<br>"
-            f"PosSize (avg): {float(ps):,.0f}"
-            for d, oi, t, ps in zip(
-                filtered_df['Date'],
-                pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                mm_tr_long,
-                pd.to_numeric(filtered_df['MML Position Size'], errors='coerce').fillna(0)
-            )
-        ],
-        hoverinfo='text',
-        showlegend=False
-    ))
-
-    # 4) Bubble-Size-Legende
-    base = mm_tr_long[mm_tr_long > 0]
-    if base.size >= 3 and base.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-    for v, s in zip(legend_vals, legend_sizes):
-        long_position_size_fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='markers',
-            marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-            showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
-        ))
-
-    # 5) Layout
-    long_position_size_fig.update_layout(
-        title='Long Position Size Indicator (Money Managers)',
-        xaxis_title='Date', yaxis_title='Open Interest',
-        xaxis=dict(
-            tickmode='array',
-            tickvals=filtered_df['Date'].dt.year.unique(),
-            ticktext=[str(y) for y in filtered_df['Date'].dt.year.unique()],
-            showgrid=True, ticks="outside", tickangle=45
-        ),
-        yaxis=dict(
-            title='Open Interest', showgrid=True, tick0=0,
-            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000)
-        ),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.2, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(long_position_size_fig, filtered_df, 'Date', 'Open Interest', inner_size=2,
-                                 inner_color='black')
-    except Exception:
-        pass
-
-    # --- MM Short Position Size Indicator ---
-    short_position_size_fig = go.Figure()
-
-    # 1) Daten vorbereiten (Größe = Anzahl Trader)
-    mm_tr_short_raw = pd.to_numeric(filtered_df['Traders M Money Short'], errors='coerce')
-    mm_tr_short = mm_tr_short_raw.fillna(0).clip(lower=0).astype(float)
-
-    # Farbe = Positionsgröße (Short)
-    try:
-        mm_col_short = safe_colors(filtered_df['MMS Position Size'])
-    except Exception:
-        mm_col_short = pd.to_numeric(filtered_df['MMS Position Size'], errors='coerce').fillna(0)
-
-    # 2) Durchmesser explizit auf Pixel mappen
-    _mm_s_pos = mm_tr_short[mm_tr_short > 0]
-    mm_s_lo = float(_mm_s_pos.min()) if _mm_s_pos.size > 0 else 1.0
-    mm_s_hi = float(mm_tr_short.max()) if mm_tr_short.max() > 0 else 1.0
-    mm_sizes_short = scaled_diameters(mm_tr_short, min_px=6, max_px=26, lo=mm_s_lo, hi=mm_s_hi)
-
-    # 3) Punkte plotten
-    short_position_size_fig.add_trace(go.Scatter(
-        x=filtered_df['Date'],
-        y=filtered_df['Open Interest'],
-        mode='markers',
-        marker=dict(
-            size=mm_sizes_short,
-            sizemode='diameter',
-            sizeref=1,
-            color=mm_col_short,
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(title="MM Short Position Size", thickness=15, len=0.75, yanchor='middle', y=0.5)
-        ),
-        text=[
-            f"Date: {d:%Y-%m-%d}<br>"
-            f"Open Interest: {int(oi):,}<br>"
-            f"Traders (Short): {int(t)}<br>"
-            f"PosSize (avg): {float(ps):,.0f}"
-            for d, oi, t, ps in zip(
-                filtered_df['Date'],
-                pd.to_numeric(filtered_df['Open Interest'], errors='coerce').fillna(0),
-                mm_tr_short,
-                pd.to_numeric(filtered_df['MMS Position Size'], errors='coerce').fillna(0)
-            )
-        ],
-        hoverinfo='text',
-        showlegend=False
-    ))
-
-    # 4) Bubble-Size-Legende
-    base_s = mm_tr_short[mm_tr_short > 0]
-    if base_s.size >= 3 and base_s.max() > 1:
-        legend_vals = np.unique(np.round(np.quantile(base_s, [0.25, 0.5, 0.75, 1.0])).astype(int))
-        legend_vals = legend_vals[legend_vals > 0]
-    else:
-        legend_vals = np.array([10, 20, 35], dtype=int)
-
-    legend_sizes = np.linspace(7, 20, len(legend_vals)) if len(legend_vals) > 1 else np.array([13.0])
-    for v, s in zip(legend_vals, legend_sizes):
-        short_position_size_fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='markers',
-            marker=dict(size=float(s), sizemode='diameter', sizeref=1, color='gray', opacity=0.6),
-            showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
-        ))
-
-    # 5) Layout
-    short_position_size_fig.update_layout(
-        title='Short Position Size Indicator (Money Managers)',
-        xaxis_title='Date', yaxis_title='Open Interest',
-        xaxis=dict(
-            tickmode='array',
-            tickvals=filtered_df['Date'].dt.year.unique(),
-            ticktext=[str(y) for y in filtered_df['Date'].dt.year.unique()],
-            showgrid=True, ticks="outside", tickangle=45
-        ),
-        yaxis=dict(
-            title='Open Interest', showgrid=True, tick0=0,
-            dtick=500000 if 'WTI' in selected_market.upper() else (20000 if selected_market in ['Gold', 'Silver', 'Copper'] else 5000)
-        ),
-        legend=dict(title=dict(text="Number of Traders"), itemsizing='trace', x=1.2, y=0.5, font=dict(size=12)),
-        margin=dict(l=60, r=160, t=60, b=60)
-    )
-
-    # 6) letzten Punkt hervorheben
-    try:
-        add_last_point_highlight(short_position_size_fig, filtered_df, 'Date', 'Open Interest', inner_size=2,
-                                 inner_color='black')
-    except Exception:
-        pass
 
     # --- Dry Powder Indicator---
     dry_powder_fig = go.Figure()
@@ -1792,31 +1180,31 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
 
     # MML Wolke
     dry_powder_fig.add_trace(go.Scatter(
-        x=filtered_df['MML Traders'],
-        y=filtered_df['MML Long OI'],
+        x=filtered_df[MML_TRADERS_COL],
+        y=filtered_df[MML_LONG_OI_COL],
         mode='markers',
-        marker=dict(
-            size=BUBBLE_PX,
-            color=COL_LONG, opacity=0.75, line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": BUBBLE_PX,
+            "color": COL_LONG, "opacity": 0.75, "line": {"width": 0.6, "color": 'black'}
+        },
         name='MML'
     ))
 
     # MMS Wolke
     dry_powder_fig.add_trace(go.Scatter(
-        x=filtered_df['MMS Traders'],
-        y=filtered_df['MML Short OI'],
+        x=filtered_df[MMS_TRADERS_COL],
+        y=filtered_df[MML_SHORT_OI_COL],
         mode='markers',
-        marker=dict(
-            size=BUBBLE_PX,
-            color=COL_SHORT, opacity=0.75, line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": BUBBLE_PX,
+            "color": COL_SHORT, "opacity": 0.75, "line": {"width": 0.6, "color": 'black'}
+        },
         name='MMS'
     ))
 
     # x-Range über beide Gruppen
-    x_min = float(min(filtered_df['MML Traders'].min(), filtered_df['MMS Traders'].min()))
-    x_max = float(max(filtered_df['MML Traders'].max(), filtered_df['MMS Traders'].max()))
+    x_min = float(min(filtered_df[MML_TRADERS_COL].min(), filtered_df[MMS_TRADERS_COL].min()))
+    x_max = float(max(filtered_df[MML_TRADERS_COL].max(), filtered_df[MMS_TRADERS_COL].max()))
     xs = np.array([x_min, x_max])
 
     def add_trend(x_series, y_series, color, name):
@@ -1832,129 +1220,46 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         # Unterzug (weiß, breit) für bessere Sichtbarkeit
         dry_powder_fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             name=name, showlegend=False, hoverinfo='skip'
         ))
         # Farblinie oben drauf
         dry_powder_fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=color, width=3),
+            line={"color": color, "width": 3},
             name=name, showlegend=True
         ))
 
     # Trendlinien hinzufügen (durch den ganzen Graph)
-    add_trend(filtered_df['MML Traders'], filtered_df['MML Long OI'], COL_LONG, "MML Trend")
-    add_trend(filtered_df['MMS Traders'], filtered_df['MML Short OI'], COL_SHORT, "MMS Trend")
+    add_trend(filtered_df[MML_TRADERS_COL], filtered_df[MML_LONG_OI_COL], COL_LONG, "MML Trend")
+    add_trend(filtered_df[MMS_TRADERS_COL], filtered_df[MML_SHORT_OI_COL], COL_SHORT, "MMS Trend")
 
     # Most Recent Week
     dry_powder_fig.add_trace(go.Scatter(
-        x=[filtered_df['MML Traders'].iloc[-1]],
-        y=[filtered_df['MML Long OI'].iloc[-1]],
+        x=[filtered_df[MML_TRADERS_COL].iloc[-1]],
+        y=[filtered_df[MML_LONG_OI_COL].iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=True
+        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     dry_powder_fig.add_trace(go.Scatter(
-        x=[filtered_df['MMS Traders'].iloc[-1]],
-        y=[filtered_df['MML Short OI'].iloc[-1]],
+        x=[filtered_df[MMS_TRADERS_COL].iloc[-1]],
+        y=[filtered_df[MML_SHORT_OI_COL].iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=False  # keine doppelte Legende
+        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False  # keine doppelte Legende
     ))
 
     dry_powder_fig.update_layout(
-        title=f"DP Indicator",
-        xaxis=dict(title='Number of Traders', showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False),
-        yaxis=dict(title='Long and Short OI', showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False),
+        title="DP Indicator",
+        xaxis={"title": NUMBER_OF_TRADERS_LABEL, "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False},
+        yaxis={"title": 'Long and Short OI', "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False},
         plot_bgcolor='white',
-        legend_title='Trader Group'
+        legend_title=TRADER_GROUP_COL
     )
 
-    # --- DP Relative Concentration Indicator (konstante Grösse + 8 schwarze Punkte) ---
-    fig_rc = go.Figure()
-
-    TOTAL_OI = pd.to_numeric(filtered_df.get('Open Interest'), errors='coerce')
-
-    def rc(long_col, short_col):
-        return rel_concentration(
-            filtered_df.get(long_col), filtered_df.get(short_col), TOTAL_OI
-        )
-
-    groups = [
-        dict(name='MML', x='Traders M Money Long',
-             rc=rc('Managed Money Long', 'Managed Money Short'), color='#2c7fb8'),
-        dict(name='MMS', x='Traders M Money Short',
-             rc=rc('Managed Money Short', 'Managed Money Long'), color='#7fcdbb'),
-        dict(name='ORL', x='Traders Other Rept Long',
-             rc=rc('Other Reportables Long', 'Other Reportables Short'), color='#f39c12'),
-        dict(name='ORS', x='Traders Other Rept Short',
-             rc=rc('Other Reportables Short', 'Other Reportables Long'), color='#f1c40f'),
-        dict(name='PMPUL', x='Traders Prod/Merc Long',
-             rc=rc('Producer/Merchant/Processor/User Long',
-                   'Producer/Merchant/Processor/User Short'), color='#27ae60'),
-        dict(name='PMPUS', x='Traders Prod/Merc Short',
-             rc=rc('Producer/Merchant/Processor/User Short',
-                   'Producer/Merchant/Processor/User Long'), color='#2ecc71'),
-        dict(name='SDL', x='Traders Swap Long',
-             rc=rc('Swap Dealer Long', 'Swap Dealer Short'), color='#e67e22'),
-        dict(name='SDS', x='Traders Swap Short',
-             rc=rc('Swap Dealer Short', 'Swap Dealer Long'), color='#e74c3c'),
-    ]
-
-    # 1) KONSTANTE Bubble-Grösse in Pixel (für alle gleich)
-    bubble_px = 14
-    recent_px = bubble_px + 6
-
-    # Historische Punkte je Gruppe
-    for g in groups:
-        x = pd.to_numeric(filtered_df.get(g['x']), errors='coerce')
-        y = g['rc']
-        mask = x.notna() & y.notna()
-        if mask.sum() == 0:
-            continue
-
-        fig_rc.add_trace(go.Scatter(
-            x=x[mask],
-            y=y[mask],
-            mode='markers',
-            marker=dict(
-                size=bubble_px,
-                color=g['color'],
-                opacity=0.8,
-                line=dict(width=0.6, color='black')
-            ),
-            name=g['name']
-        ))
-
-    # 2) PRO GRUPPE: schwarzer Punkt für die letzte verfügbare Beobachtung
-    first_legend_done = False
-    for g in groups:
-        x_series = pd.to_numeric(filtered_df.get(g['x']), errors='coerce')
-        y_series = g['rc']
-        mask = x_series.notna() & y_series.notna()
-        if mask.sum() == 0:
-            continue
-        last_idx = y_series[mask].index[-1]
-        x_last = x_series.loc[last_idx]
-        y_last = y_series.loc[last_idx]
-        if pd.notna(x_last) and pd.notna(y_last):
-            fig_rc.add_trace(go.Scatter(
-                x=[x_last], y=[y_last],
-                mode='markers',
-                marker=dict(size=recent_px, color='black', line=dict(width=2, color='white')),
-                name='Most Recent Week',
-                legendgroup='recent',
-                showlegend=not first_legend_done  # nur 1 Legenden-Eintrag
-            ))
-            first_legend_done = True
-
-    fig_rc.update_layout(
-        title="DP Relative Concentration Indicator",
-        xaxis=dict(title='Number of Traders', showgrid=True, gridcolor='LightGray'),
-        yaxis=dict(title='Long and Short Concentration', showgrid=True, gridcolor='LightGray'),
-        plot_bgcolor='white',
-        legend_title='Trader Group'
-    )
+    # --- DP Relative Concentration Indicator ---
+    fig_rc = _build_dp_rc_fig(filtered_df)
 
     # DP Seasonal Indicator
     dp_seasonal_indicator_fig = go.Figure()
@@ -1968,15 +1273,15 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
             continue
 
         dp_seasonal_indicator_fig.add_trace(go.Scatter(
-            x=quarter_data['PMPUL Traders'],
-            y=quarter_data['PMPUL Relative Concentration'],
+            x=quarter_data[PMPUL_TRADERS_COL],
+            y=quarter_data[PMPUL_REL_CONC_COL],
             mode='markers',
-            marker=dict(
-                size=10,  # 🔹 Fixe, einheitliche Bubblegröße
-                color=color,
-                opacity=0.7,
-                line=dict(width=0.6, color='black')
-            ),
+            marker={
+                "size": 10,  # 🔹 Fixe, einheitliche Bubblegröße
+                "color": color,
+                "opacity": 0.7,
+                "line": {"width": 0.6, "color": 'black'}
+            },
             name=quarter
         ))
 
@@ -1985,26 +1290,26 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     recent_data = filtered_df[filtered_df['Date'] == most_recent_date]
     if not recent_data.empty:
         dp_seasonal_indicator_fig.add_trace(go.Scatter(
-            x=recent_data['PMPUL Traders'],
-            y=recent_data['PMPUL Relative Concentration'],
+            x=recent_data[PMPUL_TRADERS_COL],
+            y=recent_data[PMPUL_REL_CONC_COL],
             mode='markers',
-            marker=dict(
-                size=12,  # etwas grösser zur Hervorhebung
-                color='black',
-                symbol='circle',
-                line=dict(width=1.5, color='white')
-            ),
-            name='Most Recent Week'
+            marker={
+                "size": 12,  # etwas grösser zur Hervorhebung
+                "color": 'black',
+                "symbol": 'circle',
+                "line": {"width": 1.5, "color": 'white'}
+            },
+            name=MOST_RECENT_WEEK
         ))
 
     dp_seasonal_indicator_fig.update_layout(
         title=f"DP Seasonal Indicator – {most_recent_date.strftime('%d/%m/%Y')}",
-        xaxis_title="Number of Traders",
+        xaxis_title=NUMBER_OF_TRADERS_LABEL,
         yaxis_title="Long and Short Concentration",
         plot_bgcolor='white',
         legend_title="Quarter",
-        xaxis=dict(showgrid=True, gridcolor='LightGray'),
-        yaxis=dict(showgrid=True, gridcolor='LightGray')
+        xaxis={"showgrid": True, "gridcolor": LIGHTGRAY},
+        yaxis={"showgrid": True, "gridcolor": LIGHTGRAY}
     )
 
     # DP Net Indicators with Medians
@@ -2019,10 +1324,10 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         year_data = filtered_df[filtered_df['Year'] == year]
 
         dp_net_indicators_fig.add_trace(go.Scatter(
-            x=year_data['MM Net Traders'],
-            y=year_data['MM Net OI'],
+            x=year_data[MM_NET_TRADERS_COL],
+            y=year_data[MM_NET_OI_COL],
             mode='markers',
-            marker=dict(size=10, opacity=0.6),
+            marker={"size": 10, "opacity": 0.6},
             name=str(year)
         ))
 
@@ -2031,63 +1336,63 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     first_data = filtered_df[filtered_df['Date'] == first_date]
     
     dp_net_indicators_fig.add_trace(go.Scatter(
-        x=recent_data['MM Net Traders'],
-        y=recent_data['MM Net OI'],
+        x=recent_data[MM_NET_TRADERS_COL],
+        y=recent_data[MM_NET_OI_COL],
         mode='markers',
-        marker=dict(size=12, color='black', symbol='circle'),
-        name='Most Recent Week'
+        marker={"size": 12, "color": 'black', "symbol": 'circle'},
+        name=MOST_RECENT_WEEK
     ))
 
     dp_net_indicators_fig.add_trace(go.Scatter(
-        x=first_data['MM Net Traders'],
-        y=first_data['MM Net OI'],
+        x=first_data[MM_NET_TRADERS_COL],
+        y=first_data[MM_NET_OI_COL],
         mode='markers',
-        marker=dict(size=12, color='red', symbol='circle'),
-        name='First Week'
+        marker={"size": 12, "color": 'red', "symbol": 'circle'},
+        name=FIRST_WEEK_LABEL
     ))
 
     # Adding medians
     dp_net_indicators_fig.add_trace(go.Scatter(
         x=[median_traders, median_traders],
-        y=[filtered_df['MM Net OI'].min(), filtered_df['MM Net OI'].max()],
+        y=[filtered_df[MM_NET_OI_COL].min(), filtered_df[MM_NET_OI_COL].max()],
         mode='lines',
-        line=dict(color='gray', dash='dash'),
+        line={"color": 'gray', "dash": 'dash'},
         name='Median Net Traders'
     ))
 
     dp_net_indicators_fig.add_trace(go.Scatter(
-        x=[filtered_df['MM Net Traders'].min(), filtered_df['MM Net Traders'].max()],
+        x=[filtered_df[MM_NET_TRADERS_COL].min(), filtered_df[MM_NET_TRADERS_COL].max()],
         y=[median_oi, median_oi],
         mode='lines',
-        line=dict(color='gray', dash='dash'),
+        line={"color": 'gray', "dash": 'dash'},
         name='Median Net OI'
     ))
 
     dp_net_indicators_fig.update_layout(
         title='DP Net Indicators with Medians',
         xaxis_title='MM Net Number of Traders',
-        yaxis_title='MM Net OI',
+        yaxis_title=MM_NET_OI_COL,
         legend_title='Year'
     )
 
     # Dry Powder Position Size Indicator (MML & MMS)
     dff = filtered_df
     if mm_type == 'MML':
-        x = dff['Traders M Money Long']
-        y = dff['MML Position Size']
-        color = dff['Open Interest']
-        recent_week = dff['MML Position Size'].iloc[-1]
-        recent_x = dff['Traders M Money Long'].iloc[-1]
-        first_week = dff['MML Position Size'].iloc[0]
-        first_x = dff['Traders M Money Long'].iloc[0]
+        x = dff[TRADERS_MM_LONG_COL]
+        y = dff[MML_POSITION_SIZE_COL]
+        color = dff[OPEN_INTEREST_LABEL]
+        recent_week = dff[MML_POSITION_SIZE_COL].iloc[-1]
+        recent_x = dff[TRADERS_MM_LONG_COL].iloc[-1]
+        first_week = dff[MML_POSITION_SIZE_COL].iloc[0]
+        first_x = dff[TRADERS_MM_LONG_COL].iloc[0]
     else:
-        x = dff['Traders M Money Short']
-        y = dff['MMS Position Size']
-        color = dff['Open Interest']
-        recent_week = dff['MMS Position Size'].iloc[-1]
-        recent_x = dff['Traders M Money Short'].iloc[-1]
-        first_week = dff['MMS Position Size'].iloc[0]
-        first_x = dff['Traders M Money Short'].iloc[0]
+        x = dff[TRADERS_MM_SHORT_COL]
+        y = dff[MMS_POSITION_SIZE_COL]
+        color = dff[OPEN_INTEREST_LABEL]
+        recent_week = dff[MMS_POSITION_SIZE_COL].iloc[-1]
+        recent_x = dff[TRADERS_MM_SHORT_COL].iloc[-1]
+        first_week = dff[MMS_POSITION_SIZE_COL].iloc[0]
+        first_x = dff[TRADERS_MM_SHORT_COL].iloc[0]
 
     median_x = x.median()
     median_y = y.median()
@@ -2098,18 +1403,18 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         x=x,
         y=y,
         mode='markers',
-        marker=dict(
-            size=10,
-            color=color,
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(
-                title='Open Interest',
-                thickness=15,
-                len=0.75,
-                yanchor='middle'
-            )
-        ),
+        marker={
+            "size": 10,
+            "color": color,
+            "colorscale": DEFAULT_COLORSCALE,
+            "showscale": True,
+            "colorbar": {
+                "title": OPEN_INTEREST_LABEL,
+                "thickness": 15,
+                "len": 0.75,
+                "yanchor": 'middle'
+            }
+        },
         text=dff['Date'],
         hoverinfo='text',
         showlegend=False
@@ -2119,31 +1424,31 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
         x=[recent_x],
         y=[recent_week],
         mode='markers',
-        marker=dict(
-            size=12,
-            color='black'
-        ),
-        name='Most Recent Week'
+        marker={
+            "size": 12,
+            "color": 'black'
+        },
+        name=MOST_RECENT_WEEK
     ))
 
     dp_position_size_fig.add_trace(go.Scatter(
         x=[first_x],
         y=[first_week],
         mode='markers',
-        marker=dict(
-            size=12,
-            color='red'
-        ),
-        name='First Week'
+        marker={
+            "size": 12,
+            "color": 'red'
+        },
+        name=FIRST_WEEK_LABEL
     ))
 
     dp_position_size_fig.add_shape(type="line",
                   x0=median_x, y0=0, x1=median_x, y1=max(y),
-                  line=dict(color="Gray", width=1, dash="dash"))
+                  line={"color": "Gray", "width": 1, "dash": "dash"})
 
     dp_position_size_fig.add_shape(type="line",
                   x0=0, y0=median_y, x1=max(x), y1=median_y,
-                  line=dict(color="Gray", width=1, dash="dash"))
+                  line={"color": "Gray", "width": 1, "dash": "dash"})
 
     dp_position_size_fig.update_layout(
         title='DP Position Size Indicator ({})'.format(mm_type),
@@ -2183,20 +1488,20 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
     data = data.loc[mask]
 
     if trader_group == "MML":
-        x = 'Traders M Money Long'
-        y = 'MML Long OI'
-        color = 'PMPUL Relative Concentration'
+        x = TRADERS_MM_LONG_COL
+        y = MML_LONG_OI_COL
+        color = PMPUL_REL_CONC_COL
         title = 'DP Hedging Indicator (MML vs PMPUL)'
         colorbar_title = 'PMPUL OI Range'
-        x_title = 'MM Number of Long Traders'
+        x_title = MM_NUM_LONG_TRADERS_COL
         y_title = 'MM Long OI'
     else:
-        x = 'Traders M Money Short'
-        y = 'MMS Short OI'
-        color = 'PMPUS Relative Concentration'
+        x = TRADERS_MM_SHORT_COL
+        y = MMS_SHORT_OI_COL
+        color = PMPUS_REL_CONC_COL
         title = 'DP Hedging Indicator (MMS vs PMPUS)'
         colorbar_title = 'PMPUS OI Range'
-        x_title = 'MM Number of Short Traders'
+        x_title = MM_NUM_SHORT_TRADERS_COL
         y_title = 'MM Short OI'
 
     # Vorab die gewünschten Achsenranges bestimmen (benötigen wir auch für die Trendlinie)
@@ -2207,7 +1512,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
 
     # Haupt-Scatter
     # --- Bubble sizing---
-    oi = pd.to_numeric(data['Open Interest'], errors='coerce').abs()
+    oi = pd.to_numeric(data[OPEN_INTEREST_LABEL], errors='coerce').abs()
 
     desired_max_px = 26
     desired_min_px = 6
@@ -2217,17 +1522,17 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
         x=data[x],
         y=data[y],
         mode='markers',
-        marker=dict(
-            size=oi,
-            sizemode='area',
-            sizeref=sizeref,
-            sizemin=desired_min_px,
-            color=data[color],
-            colorscale='RdBu',
-            showscale=True,
-            colorbar=dict(title=colorbar_title, len=0.5, x=1.1)
-        ),
-        text=data['Market Names'],
+        marker={
+            "size": oi,
+            "sizemode": 'area',
+            "sizeref": sizeref,
+            "sizemin": desired_min_px,
+            "color": data[color],
+            "colorscale": 'RdBu',
+            "showscale": True,
+            "colorbar": {"title": colorbar_title, "len": 0.5, "x": 1.1}
+        },
+        text=data[MARKET_NAMES_COL],
         hoverinfo='text',
         showlegend=False
     )
@@ -2238,13 +1543,13 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
 
     first_week_trace = go.Scatter(
         x=[first_week[x]], y=[first_week[y]],
-        mode='markers', marker=dict(color='red', size=15),
-        name='First Week'
+        mode='markers', marker={"color": 'red', "size": 15},
+        name=FIRST_WEEK_LABEL
     )
     last_week_trace = go.Scatter(
         x=[last_week[x]], y=[last_week[y]],
-        mode='markers', marker=dict(color='black', size=15),
-        name='Most Recent Week'
+        mode='markers', marker={"color": 'black', "size": 15},
+        name=MOST_RECENT_WEEK
     )
 
     # --- Trendlinie (OLS) - über die ganze Plotbreite, solid, ohne Legende/Annotation ---
@@ -2260,7 +1565,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
         trend_trace = go.Scatter(
             x=x_line, y=y_line,
             mode='lines',
-            line=dict(color='black', width=2),
+            line={"color": 'black', "width": 2},
             hoverinfo='skip',
             showlegend=False
         )
@@ -2268,8 +1573,8 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
     # Layout
     layout = go.Layout(
         title=title,
-        xaxis=dict(title=x_title, range=[x_min, x_max]),
-        yaxis=dict(title=y_title, range=[y_min, y_max]),
+        xaxis={"title": x_title, "range": [x_min, x_max]},
+        yaxis={"title": y_title, "range": [y_min, y_max]},
         showlegend=True,
         width=1000, height=600
     )
@@ -2296,7 +1601,7 @@ def update_concentration_clustering_graph(start_date, end_date, selected_indicat
                              (df_pivoted['Date'] <= _ed)]
     
     # Aggregate the data by market, keeping only numeric columns
-    agg_df = filtered_df.groupby('Market Names').mean(numeric_only=True).reset_index()
+    agg_df = filtered_df.groupby(MARKET_NAMES_COL).mean(numeric_only=True).reset_index()
     
     conc_col, clust_col = _indicator_cols(selected_indicator)
     concentration_range, clustering_range = calculate_ranges(agg_df, conc_col, clust_col)
@@ -2306,18 +1611,18 @@ def update_concentration_clustering_graph(start_date, end_date, selected_indicat
     fig.add_trace(go.Scatter(
         x=clustering_range,
         y=concentration_range,
-        mode='markers+text',
-        text=agg_df['Market Names'],
+        mode=MARKERS_TEXT_MODE,
+        text=agg_df[MARKET_NAMES_COL],
         textposition='top center',
-        marker=dict(size=10, opacity=0.6, color='green', line=dict(width=1, color='black'))
+        marker={"size": 10, "opacity": 0.6, "color": 'green', "line": {"width": 1, "color": 'black'}}
     ))
     
     fig.update_layout(
         title=f'DP Concentration/Clustering Indicator ({selected_indicator})',
         xaxis_title='MM Long Clustering Range' if selected_indicator == 'MML' else 'MM Short Clustering Range',
         yaxis_title='MM Long Concentration Range' if selected_indicator == 'MML' else 'MM Short Concentration Range',
-        xaxis=dict(range=[-5, 110]),  # Adjusted to ensure all bubbles are visible
-        yaxis=dict(range=[-5, 110]),  # Adjusted to ensure all bubbles are visible
+        xaxis={"range": [-5, 110]},  # Adjusted to ensure all bubbles are visible
+        yaxis={"range": [-5, 110]},  # Adjusted to ensure all bubbles are visible
         showlegend=False
     )
     
@@ -2329,14 +1634,14 @@ def update_concentration_clustering_graph(start_date, end_date, selected_indicat
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('positioning-price-concentration-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('ppci-mm-radio', 'value')]
 )
 def update_ppci(selected_market, start_date, end_date, direction):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy()
@@ -2348,9 +1653,9 @@ def update_ppci(selected_market, start_date, end_date, direction):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     # Long/Short Concentration (%)
-    total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
-    dff['_long_conc']  = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
-    dff['_short_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
+    total_oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').replace(0, np.nan)
+    dff['_long_conc']  = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce') / total_oi
+    dff['_short_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce') / total_oi
 
     if direction == 'MML':
         color_col      = '_long_conc'
@@ -2361,7 +1666,7 @@ def update_ppci(selected_market, start_date, end_date, direction):
 
     # Merge Databento 2nd-nearby prices (futures_deferred_prices)
     price_col = _ppci_get_2nd_nearby_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
         prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -2380,7 +1685,7 @@ def update_ppci(selected_market, start_date, end_date, direction):
         y_title = f'Price (keine Daten für {selected_market})'
 
     # Bubble sizing: Total Open Interest
-    oi = pd.to_numeric(dff['Open Interest'], errors='coerce').fillna(0).abs()
+    oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').fillna(0).abs()
 
     MIN_PX = 8
     MAX_PX = 30
@@ -2410,21 +1715,21 @@ def update_ppci(selected_market, start_date, end_date, direction):
         x=dff['Date'],
         y=y_vals,
         mode='markers',
-        marker=dict(
-            size=sizes_oi,
-            sizemode='diameter',
-            sizeref=1,
-            color=color_vals,
-            colorscale='RdYlGn',
-            showscale=True,
-            colorbar=dict(
-                title=colorbar_title,
-                thickness=15,
-                len=0.75,
-                yanchor='middle',
-                y=0.5
-            ),
-        ),
+        marker={
+            "size": sizes_oi,
+            "sizemode": 'diameter',
+            "sizeref": 1,
+            "color": color_vals,
+            "colorscale": 'RdYlGn',
+            "showscale": True,
+            "colorbar": {
+                "title": colorbar_title,
+                "thickness": 15,
+                "len": 0.75,
+                "yanchor": 'middle',
+                "y": 0.5
+            },
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -2446,13 +1751,13 @@ def update_ppci(selected_market, start_date, end_date, direction):
         fig.add_trace(go.Scatter(
             x=[None], y=[None],
             mode='markers',
-            marker=dict(
-                size=float(s),
-                sizemode='diameter',
-                sizeref=1,
-                color='gray',
-                opacity=0.6
-            ),
+            marker={
+                "size": float(s),
+                "sizemode": 'diameter',
+                "sizeref": 1,
+                "color": 'gray',
+                "opacity": 0.6
+            },
             showlegend=True,
             name=f"{int(v):,}",
             hoverinfo='skip'
@@ -2464,28 +1769,28 @@ def update_ppci(selected_market, start_date, end_date, direction):
             x=[dff.iloc[-1]['Date']],
             y=[y_vals.iloc[-1]],
             mode='markers',
-            marker=dict(
-                size=10,
-                color='black',
-                opacity=1.0,
-                line=dict(width=4, color='red')
-            ),
+            marker={
+                "size": 10,
+                "color": 'black',
+                "opacity": 1.0,
+                "line": {"width": 4, "color": 'red'}
+            },
             showlegend=False,
             hoverinfo='skip'
         ))
 
     fig.update_layout(
         title=f'Positioning Price Concentration Indicator ({direction}) – {selected_market}',
-        xaxis_title='Report Date',
+        xaxis_title=REPORT_DATE_LABEL,
         yaxis_title=y_title,
-        legend=dict(
-            title=dict(text='Total Open Interest'),
-            itemsizing='trace',
-            x=1.2,
-            y=0.5,
-            font=dict(size=12)
-        ),
-        margin=dict(l=60, r=160, t=60, b=60),
+        legend={
+            "title": {"text": 'Total Open Interest'},
+            "itemsizing": 'trace',
+            "x": 1.2,
+            "y": 0.5,
+            "font": {"size": 12}
+        },
+        margin={"l": 60, "r": 160, "t": 60, "b": 60},
         height=600,
     )
 
@@ -2499,14 +1804,14 @@ def update_ppci(selected_market, start_date, end_date, direction):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('pp-clustering-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('ppci-clustering-radio', 'value')]
 )
 def update_pp_clustering(selected_market, start_date, end_date, mm_type):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy()
@@ -2518,15 +1823,15 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if mm_type == 'MML':
-        color_col      = 'Long Clustering'
+        color_col      = LONG_CLUSTERING_COL
         colorbar_title = 'MML Clustering'
     else:
-        color_col      = 'Short Clustering'
+        color_col      = SHORT_CLUSTERING_COL
         colorbar_title = 'MMS Clustering'
 
     # Databento 2nd-nearby prices (futures_deferred_prices)
     price_col = _ppci_get_2nd_nearby_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
         prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -2544,7 +1849,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         y_title = f'Price (keine Daten für {selected_market})'
 
     # Bubble-Größen (identisch zu PPCI)
-    oi = pd.to_numeric(dff['Open Interest'], errors='coerce').fillna(0).abs()
+    oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').fillna(0).abs()
     MIN_PX = 8
     MAX_PX = 30
     _oi_pos = oi[oi > 0]
@@ -2572,21 +1877,21 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         x=dff['Date'],
         y=y_vals,
         mode='markers',
-        marker=dict(
-            size=sizes_oi,
-            sizemode='diameter',
-            sizeref=1,
-            color=color_vals,
-            colorscale='RdYlGn',
-            showscale=True,
-            colorbar=dict(
-                title=colorbar_title,
-                thickness=15,
-                len=0.75,
-                yanchor='middle',
-                y=0.5
-            ),
-        ),
+        marker={
+            "size": sizes_oi,
+            "sizemode": 'diameter',
+            "sizeref": 1,
+            "color": color_vals,
+            "colorscale": 'RdYlGn',
+            "showscale": True,
+            "colorbar": {
+                "title": colorbar_title,
+                "thickness": 15,
+                "len": 0.75,
+                "yanchor": 'middle',
+                "y": 0.5
+            },
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -2608,13 +1913,13 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         fig.add_trace(go.Scatter(
             x=[None], y=[None],
             mode='markers',
-            marker=dict(
-                size=float(s),
-                sizemode='diameter',
-                sizeref=1,
-                color='gray',
-                opacity=0.6
-            ),
+            marker={
+                "size": float(s),
+                "sizemode": 'diameter',
+                "sizeref": 1,
+                "color": 'gray',
+                "opacity": 0.6
+            },
             showlegend=True,
             name=f"{int(v):,}",
             hoverinfo='skip'
@@ -2626,28 +1931,28 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
             x=[dff.iloc[-1]['Date']],
             y=[y_vals.iloc[-1]],
             mode='markers',
-            marker=dict(
-                size=10,
-                color='black',
-                opacity=1.0,
-                line=dict(width=4, color='red')
-            ),
+            marker={
+                "size": 10,
+                "color": 'black',
+                "opacity": 1.0,
+                "line": {"width": 4, "color": 'red'}
+            },
             showlegend=False,
             hoverinfo='skip'
         ))
 
     fig.update_layout(
         title=f'PP Clustering Indicator ({mm_type}) – {selected_market}',
-        xaxis_title='Report Date',
+        xaxis_title=REPORT_DATE_LABEL,
         yaxis_title=y_title,
-        legend=dict(
-            title=dict(text='Total Open Interest'),
-            itemsizing='trace',
-            x=1.2,
-            y=0.5,
-            font=dict(size=12)
-        ),
-        margin=dict(l=60, r=160, t=60, b=60),
+        legend={
+            "title": {"text": 'Total Open Interest'},
+            "itemsizing": 'trace',
+            "x": 1.2,
+            "y": 0.5,
+            "font": {"size": 12}
+        },
+        margin={"l": 60, "r": 160, "t": 60, "b": 60},
         height=600,
     )
 
@@ -2662,14 +1967,14 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('pp-position-size-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('ppci-position-size-radio', 'value')]
 )
 def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy()
@@ -2682,7 +1987,7 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
 
     # Databento 2nd-nearby prices (futures_deferred_prices)
     price_col = _ppci_get_2nd_nearby_col(selected_market)
-    y_title = 'Price (2nd Nearby) (Report Date)'
+    y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
         prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
@@ -2705,13 +2010,13 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     contract_size = _ppci_get_contract_size(selected_market)
 
     if mm_type == 'MML':
-        traders_col    = 'Traders M Money Long'
-        pos_size_contr = pd.to_numeric(dff['MML Position Size'], errors='coerce')
+        traders_col    = TRADERS_MM_LONG_COL
+        pos_size_contr = pd.to_numeric(dff[MML_POSITION_SIZE_COL], errors='coerce')
         colorbar_title = 'Long Position Size ($)'
         size_legend_title = 'Number of Long Traders'
     else:
-        traders_col    = 'Traders M Money Short'
-        pos_size_contr = pd.to_numeric(dff['MMS Position Size'], errors='coerce')
+        traders_col    = TRADERS_MM_SHORT_COL
+        pos_size_contr = pd.to_numeric(dff[MMS_POSITION_SIZE_COL], errors='coerce')
         colorbar_title = 'Short Position Size ($)'
         size_legend_title = 'Number of Short Traders'
 
@@ -2745,21 +2050,21 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
         x=dff['Date'],
         y=y_vals,
         mode='markers',
-        marker=dict(
-            size=sizes_traders,
-            sizemode='diameter',
-            sizeref=1,
-            color=color_vals,
-            colorscale='RdYlGn',
-            showscale=True,
-            colorbar=dict(
-                title=colorbar_title,
-                thickness=15,
-                len=0.75,
-                yanchor='middle',
-                y=0.5
-            ),
-        ),
+        marker={
+            "size": sizes_traders,
+            "sizemode": 'diameter',
+            "sizeref": 1,
+            "color": color_vals,
+            "colorscale": 'RdYlGn',
+            "showscale": True,
+            "colorbar": {
+                "title": colorbar_title,
+                "thickness": 15,
+                "len": 0.75,
+                "yanchor": 'middle',
+                "y": 0.5
+            },
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -2781,13 +2086,13 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
         fig.add_trace(go.Scatter(
             x=[None], y=[None],
             mode='markers',
-            marker=dict(
-                size=float(s),
-                sizemode='diameter',
-                sizeref=1,
-                color='gray',
-                opacity=0.6
-            ),
+            marker={
+                "size": float(s),
+                "sizemode": 'diameter',
+                "sizeref": 1,
+                "color": 'gray',
+                "opacity": 0.6
+            },
             showlegend=True,
             name=f"{int(v):,}",
             hoverinfo='skip'
@@ -2799,28 +2104,28 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
             x=[dff.iloc[-1]['Date']],
             y=[y_vals.iloc[-1]],
             mode='markers',
-            marker=dict(
-                size=10,
-                color='black',
-                opacity=1.0,
-                line=dict(width=4, color='red')
-            ),
+            marker={
+                "size": 10,
+                "color": 'black',
+                "opacity": 1.0,
+                "line": {"width": 4, "color": 'red'}
+            },
             showlegend=False,
             hoverinfo='skip'
         ))
 
     fig.update_layout(
         title=f'PP Position Size Indicator ({mm_type}) – {selected_market}',
-        xaxis_title='Report Date',
+        xaxis_title=REPORT_DATE_LABEL,
         yaxis_title=y_title,
-        legend=dict(
-            title=dict(text=size_legend_title),
-            itemsizing='trace',
-            x=1.2,
-            y=0.5,
-            font=dict(size=12)
-        ),
-        margin=dict(l=60, r=160, t=60, b=60),
+        legend={
+            "title": {"text": size_legend_title},
+            "itemsizing": 'trace',
+            "x": 1.2,
+            "y": 0.5,
+            "font": {"size": 12}
+        },
+        margin={"l": 60, "r": 160, "t": 60, "b": 60},
         height=600,
     )
 
@@ -2838,13 +2143,13 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-notional-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date')]
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date')]
 )
 def update_dp_notional(selected_market, start_date, end_date):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -2873,14 +2178,14 @@ def update_dp_notional(selected_market, start_date, end_date):
     # Notional Exposure in USD bn
     # Formel: Kontrakte × Kontraktgröße (Einheiten/Kontrakt) × Preis (USD/Einheit) / 1e9
     contract_size = _ppci_get_contract_size(selected_market)
-    mml_oi = pd.to_numeric(dff['Managed Money Long'],  errors='coerce')
-    mms_oi = pd.to_numeric(dff['Managed Money Short'], errors='coerce')
+    mml_oi = pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce')
+    mms_oi = pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce')
 
     y_mml =  mml_oi * contract_size * price_series / 1e9   # positiv
     y_mms = -mms_oi * contract_size * price_series / 1e9   # negativ
 
-    x_mml = pd.to_numeric(dff['MML Traders'], errors='coerce')
-    x_mms = pd.to_numeric(dff['MMS Traders'], errors='coerce')
+    x_mml = pd.to_numeric(dff[MML_TRADERS_COL], errors='coerce')
+    x_mms = pd.to_numeric(dff[MMS_TRADERS_COL], errors='coerce')
 
     BUBBLE_PX = 14
     desired_max_px = 28
@@ -2894,20 +2199,20 @@ def update_dp_notional(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=x_mml, y=y_mml,
         mode='markers',
-        marker=dict(
-            size=BUBBLE_PX,
-            color=COL_LONG, opacity=0.75, line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": BUBBLE_PX,
+            "color": COL_LONG, "opacity": 0.75, "line": {"width": 0.6, "color": 'black'}
+        },
         name='MML',
         hovertemplate='Traders: %{x}<br>Notional: %{y:.2f} USD bn<extra>MML</extra>'
     ))
     fig.add_trace(go.Scatter(
         x=x_mms, y=y_mms,
         mode='markers',
-        marker=dict(
-            size=BUBBLE_PX,
-            color=COL_SHORT, opacity=0.75, line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": BUBBLE_PX,
+            "color": COL_SHORT, "opacity": 0.75, "line": {"width": 0.6, "color": 'black'}
+        },
         name='MMS',
         hovertemplate='Traders: %{x}<br>Notional: %{y:.2f} USD bn<extra>MMS</extra>'
     ))
@@ -2927,12 +2232,12 @@ def update_dp_notional(selected_market, start_date, end_date):
         ys = m * xs + b
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             showlegend=False, hoverinfo='skip'
         ))
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=color, width=3),
+            line={"color": color, "width": 3},
             name=label, showlegend=True
         ))
 
@@ -2943,29 +2248,29 @@ def update_dp_notional(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=[x_mml.iloc[-1]], y=[y_mml.iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=True
+        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     fig.add_trace(go.Scatter(
         x=[x_mms.iloc[-1]], y=[y_mms.iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px + 4, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=False
+        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
     fig.update_layout(
         title='DP Notional Indicator',
-        xaxis=dict(
-            title='Number of Traders',
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title='Long and Short $ Exposure (USD bn)',
-            showgrid=True, gridcolor='LightGray', gridwidth=2,
-            zeroline=True, zerolinecolor='black', zerolinewidth=1
-        ),
+        xaxis={
+            "title": NUMBER_OF_TRADERS_LABEL,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": 'Long and Short $ Exposure (USD bn)',
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
+            "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1
+        },
         plot_bgcolor='white',
-        legend_title='Trader Group',
+        legend_title=TRADER_GROUP_COL,
         height=600,
     )
 
@@ -2981,13 +2286,13 @@ def update_dp_notional(selected_market, start_date, end_date):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-time-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date')]
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date')]
 )
 def update_dp_time(selected_market, start_date, end_date):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -2996,24 +2301,24 @@ def update_dp_time(selected_market, start_date, end_date):
         return go.Figure()
 
     # Konzentration (%) – identisch zum PPCI-Callback
-    total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
-    dff['_y_mml'] =  100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
-    dff['_y_mms'] = -100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
+    total_oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').replace(0, np.nan)
+    dff['_y_mml'] =  100.0 * pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce') / total_oi
+    dff['_y_mms'] = -100.0 * pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce') / total_oi
 
-    x_mml = pd.to_numeric(dff['MML Traders'], errors='coerce')
-    x_mms = pd.to_numeric(dff['MMS Traders'], errors='coerce')
+    x_mml = pd.to_numeric(dff[MML_TRADERS_COL], errors='coerce')
+    x_mms = pd.to_numeric(dff[MMS_TRADERS_COL], errors='coerce')
 
     fig = go.Figure()
 
     # Dummy-Traces für Shape-Legende (MML / MMS)
     fig.add_trace(go.Scatter(
         x=[None], y=[None], mode='markers',
-        marker=dict(symbol='circle', color='gray', size=9),
+        marker={"symbol": 'circle', "color": 'gray', "size": 9},
         name='MML', legendgroup='shape_mml'
     ))
     fig.add_trace(go.Scatter(
         x=[None], y=[None], mode='markers',
-        marker=dict(symbol='triangle-down', color='gray', size=9),
+        marker={"symbol": 'triangle-down', "color": 'gray', "size": 9},
         name='MMS', legendgroup='shape_mms'
     ))
 
@@ -3024,7 +2329,7 @@ def update_dp_time(selected_market, start_date, end_date):
         fig.add_trace(go.Scatter(
             x=x_mml[mask], y=dff['_y_mml'][mask],
             mode='markers',
-            marker=dict(symbol='circle', size=12, opacity=0.75),
+            marker={"symbol": 'circle', "size": 12, "opacity": 0.75},
             name=str(year), legendgroup=str(year), showlegend=True,
             hovertemplate=(
                 f'Year: {year}<br>'
@@ -3036,7 +2341,7 @@ def update_dp_time(selected_market, start_date, end_date):
         fig.add_trace(go.Scatter(
             x=x_mms[mask], y=dff['_y_mms'][mask],
             mode='markers',
-            marker=dict(symbol='triangle-down', size=12, opacity=0.75),
+            marker={"symbol": 'triangle-down', "size": 12, "opacity": 0.75},
             name=str(year), legendgroup=str(year), showlegend=False,
             hovertemplate=(
                 f'Year: {year}<br>'
@@ -3061,12 +2366,12 @@ def update_dp_time(selected_market, start_date, end_date):
             ys = m * xs_arr + b
             fig.add_trace(go.Scatter(
                 x=xs_arr, y=ys, mode='lines',
-                line=dict(color='white', width=7),
+                line={"color": 'white', "width": 7},
                 showlegend=False, hoverinfo='skip'
             ))
             fig.add_trace(go.Scatter(
                 x=xs_arr, y=ys, mode='lines',
-                line=dict(color=color, width=3),
+                line={"color": color, "width": 3},
                 name=label, showlegend=True
             ))
 
@@ -3078,27 +2383,27 @@ def update_dp_time(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=[x_mml.iloc[-1]], y=[dff['_y_mml'].iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=True
+        marker={"size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     fig.add_trace(go.Scatter(
         x=[x_mms.iloc[-1]], y=[dff['_y_mms'].iloc[-1]],
         mode='markers',
-        marker=dict(size=desired_max_px, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week', legendgroup='recent', showlegend=False
+        marker={"size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
     fig.update_layout(
         title='DP Time Indicator',
-        xaxis=dict(
-            title='Number of Traders',
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title='Long and Short Concentration (%)',
-            showgrid=True, gridcolor='LightGray', gridwidth=2,
-            zeroline=True, zerolinecolor='black', zerolinewidth=1
-        ),
+        xaxis={
+            "title": NUMBER_OF_TRADERS_LABEL,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": 'Long and Short Concentration (%)',
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
+            "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1
+        },
         plot_bgcolor='white',
         legend_title='Year',
         height=600,
@@ -3115,14 +2420,14 @@ def update_dp_time(selected_market, start_date, end_date):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-price-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-price-radio', 'value')]
 )
 def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3131,14 +2436,14 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
         return go.Figure()
 
     if pmpu_side == 'PMPUL':
-        x_col    = 'PMPUL Traders'
-        y_col    = 'Producer/Merchant/Processor/User Long'
+        x_col    = PMPUL_TRADERS_COL
+        y_col    = PMPU_LONG_COL
         x_title  = 'PMPU Number of Long Traders'
         y_title  = 'PMPU Long OI (Contracts)'
         pt_title = 'DP Price Indicator (PMPU Long)'
     else:
         x_col    = 'PMPUS Traders'
-        y_col    = 'Producer/Merchant/Processor/User Short'
+        y_col    = PMPU_SHORT_COL
         x_title  = 'PMPU Number of Short Traders'
         y_title  = 'PMPU Short OI (Contracts)'
         pt_title = 'DP Price Indicator (PMPU Short)'
@@ -3187,8 +2492,8 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
         fig.add_trace(go.Scatter(
             x=x_vals.values[mask_noprice], y=y_vals.values[mask_noprice],
             mode='markers',
-            marker=dict(size=14, color='lightgrey', opacity=0.7,
-                        line=dict(width=0.6, color='black')),
+            marker={"size": 14, "color": 'lightgrey', "opacity": 0.7,
+                        "line": {"width": 0.6, "color": 'black'}},
             text=hover_arr[mask_noprice],
             hoverinfo='text',
             name='Keine Preisdaten',
@@ -3200,15 +2505,15 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
         fig.add_trace(go.Scatter(
             x=x_vals.values[mask_price], y=y_vals.values[mask_price],
             mode='markers',
-            marker=dict(
-                size=14,
-                color=color_vals.values[mask_price],
-                colorscale='RdYlGn',
-                showscale=True,
-                colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-                opacity=0.85,
-                line=dict(width=0.6, color='black')
-            ),
+            marker={
+                "size": 14,
+                "color": color_vals.values[mask_price],
+                "colorscale": 'RdYlGn',
+                "showscale": True,
+                "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75},
+                "opacity": 0.85,
+                "line": {"width": 0.6, "color": 'black'}
+            },
             text=hover_arr[mask_price],
             hoverinfo='text',
             name='Price 2nd Nearby',
@@ -3219,22 +2524,22 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=pt_title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
-        legend=dict(title='Legend', itemsizing='constant'),
+        legend={"title": 'Legend', "itemsizing": 'constant'},
         height=600,
     )
 
@@ -3248,16 +2553,33 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
 #   Positiv → Contango (grün), Negativ → Backwardation (rot)
 # Colorscale: RdYlGn (identisch zu DP Price Indicator)
 # ---------------------------------------------------------------------------
+def _build_dp_curve_hover(dates_str, x_vals, y_vals, color_vals, x_title, y_title):
+    """Baut die Hover-Texte für den DP Curve Indicator auf."""
+    hover_text = []
+    for d, x, y, c in zip(dates_str, x_vals.fillna(0), y_vals.fillna(0), color_vals):
+        if pd.notna(c):
+            structure = 'Contango' if c > 0 else 'Backwardation'
+            curve_str = f'{c:.2f}%'
+        else:
+            structure = 'n/a'
+            curve_str = 'n/a'
+        hover_text.append(
+            f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}'
+            f'<br>Curve Range: {curve_str} ({structure})'
+        )
+    return hover_text
+
+
 @app.callback(
     Output('dp-curve-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-curve-radio', 'value')]
 )
 def update_dp_curve(selected_market, start_date, end_date, mm_side):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3266,16 +2588,16 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
         return go.Figure()
 
     if mm_side == 'MML':
-        x_col    = 'MML Traders'
-        y_col    = 'MML Long OI'
-        x_title  = 'MM Number of Long Traders'
-        y_title  = 'MM Long OI (Contracts)'
+        x_col    = MML_TRADERS_COL
+        y_col    = MML_LONG_OI_COL
+        x_title  = MM_NUM_LONG_TRADERS_COL
+        y_title  = MM_LONG_OI_CONTRACTS_COL
         pt_title = 'DP Curve Indicator (MM Long)'
     else:
-        x_col    = 'MMS Traders'
-        y_col    = 'MMS Short OI'
-        x_title  = 'MM Number of Short Traders'
-        y_title  = 'MM Short OI (Contracts)'
+        x_col    = MMS_TRADERS_COL
+        y_col    = MMS_SHORT_OI_COL
+        x_title  = MM_NUM_SHORT_TRADERS_COL
+        y_title  = MM_SHORT_OI_CONTRACTS_COL
         pt_title = 'DP Curve Indicator (MM Short)'
 
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
@@ -3303,28 +2625,15 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
             tolerance=pd.Timedelta(days=7)
         )
         color_vals     = pd.to_numeric(dff['_curve_range'], errors='coerce')
-        colorbar_title = 'Curve Range (%)'
     else:
         color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
-        colorbar_title = 'Curve Range (n/a)'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
     y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
 
     # Hover
-    dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
-    hover_text = []
-    for d, x, y, c in zip(dates_str, x_vals.fillna(0), y_vals.fillna(0), color_vals):
-        if pd.notna(c):
-            structure = 'Contango' if c > 0 else 'Backwardation'
-            curve_str = f'{c:.2f}%'
-        else:
-            structure = 'n/a'
-            curve_str = 'n/a'
-        hover_text.append(
-            f'Date: {d}<br>{x_title}: {x:.0f}<br>{y_title}: {y:,.0f}'
-            f'<br>Curve Range: {curve_str} ({structure})'
-        )
+    dates_str  = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
+    hover_text = _build_dp_curve_hover(dates_str, x_vals, y_vals, color_vals, x_title, y_title)
 
     # Binäre Farb-Logik: Grün = Contango (c > 0), Rot = Backwardation (c < 0)
     _COL_CONTANGO      = '#2ca02c'   # grün
@@ -3343,8 +2652,8 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
         fig.add_trace(go.Scatter(
             x=x_vals.values[mask_n], y=y_vals.values[mask_n],
             mode='markers',
-            marker=dict(size=_MARKER_SIZE, color=_COL_NODATA, opacity=0.6,
-                        line=dict(width=0.6, color='black')),
+            marker={"size": _MARKER_SIZE, "color": _COL_NODATA, "opacity": 0.6,
+                        "line": {"width": 0.6, "color": 'black'}},
             text=hover_arr[mask_n],
             hoverinfo='text',
             name='Keine Kurvendaten',
@@ -3355,8 +2664,8 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
         fig.add_trace(go.Scatter(
             x=x_vals.values[mask_b], y=y_vals.values[mask_b],
             mode='markers',
-            marker=dict(size=_MARKER_SIZE, color=_COL_BACKWARDATION, opacity=0.85,
-                        line=dict(width=0.6, color='black')),
+            marker={"size": _MARKER_SIZE, "color": _COL_BACKWARDATION, "opacity": 0.85,
+                        "line": {"width": 0.6, "color": 'black'}},
             text=hover_arr[mask_b],
             hoverinfo='text',
             name='Backwardation',
@@ -3367,8 +2676,8 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
         fig.add_trace(go.Scatter(
             x=x_vals.values[mask_c], y=y_vals.values[mask_c],
             mode='markers',
-            marker=dict(size=_MARKER_SIZE, color=_COL_CONTANGO, opacity=0.85,
-                        line=dict(width=0.6, color='black')),
+            marker={"size": _MARKER_SIZE, "color": _COL_CONTANGO, "opacity": 0.85,
+                        "line": {"width": 0.6, "color": 'black'}},
             text=hover_arr[mask_c],
             hoverinfo='text',
             name='Contango',
@@ -3381,19 +2690,19 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[None], y=[None],
         mode='markers',
-        marker=dict(
-            colorscale=[[0, '#d62728'], [1, '#2ca02c']],
-            showscale=True,
-            cmin=c_min,
-            cmax=c_max,
-            colorbar=dict(
-                title='Curve Range (%)<br>(Report Date)',
-                thickness=15,
-                len=0.5,
-                tickvals=[c_min, c_max],
-                ticktext=[f'{c_min:.2f}', f'{c_max:.2f}'],
-            )
-        ),
+        marker={
+            "colorscale": [[0, '#d62728'], [1, '#2ca02c']],
+            "showscale": True,
+            "cmin": c_min,
+            "cmax": c_max,
+            "colorbar": {
+                "title": 'Curve Range (%)<br>(Report Date)',
+                "thickness": 15,
+                "len": 0.5,
+                "tickvals": [c_min, c_max],
+                "ticktext": [f'{c_min:.2f}', f'{c_max:.2f}'],
+            }
+        },
         hoverinfo='skip',
         showlegend=False
     ))
@@ -3402,22 +2711,22 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=_MARKER_SIZE + 4, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": _MARKER_SIZE + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=pt_title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
-        legend=dict(title='Curve Structure', itemsizing='constant'),
+        legend={"title": 'Curve Structure', "itemsizing": 'constant'},
         height=600,
     )
 
@@ -3432,14 +2741,14 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-vix-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-vix-radio', 'value')]
 )
 def update_dp_vix(selected_market, start_date, end_date, mm_side):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3448,16 +2757,16 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         return go.Figure()
 
     if mm_side == 'MML':
-        x_col   = 'MML Traders'
-        y_col   = 'MML Long OI'
-        x_title = 'MM Number of Long Traders'
-        y_title = 'MM Long OI (Contracts)'
+        x_col   = MML_TRADERS_COL
+        y_col   = MML_LONG_OI_COL
+        x_title = MM_NUM_LONG_TRADERS_COL
+        y_title = MM_LONG_OI_CONTRACTS_COL
         title   = 'DP Factor (VIX) Indicator – MML'
     else:
-        x_col   = 'MMS Traders'
-        y_col   = 'MMS Short OI'
-        x_title = 'MM Number of Short Traders'
-        y_title = 'MM Short OI (Contracts)'
+        x_col   = MMS_TRADERS_COL
+        y_col   = MMS_SHORT_OI_COL
+        x_title = MM_NUM_SHORT_TRADERS_COL
+        y_title = MM_SHORT_OI_CONTRACTS_COL
         title   = 'DP Factor (VIX) Indicator – MMS'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
@@ -3500,15 +2809,15 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=x_vals, y=y_vals,
         mode='markers',
-        marker=dict(
-            size=14,
-            color=color_vals,
-            colorscale='RdYlGn_r',   # hoher VIX = rot (Stress), tiefer VIX = grün
-            showscale=True,
-            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-            opacity=0.85,
-            line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": 14,
+            "color": color_vals,
+            "colorscale": 'RdYlGn_r',   # hoher VIX = rot (Stress), tiefer VIX = grün
+            "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75},
+            "opacity": 0.85,
+            "line": {"width": 0.6, "color": 'black'}
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -3525,12 +2834,12 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             showlegend=False, hoverinfo='skip'
         ))
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=col, width=3),
+            line={"color": col, "width": 3},
             name='Trend', showlegend=True
         ))
 
@@ -3538,20 +2847,20 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
         legend_title='Legend',
         height=600,
@@ -3567,14 +2876,14 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-dxy-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-dxy-radio', 'value')]
 )
 def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3583,16 +2892,16 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
         return go.Figure()
 
     if mm_side == 'MML':
-        x_col   = 'MML Traders'
-        y_col   = 'MML Long OI'
-        x_title = 'MM Number of Long Traders'
-        y_title = 'MM Long OI (Contracts)'
+        x_col   = MML_TRADERS_COL
+        y_col   = MML_LONG_OI_COL
+        x_title = MM_NUM_LONG_TRADERS_COL
+        y_title = MM_LONG_OI_CONTRACTS_COL
         title   = 'DP Factor (DXY) Indicator – MML'
     else:
-        x_col   = 'MMS Traders'
-        y_col   = 'MMS Short OI'
-        x_title = 'MM Number of Short Traders'
-        y_title = 'MM Short OI (Contracts)'
+        x_col   = MMS_TRADERS_COL
+        y_col   = MMS_SHORT_OI_COL
+        x_title = MM_NUM_SHORT_TRADERS_COL
+        y_title = MM_SHORT_OI_CONTRACTS_COL
         title   = 'DP Factor (DXY) Indicator – MMS'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
@@ -3635,15 +2944,15 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=x_vals, y=y_vals,
         mode='markers',
-        marker=dict(
-            size=14,
-            color=color_vals,
-            colorscale='RdYlGn',    # tiefer DXY = rot (schwacher Dollar), hoher DXY = grün
-            showscale=True,
-            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-            opacity=0.85,
-            line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": 14,
+            "color": color_vals,
+            "colorscale": 'RdYlGn',    # tiefer DXY = rot (schwacher Dollar), hoher DXY = grün
+            "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75},
+            "opacity": 0.85,
+            "line": {"width": 0.6, "color": 'black'}
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -3660,12 +2969,12 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
         col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             showlegend=False, hoverinfo='skip'
         ))
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=col, width=3),
+            line={"color": col, "width": 3},
             name='Trend', showlegend=True
         ))
 
@@ -3673,20 +2982,20 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
         legend_title='Legend',
         height=600,
@@ -3702,14 +3011,14 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-currency-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-currency-radio', 'value')]
 )
 def update_dp_currency(selected_market, start_date, end_date, mm_side):
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3718,16 +3027,16 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         return go.Figure()
 
     if mm_side == 'MML':
-        x_col   = 'MML Traders'
-        y_col   = 'MML Long OI'
-        x_title = 'MM Number of Long Traders'
-        y_title = 'MM Long OI (Contracts)'
+        x_col   = MML_TRADERS_COL
+        y_col   = MML_LONG_OI_COL
+        x_title = MM_NUM_LONG_TRADERS_COL
+        y_title = MM_LONG_OI_CONTRACTS_COL
         title   = 'DP Currency Indicator – USD/CHF (MML)'
     else:
-        x_col   = 'MMS Traders'
-        y_col   = 'MMS Short OI'
-        x_title = 'MM Number of Short Traders'
-        y_title = 'MM Short OI (Contracts)'
+        x_col   = MMS_TRADERS_COL
+        y_col   = MMS_SHORT_OI_COL
+        x_title = MM_NUM_SHORT_TRADERS_COL
+        y_title = MM_SHORT_OI_CONTRACTS_COL
         title   = 'DP Currency Indicator – USD/CHF (MMS)'
 
     x_vals = pd.to_numeric(dff[x_col], errors='coerce')
@@ -3770,15 +3079,15 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=x_vals, y=y_vals,
         mode='markers',
-        marker=dict(
-            size=14,
-            color=color_vals,
-            colorscale='RdYlGn',    # tiefer USD/CHF = rot (schwacher Dollar), hoher = grün
-            showscale=True,
-            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-            opacity=0.85,
-            line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": 14,
+            "color": color_vals,
+            "colorscale": 'RdYlGn',    # tiefer USD/CHF = rot (schwacher Dollar), hoher = grün
+            "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75},
+            "opacity": 0.85,
+            "line": {"width": 0.6, "color": 'black'}
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -3795,12 +3104,12 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         col = '#2c7fb8' if mm_side == 'MML' else '#7fcdbb'
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             showlegend=False, hoverinfo='skip'
         ))
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=col, width=3),
+            line={"color": col, "width": 3},
             name='Trend', showlegend=True
         ))
 
@@ -3808,20 +3117,20 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
         legend_title='Legend',
         height=600,
@@ -3837,9 +3146,9 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
 # ---------------------------------------------------------------------------
 @app.callback(
     Output('dp-fundamental-indicator-graph', 'figure'),
-    [Input('market-dropdown', 'value'),
-     Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date'),
+    [Input(MARKET_DROPDOWN_ID, 'value'),
+     Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date'),
      Input('dp-fundamental-radio', 'value')]
 )
 def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
@@ -3855,7 +3164,7 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
             xref='paper', yref='paper',
             x=0.5, y=0.5,
             showarrow=False,
-            font=dict(size=15, color='#555'),
+            font={"size": 15, "color": '#555'},
             align='center',
             bgcolor='#f8f9fa',
             bordercolor='#dee2e6',
@@ -3865,14 +3174,14 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
         fig.update_layout(
             plot_bgcolor='white',
             paper_bgcolor='white',
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
+            xaxis={"visible": False},
+            yaxis={"visible": False},
             height=250,
         )
         return fig
 
     dff = df_pivoted[
-        (df_pivoted['Market Names'] == selected_market) &
+        (df_pivoted[MARKET_NAMES_COL] == selected_market) &
         (df_pivoted['Date'] >= start_date) &
         (df_pivoted['Date'] <= end_date)
     ].copy().reset_index(drop=True)
@@ -3881,15 +3190,15 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
         return go.Figure()
 
     if pmpu_side == 'PMPUL':
-        x_col   = 'Traders Prod/Merc Long'
-        y_col   = 'Producer/Merchant/Processor/User Long'
+        x_col   = TRADERS_PROD_MERC_LONG
+        y_col   = PMPU_LONG_COL
         x_title = 'PMPU Number of Long Traders'
         y_title = 'PMPU Long OI (Contracts)'
         title   = 'DP Fundamental Indicator – Crude Oil Inventory (PMPUL)'
         trend_col = '#e6550d'
     else:
-        x_col   = 'Traders Prod/Merc Short'
-        y_col   = 'Producer/Merchant/Processor/User Short'
+        x_col   = TRADERS_PROD_MERC_SHORT
+        y_col   = PMPU_SHORT_COL
         x_title = 'PMPU Number of Short Traders'
         y_title = 'PMPU Short OI (Contracts)'
         title   = 'DP Fundamental Indicator – Crude Oil Inventory (PMPUS)'
@@ -3901,8 +3210,8 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
     # EIA-Lagerbestand als Farbe (merge_asof identisch zu USD/CHF-Logik)
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
-    if not df_eia.empty and 'crude_oil_stocks_kb' in df_eia.columns:
-        eia_ref = df_eia[['Date', 'crude_oil_stocks_kb']].dropna(subset=['crude_oil_stocks_kb']).copy()
+    if not df_eia.empty and CRUDE_OIL_STOCKS_COL in df_eia.columns:
+        eia_ref = df_eia[['Date', CRUDE_OIL_STOCKS_COL]].dropna(subset=[CRUDE_OIL_STOCKS_COL]).copy()
         eia_ref = eia_ref.rename(columns={'Date': '_edate'}).sort_values('_edate')
         dff = dff.sort_values('_date').reset_index(drop=True)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
@@ -3913,7 +3222,7 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
             direction='nearest',
             tolerance=pd.Timedelta(days=7)
         )
-        color_vals     = pd.to_numeric(dff['crude_oil_stocks_kb'], errors='coerce')
+        color_vals     = pd.to_numeric(dff[CRUDE_OIL_STOCKS_COL], errors='coerce')
         colorbar_title = 'Inventory (kb)'
     else:
         color_vals     = pd.Series([np.nan] * len(dff), index=dff.index)
@@ -3936,15 +3245,15 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
     fig.add_trace(go.Scatter(
         x=x_vals, y=y_vals,
         mode='markers',
-        marker=dict(
-            size=14,
-            color=color_vals,
-            colorscale='YlOrBr',   # hell = tiefe Bestände, dunkel = hohe Bestände
-            showscale=True,
-            colorbar=dict(title=colorbar_title, thickness=15, len=0.75),
-            opacity=0.85,
-            line=dict(width=0.6, color='black')
-        ),
+        marker={
+            "size": 14,
+            "color": color_vals,
+            "colorscale": 'YlOrBr',   # hell = tiefe Bestände, dunkel = hohe Bestände
+            "showscale": True,
+            "colorbar": {"title": colorbar_title, "thickness": 15, "len": 0.75},
+            "opacity": 0.85,
+            "line": {"width": 0.6, "color": 'black'}
+        },
         text=hover_text,
         hoverinfo='text',
         showlegend=False
@@ -3960,12 +3269,12 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
         ys = m * xs + b
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color='white', width=7),
+            line={"color": 'white', "width": 7},
             showlegend=False, hoverinfo='skip'
         ))
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode='lines',
-            line=dict(color=trend_col, width=3),
+            line={"color": trend_col, "width": 3},
             name='Trend', showlegend=True
         ))
 
@@ -3973,20 +3282,20 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker=dict(size=18, color='black', line=dict(width=2, color='white')),
-        name='Most Recent Week'
+        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        name=MOST_RECENT_WEEK
     ))
 
     fig.update_layout(
         title=title,
-        xaxis=dict(
-            title=x_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
-        yaxis=dict(
-            title=y_title,
-            showgrid=True, gridcolor='LightGray', gridwidth=2, zeroline=False
-        ),
+        xaxis={
+            "title": x_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
+        yaxis={
+            "title": y_title,
+            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
+        },
         plot_bgcolor='white',
         legend_title='Legend',
         height=600,
@@ -4025,103 +3334,163 @@ def _obos_get_ticker(market_name: str) -> str:
     return mn[:3]
 
 
+def _obos_curve_style(p2, p3):
+    """Gibt (color, curve_label) für ein Preispaar zurück."""
+    if pd.notna(p2) and pd.notna(p3):
+        spread = p2 - p3  # Positiv: Backwardation, Negativ: Contango
+        if spread > 0:
+            return _OBOS_COLOR_BACKWARDATION, 'Backwardation'
+        return _OBOS_COLOR_CONTANGO, 'Contango'
+    return _OBOS_COLOR_NA, 'Kurvenstruktur n/a'
+
+
+def _obos_merge_prices(dff, market):
+    """Mergt 2nd- und 3rd-Nearby-Preise in dff via merge_asof."""
+    col_2nd = _ppci_get_2nd_nearby_col(market)
+    col_3rd = _ppci_get_3rd_nearby_col(market)
+
+    if not (col_2nd and not df_deferred_prices.empty and col_2nd in df_deferred_prices.columns):
+        dff['_price2'] = np.nan
+        dff['_price3'] = np.nan
+        return dff
+
+    cols_deferred = ['Date', col_2nd]
+    if col_3rd and col_3rd in df_deferred_prices.columns:
+        cols_deferred.append(col_3rd)
+
+    prices = df_deferred_prices[cols_deferred].copy()
+    prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None)
+    prices = prices.sort_values('_pdate')
+
+    rename_map = {col_2nd: '_price2'}
+    if col_3rd and col_3rd in df_deferred_prices.columns:
+        rename_map[col_3rd] = '_price3'
+
+    prices_ren = prices.drop(columns=['Date']).rename(columns=rename_map)
+
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+    dff = dff.sort_values('_date')
+    dff = pd.merge_asof(
+        dff, prices_ren,
+        left_on='_date', right_on='_pdate',
+        direction='backward',
+        tolerance=pd.Timedelta(days=7),
+    )
+    return dff
+
+
+def _obos_build_market_row(market, report_start, report_end):
+    """Berechnet eine Zeile für den OBOS-Chart für einen Markt. Gibt None zurück wenn nicht genug Daten."""
+    dff = df_pivoted[
+        (df_pivoted[MARKET_NAMES_COL] == market) &
+        (df_pivoted['Date'] <= report_end)
+    ].copy().sort_values('Date')
+
+    if len(dff) < 10:
+        return None
+
+    total_oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').replace(0, np.nan)
+    dff['_mml_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce') / total_oi
+    dff['_mms_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce') / total_oi
+    dff['_mml_range'] = clustering_0_100(dff['_mml_conc'], window=52)
+    dff['_mms_range'] = clustering_0_100(dff['_mms_conc'], window=52)
+
+    dff = _obos_merge_prices(dff, market)
+    dff['_price2_range'] = clustering_0_100(
+        pd.to_numeric(dff.get('_price2', np.nan), errors='coerce'), window=52
+    )
+
+    dff_window = dff[dff['Date'] >= report_start]
+    if dff_window.empty:
+        dff_window = dff  # Fallback: letzter insgesamt verfügbarer Punkt
+
+    last = dff_window.iloc[-1]
+    p2 = float(last.get('_price2', np.nan)) if '_price2' in last.index else np.nan
+    p3 = float(last.get('_price3', np.nan)) if '_price3' in last.index else np.nan
+    color, curve_label = _obos_curve_style(p2, p3)
+
+    return {
+        'market':      market,
+        'ticker':      _obos_get_ticker(market),
+        'mml_range':   float(last['_mml_range'])    if pd.notna(last['_mml_range'])    else np.nan,
+        'mms_range':   float(last['_mms_range'])    if pd.notna(last['_mms_range'])    else np.nan,
+        'price_range': float(last['_price2_range']) if pd.notna(last['_price2_range']) else np.nan,
+        'color':       color,
+        'curve_label': curve_label,
+        'report_date': last['Date'],
+    }
+
+
+def _obos_add_chart_shapes(fig):
+    """Fügt Eckzonen (OB/OS) und Mittellinien für beide Panels hinzu."""
+    for _, xref, yref in [(1, 'x', 'y'), (2, 'x2', 'y')]:
+        for x0, x1, y0, y1 in [(75, 100, 75, 100), (0, 25, 0, 25)]:
+            fig.add_shape(
+                type='rect', x0=x0, x1=x1, y0=y0, y1=y1,
+                xref=xref, yref=yref,
+                fillcolor='lightgray', opacity=0.35, line_width=0,
+            )
+        fig.add_shape(type='line', x0=50, x1=50, y0=0, y1=100,
+                      xref=xref, yref=yref,
+                      line={"color": '#888', "width": 1, "dash": 'dot'})
+        fig.add_shape(type='line', x0=0, x1=100, y0=50, y1=50,
+                      xref=xref, yref=yref,
+                      line={"color": '#888', "width": 1, "dash": 'dot'})
+
+
+def _obos_add_scatter_traces(fig, rdf):
+    """Plottet je Markt einen Punkt im linken (Short) und rechten (Long) Panel."""
+    for _, row in rdf.iterrows():
+        common_marker = {
+            "size": 32, "color": row['color'], "opacity": 0.90,
+            "line": {"width": 1, "color": 'white'},
+        }
+        common_text = {"size": 9, "color": 'white', "family": 'Arial Black, Arial, sans-serif'}
+        hover_base  = (
+            f"<b>{row['market']}</b> ({row['ticker']})<br>"
+            f"Kurve: {row['curve_label']}<br>"
+            f"Price Range (2nd Nearby): {row['price_range']:.0f} %<br>"
+        )
+
+        if pd.notna(row['mms_range']) and pd.notna(row['price_range']):
+            fig.add_trace(
+                go.Scatter(
+                    x=[row['mms_range']], y=[row['price_range']],
+                    mode=MARKERS_TEXT_MODE, marker=common_marker,
+                    text=[row['ticker']], textposition='middle center', textfont=common_text,
+                    showlegend=False,
+                    hovertemplate=hover_base + f"MMS Range: {row['mms_range']:.0f} %<extra></extra>",
+                ),
+                row=1, col=1,
+            )
+
+        if pd.notna(row['mml_range']) and pd.notna(row['price_range']):
+            fig.add_trace(
+                go.Scatter(
+                    x=[row['mml_range']], y=[row['price_range']],
+                    mode=MARKERS_TEXT_MODE, marker=common_marker,
+                    text=[row['ticker']], textposition='middle center', textfont=common_text,
+                    showlegend=False,
+                    hovertemplate=hover_base + f"MML Range: {row['mml_range']:.0f} %<extra></extra>",
+                ),
+                row=1, col=2,
+            )
+
+
 @app.callback(
     Output('obos-concentration-graph', 'figure'),
-    [Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date')]
+    [Input(DATE_PICKER_ID, 'start_date'),
+     Input(DATE_PICKER_ID, 'end_date')]
 )
 def update_obos(start_date, end_date):
-    report_end = pd.to_datetime(end_date)
+    report_end   = pd.to_datetime(end_date)
     report_start = pd.to_datetime(start_date)
 
     rows = []
-    for market in df_pivoted['Market Names'].unique():
-        # --- CoT-Daten: alle verfügbaren Daten bis end_date für korrekte Rolling-Berechnung ---
-        dff = df_pivoted[
-            (df_pivoted['Market Names'] == market) &
-            (df_pivoted['Date'] <= report_end)
-        ].copy().sort_values('Date')
-
-        if len(dff) < 10:
-            continue
-
-        # Concentration berechnen
-        total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
-        dff['_mml_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
-        dff['_mms_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
-
-        # Rolling 52-Wochen-Range für Concentration
-        dff['_mml_range'] = clustering_0_100(dff['_mml_conc'], window=52)
-        dff['_mms_range'] = clustering_0_100(dff['_mms_conc'], window=52)
-
-        # 2nd- und 3rd-Nearby-Preise mergen
-        col_2nd = _ppci_get_2nd_nearby_col(market)
-        col_3rd = _ppci_get_3rd_nearby_col(market)
-
-        if col_2nd and not df_deferred_prices.empty and col_2nd in df_deferred_prices.columns:
-            cols_deferred = ['Date', col_2nd]
-            if col_3rd and col_3rd in df_deferred_prices.columns:
-                cols_deferred.append(col_3rd)
-
-            prices = df_deferred_prices[cols_deferred].copy()
-            prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None)
-            prices = prices.sort_values('_pdate')
-
-            # Umbenennen BEVOR merge, damit keine _x/_y-Suffixe entstehen
-            prices_ren = prices.drop(columns=['Date']).rename(
-                columns={
-                    col_2nd: '_price2',
-                    **({col_3rd: '_price3'} if col_3rd and col_3rd in df_deferred_prices.columns else {}),
-                }
-            )
-
-            dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
-            dff = dff.sort_values('_date')
-
-            dff = pd.merge_asof(
-                dff, prices_ren,
-                left_on='_date', right_on='_pdate',
-                direction='backward',
-                tolerance=pd.Timedelta(days=7),
-            )
-        else:
-            dff['_price2'] = np.nan
-            dff['_price3'] = np.nan
-
-        # Rolling 52-Wochen-Range für Preis 2nd Nearby
-        dff['_price2_range'] = clustering_0_100(
-            pd.to_numeric(dff.get('_price2', np.nan), errors='coerce'), window=52
-        )
-
-        # Snapshot: letzter verfügbarer Datenpunkt innerhalb [start_date, end_date]
-        dff_window = dff[dff['Date'] >= report_start]
-        if dff_window.empty:
-            dff_window = dff   # Fallback: letzter insgesamt verfügbarer Punkt
-
-        last = dff_window.iloc[-1]
-
-        # Contango / Backwardation
-        p2 = float(last.get('_price2', np.nan)) if '_price2' in last.index else np.nan
-        p3 = float(last.get('_price3', np.nan)) if '_price3' in last.index else np.nan
-
-        if pd.notna(p2) and pd.notna(p3):
-            spread = p2 - p3   # Positiv = Backwardation, Negativ = Contango
-            color       = _OBOS_COLOR_BACKWARDATION if spread > 0 else _OBOS_COLOR_CONTANGO
-            curve_label = 'Backwardation' if spread > 0 else 'Contango'
-        else:
-            color       = _OBOS_COLOR_NA
-            curve_label = 'Kurvenstruktur n/a'
-
-        rows.append({
-            'market':      market,
-            'ticker':      _obos_get_ticker(market),
-            'mml_range':   float(last['_mml_range'])   if pd.notna(last['_mml_range'])   else np.nan,
-            'mms_range':   float(last['_mms_range'])   if pd.notna(last['_mms_range'])   else np.nan,
-            'price_range': float(last['_price2_range']) if pd.notna(last['_price2_range']) else np.nan,
-            'color':       color,
-            'curve_label': curve_label,
-            'report_date': last['Date'],
-        })
+    for market in df_pivoted[MARKET_NAMES_COL].unique():
+        row = _obos_build_market_row(market, report_start, report_end)
+        if row is not None:
+            rows.append(row)
 
     if not rows:
         return go.Figure()
@@ -4129,7 +3498,6 @@ def update_obos(start_date, end_date):
     rdf = pd.DataFrame(rows)
     report_date_str = pd.to_datetime(rdf['report_date'].max()).strftime('%d/%m/%Y')
 
-    # --- Subplot: links = Short, rechts = Long, Y-Achse geteilt ---
     fig = make_subplots(
         rows=1, cols=2,
         shared_yaxes=True,
@@ -4140,74 +3508,8 @@ def update_obos(start_date, end_date):
         horizontal_spacing=0.02,
     )
 
-    # Graue Eckzonen (Overbought/Oversold) für beide Panels
-    for col_idx, xref, yref in [(1, 'x', 'y'), (2, 'x2', 'y')]:
-        for x0, x1, y0, y1 in [(75, 100, 75, 100), (0, 25, 0, 25)]:
-            fig.add_shape(
-                type='rect',
-                x0=x0, x1=x1, y0=y0, y1=y1,
-                xref=xref, yref=yref,
-                fillcolor='lightgray', opacity=0.35,
-                line_width=0,
-            )
-
-    # Referenzlinien (Mittellinie bei 50)
-    for col_idx, xref, yref in [(1, 'x', 'y'), (2, 'x2', 'y')]:
-        fig.add_shape(type='line', x0=50, x1=50, y0=0, y1=100,
-                      xref=xref, yref=yref,
-                      line=dict(color='#888', width=1, dash='dot'))
-        fig.add_shape(type='line', x0=0, x1=100, y0=50, y1=50,
-                      xref=xref, yref=yref,
-                      line=dict(color='#888', width=1, dash='dot'))
-
-    # Datenpunkte plotten
-    for _, row in rdf.iterrows():
-        common_marker = dict(
-            size=32,
-            color=row['color'],
-            opacity=0.90,
-            line=dict(width=1, color='white'),
-        )
-        common_text  = dict(size=9, color='white', family='Arial Black, Arial, sans-serif')
-        hover_base   = (
-            f"<b>{row['market']}</b> ({row['ticker']})<br>"
-            f"Kurve: {row['curve_label']}<br>"
-            f"Price Range (2nd Nearby): {row['price_range']:.0f} %<br>"
-        )
-
-        # --- Linkes Panel: Short-Seite ---
-        if pd.notna(row['mms_range']) and pd.notna(row['price_range']):
-            fig.add_trace(
-                go.Scatter(
-                    x=[row['mms_range']],
-                    y=[row['price_range']],
-                    mode='markers+text',
-                    marker=common_marker,
-                    text=[row['ticker']],
-                    textposition='middle center',
-                    textfont=common_text,
-                    showlegend=False,
-                    hovertemplate=hover_base + f"MMS Range: {row['mms_range']:.0f} %<extra></extra>",
-                ),
-                row=1, col=1,
-            )
-
-        # --- Rechtes Panel: Long-Seite ---
-        if pd.notna(row['mml_range']) and pd.notna(row['price_range']):
-            fig.add_trace(
-                go.Scatter(
-                    x=[row['mml_range']],
-                    y=[row['price_range']],
-                    mode='markers+text',
-                    marker=common_marker,
-                    text=[row['ticker']],
-                    textposition='middle center',
-                    textfont=common_text,
-                    showlegend=False,
-                    hovertemplate=hover_base + f"MML Range: {row['mml_range']:.0f} %<extra></extra>",
-                ),
-                row=1, col=2,
-            )
+    _obos_add_chart_shapes(fig)
+    _obos_add_scatter_traces(fig, rdf)
 
     # Legende (Contango / Backwardation / n/a)
     for label, color in [
@@ -4216,64 +3518,31 @@ def update_obos(start_date, end_date):
         ('Kurvenstruktur n/a (kein 3rd)',  _OBOS_COLOR_NA),
     ]:
         fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode='markers',
-            marker=dict(size=12, color=color),
-            name=label,
-            showlegend=True,
+            x=[None], y=[None], mode='markers',
+            marker={"size": 12, "color": color},
+            name=label, showlegend=True,
         ))
 
-    # Achsen konfigurieren
-    fig.update_xaxes(
-        range=[100, 0],          # Reversed: Short-Konz. steigt nach links
-        showgrid=True,
-        dtick=25,
-        ticksuffix=' %',
-        row=1, col=1,
-    )
-    fig.update_xaxes(
-        range=[0, 100],
-        showgrid=True,
-        dtick=25,
-        ticksuffix=' %',
-        row=1, col=2,
-    )
+    fig.update_xaxes(range=[100, 0], showgrid=True, dtick=25, ticksuffix=' %', row=1, col=1)
+    fig.update_xaxes(range=[0, 100], showgrid=True, dtick=25, ticksuffix=' %', row=1, col=2)
     fig.update_yaxes(
-        range=[0, 100],
-        showgrid=True,
-        dtick=25,
-        ticksuffix=' %',
-        title_text='Rolling One-year Range – Price (2nd Nearby)',
-        row=1, col=1,
+        range=[0, 100], showgrid=True, dtick=25, ticksuffix=' %',
+        title_text='Rolling One-year Range – Price (2nd Nearby)', row=1, col=1,
     )
-    fig.update_yaxes(
-        range=[0, 100],
-        showgrid=True,
-        dtick=25,
-        ticksuffix=' %',
-        row=1, col=2,
-    )
+    fig.update_yaxes(range=[0, 100], showgrid=True, dtick=25, ticksuffix=' %', row=1, col=2)
 
     fig.update_layout(
-        title=dict(
-            text=(
+        title={
+            "text": (
                 f'OBOS Concentration Indicator \u2013 {report_date_str}<br>'
                 f'<sup>Colour: Blue\u00a0=\u00a0Contango (2nd\u00a0\u2013\u00a03rd Nearby),\u00a0'
                 f'Green\u00a0=\u00a0Backwardation (2nd\u00a0\u2013\u00a03rd Nearby)</sup>'
             ),
-            x=0,
-            xanchor='left',
-            font=dict(size=14),
-        ),
-        height=620,
-        showlegend=True,
-        legend=dict(
-            x=1.01,
-            y=0.5,
-            yanchor='middle',
-            font=dict(size=12),
-        ),
-        margin=dict(l=60, r=180, t=90, b=60),
+            "x": 0, "xanchor": 'left', "font": {"size": 14},
+        },
+        height=620, showlegend=True,
+        legend={"x": 1.01, "y": 0.5, "yanchor": 'middle', "font": {"size": 12}},
+        margin={"l": 60, "r": 180, "t": 90, "b": 60},
     )
 
     return fig
@@ -4284,17 +3553,26 @@ def update_obos(start_date, end_date):
 # ---------------------------------------------------------------------------
 
 _SHAPLEY_GROUP_LABELS = {
-    'Δ PMPU Net': 'PMPU (Producer/Merchant)',
-    'Δ SD Net':   'SD (Swap Dealer)',
-    'Δ MM Net':   'MM (Managed Money)',
-    'Δ OR Net':   'OR (Other Reportables)',
+    SHAPLEY_COL_PMPU: 'PMPU (Producer/Merchant)',
+    SHAPLEY_COL_SD:   'SD (Swap Dealer)',
+    SHAPLEY_COL_MM:   'MM (Managed Money)',
+    SHAPLEY_COL_OR:   'OR (Other Reportables)',
 }
 _SHAPLEY_COLORS = {
-    'Δ PMPU Net': '#e6550d',
-    'Δ SD Net':   '#3182bd',
-    'Δ MM Net':   '#31a354',
-    'Δ OR Net':   '#756bb1',
+    SHAPLEY_COL_PMPU: '#e6550d',
+    SHAPLEY_COL_SD:   '#3182bd',
+    SHAPLEY_COL_MM:   '#31a354',
+    SHAPLEY_COL_OR:   '#756bb1',
 }
+
+
+def _filter_shapley_by_date(df_s, start_date, end_date):
+    """Filtert einen Shapley-DataFrame auf den angegebenen Datumsbereich."""
+    if start_date:
+        df_s = df_s[df_s['Date'] >= pd.to_datetime(start_date)]
+    if end_date:
+        df_s = df_s[df_s['Date'] <= pd.to_datetime(end_date)]
+    return df_s
 
 
 @app.callback(
@@ -4302,9 +3580,9 @@ _SHAPLEY_COLORS = {
      Output('shapley-bar-chart',        'figure'),
      Output('shapley-table',            'data'),
      Output('shapley-r2-info',          'children')],
-    [Input('market-dropdown',     'value'),
-     Input('date-picker-range',   'start_date'),
-     Input('date-picker-range',   'end_date')],
+    [Input(MARKET_DROPDOWN_ID,     'value'),
+     Input(DATE_PICKER_ID,   'start_date'),
+     Input(DATE_PICKER_ID,   'end_date')],
 )
 def update_shapley(selected_market, start_date, end_date):
     """Aktualisiert alle drei Shapley-Owen-Elemente (Zeitreihe, Balken, Tabelle)."""
@@ -4313,13 +3591,13 @@ def update_shapley(selected_market, start_date, end_date):
     empty_fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white',
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        annotations=[dict(
-            text="Keine Shapley-Daten verfügbar für diesen Markt.",
-            xref="paper", yref="paper", x=0.5, y=0.5,
-            showarrow=False, font=dict(size=14, color='#888')
-        )],
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[{
+            "text": "Keine Shapley-Daten verfügbar für diesen Markt.",
+            "xref": "paper", "yref": "paper", "x": 0.5, "y": 0.5,
+            "showarrow": False, "font": {"size": 14, "color": '#888'}
+        }],
         height=400,
     )
 
@@ -4330,10 +3608,7 @@ def update_shapley(selected_market, start_date, end_date):
     df_s['Date'] = pd.to_datetime(df_s['Date'])
 
     # Datumsfilter
-    if start_date:
-        df_s = df_s[df_s['Date'] >= pd.to_datetime(start_date)]
-    if end_date:
-        df_s = df_s[df_s['Date'] <= pd.to_datetime(end_date)]
+    df_s = _filter_shapley_by_date(df_s, start_date, end_date)
 
     df_s = df_s.dropna(subset=_SHAPLEY_X_COLS, how='all')
 
@@ -4354,7 +3629,7 @@ def update_shapley(selected_market, start_date, end_date):
             y=valid[col],
             mode='lines',
             name=label,
-            line=dict(color=color, width=2),
+            line={"color": color, "width": 2},
             hovertemplate=(
                 f'<b>{label}</b><br>'
                 'Datum: %{x|%Y-%m-%d}<br>'
@@ -4368,17 +3643,17 @@ def update_shapley(selected_market, start_date, end_date):
     fig_ts.update_layout(
         title=f'Shapley-Owen Zeitverlauf – {selected_market}  '
               f'(rollend, {_SHAPLEY_WINDOW} Wochen)',
-        xaxis=dict(
-            title='Datum',
-            showgrid=True, gridcolor='LightGray',
-        ),
-        yaxis=dict(
-            title='Shapley-Wert (φ)',
-            showgrid=True, gridcolor='LightGray',
-            zeroline=True, zerolinecolor='gray', zerolinewidth=1,
-        ),
+        xaxis={
+            "title": 'Datum',
+            "showgrid": True, "gridcolor": LIGHTGRAY,
+        },
+        yaxis={
+            "title": 'Shapley-Wert (φ)',
+            "showgrid": True, "gridcolor": LIGHTGRAY,
+            "zeroline": True, "zerolinecolor": 'gray', "zerolinewidth": 1,
+        },
         plot_bgcolor='white',
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        legend={"orientation": 'h', "yanchor": 'bottom', "y": 1.02, "xanchor": 'right', "x": 1},
         height=450,
         hovermode='x unified',
     )
@@ -4422,12 +3697,12 @@ def update_shapley(selected_market, start_date, end_date):
 
     fig_bar.update_layout(
         title=f'Shapley-Werte – {selected_market}  (Datum: {last_date})',
-        xaxis=dict(title='Händlergruppe'),
-        yaxis=dict(
-            title='Shapley-Wert (φ)',
-            showgrid=True, gridcolor='LightGray',
-            zeroline=True, zerolinecolor='gray', zerolinewidth=1,
-        ),
+        xaxis={"title": 'Händlergruppe'},
+        yaxis={
+            "title": 'Shapley-Wert (φ)',
+            "showgrid": True, "gridcolor": LIGHTGRAY,
+            "zeroline": True, "zerolinecolor": 'gray', "zerolinewidth": 1,
+        },
         plot_bgcolor='white',
         height=400,
         showlegend=False,
@@ -4474,7 +3749,7 @@ def update_shapley(selected_market, start_date, end_date):
         Output('dt-pr-curve',           'figure'),
         Output('dt-feature-importance', 'figure'),
     ],
-    [Input('market-dropdown', 'value')]
+    [Input(MARKET_DROPDOWN_ID, 'value')]
 )
 def update_decision_tree(selected_market):
     """Rendert alle Decision-Tree-Komponenten für den gewählten Markt."""
