@@ -34,7 +34,7 @@ class EIAClient:
         today = date.today()
         return date(today.year - self.years_back, today.month, today.day).isoformat()
 
-    def fetch_crude_oil_stocks(self) -> pd.DataFrame:
+    def fetch_crude_oil_stocks(self, start_date=None) -> pd.DataFrame:
         """Fetch weekly US crude oil inventory data from EIA API v2.
 
         Returns a DataFrame with columns:
@@ -66,7 +66,7 @@ class EIAClient:
                 "facets[product][]": self.product_facet,
                 "facets[process][]": self.process_facet,
                 "facets[duoarea][]": self.duoarea_facet,
-                "start": self._start_date(),
+                "start": start_date.isoformat() if start_date is not None else self._start_date(),
                 "sort[0][column]": "period",
                 "sort[0][direction]": "asc",
                 "length": self.page_size,

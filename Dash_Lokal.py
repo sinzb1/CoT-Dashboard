@@ -48,7 +48,7 @@ client = InfluxDBClient3(host=host, token=token, database=database)
 query = """
 SELECT *
 FROM cot_data
-WHERE time >= now() - INTERVAL '4 years'
+WHERE time >= now() - INTERVAL '10 years'
 """
 
 print("Fetching data from InfluxDB v3...")
@@ -64,7 +64,7 @@ print(f"Fetched {len(df_pivoted)} rows from InfluxDB v3")
 query_futures = """
 SELECT *
 FROM futures_prices
-WHERE time >= now() - INTERVAL '4 years'
+WHERE time >= now() - INTERVAL '10 years'
 """
 print("Fetching futures prices from InfluxDB v3...")
 try:
@@ -82,7 +82,7 @@ except Exception as _e:
 query_macro = """
 SELECT *
 FROM macro_by_date
-WHERE time >= now() - INTERVAL '2 years'
+WHERE time >= now() - INTERVAL '10 years'
 """
 print("Fetching macro data (yfinance) from InfluxDB v3...")
 try:
@@ -141,7 +141,7 @@ except Exception as _fb_e:
 query_eia = """
 SELECT time, crude_oil_stocks_kb
 FROM eia_petroleum_stocks
-WHERE time >= now() - INTERVAL '4 years'
+WHERE time >= now() - INTERVAL '10 years'
 ORDER BY time ASC
 """
 print("Fetching EIA crude oil inventory data from InfluxDB v3...")
@@ -160,7 +160,7 @@ except Exception as _e:
 query_deferred = """
 SELECT *
 FROM futures_deferred_prices
-WHERE time >= now() - INTERVAL '4 years'
+WHERE time >= now() - INTERVAL '10 years'
 """
 print("Fetching Databento deferred futures prices from InfluxDB v3...")
 try:
@@ -747,7 +747,7 @@ def update_table(selected_market, start_date, end_date):
             safe_pct_change(current_row['Other Reportables Short'], first_row['Other Reportables Short'])
         ],
         'Difference (Spread %)': [
-            0,  # PMPU hat bei dir keinen Spread
+            None,  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
             safe_pct_change(current_row['Swap Dealer Spread'], first_row['Swap Dealer Spread']),
             safe_pct_change(current_row['Managed Money Spread'], first_row['Managed Money Spread']),
             safe_pct_change(current_row['Other Reportables Spread'], first_row['Other Reportables Spread'])

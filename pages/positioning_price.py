@@ -42,6 +42,13 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
+                        **Visuelle Kodierung (Zeitpunkt $t$):**
+                        - **X-Achse:** $t$ (Reportdatum)
+                        - **Y-Achse:** $P_{\mathrm{2nd\ Nearby}}(t)$ (Schlusskurs des 2nd-Nearby-Futures, Databento)
+                        - **Punktgrösse:** proportional zum gesamten Open Interest $\mathrm{OI}(t)$ (logarithmisch skaliert)
+                        - **Punktfarbe:** $\mathrm{PP\ Concentration}_G(t)$ (Farbskala RdYlGn, in %)
+
+                        **Farbformel:**
                         $$
                         \mathrm{PP\ Concentration}_{G}(t)=
                         \frac{\mathrm{Position}_{G}(t)}
@@ -52,9 +59,10 @@ def layout():
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
+                        - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
                         - **$\mathrm{OI}(t)$:** gesamtes Open Interest aller offenen Kontrakte im Markt
-                        - **$\mathrm{Position}_G(t)$:** Position der betrachteten Gruppe $G$ am Reportdatum $t$, mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
-                        - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI
+                        - **$\mathrm{Position}_G(t)$:** Position der betrachteten Gruppe $G$ am Reportdatum $t$ (in Kontrakten)
+                        - **Concentration:** Anteil der Positionen einer Gruppe am gesamten Markt-OI (in Prozent)
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -100,10 +108,27 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
+                        **Visuelle Kodierung (Zeitpunkt $t$):**
+                        - **X-Achse:** $t$ (Reportdatum)
+                        - **Y-Achse:** $P_{\mathrm{2nd\ Nearby}}(t)$ (Schlusskurs des 2nd-Nearby-Futures, Databento)
+                        - **Punktgrösse:** proportional zum gesamten Open Interest $\mathrm{OI}(t)$ (logarithmisch skaliert)
+                        - **Punktfarbe:** $\mathrm{PP\ Clustering}_G(t)$ (Farbskala RdYlGn, Werte 0–100)
+
+                        Die Berechnung erfolgt in zwei Schritten.
+
+                        **Schritt 1 – Roher Trader-Anteil:**
+                        $$
+                        \mathrm{share}_{G}(t)=
+                        \frac{\mathrm{Traders}_{G}(t)}
+                        {\mathrm{Total\ Traders}(t)}
+                        $$
+
+                        **Schritt 2 – Rollende Min-Max-Normierung (52-Wochen-Fenster):**
                         $$
                         \mathrm{PP\ Clustering}_{G}(t)=
-                        \frac{\mathrm{Traders}_{G}(t)}
-                        {\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)} \times 100
+                        \frac{\mathrm{share}_{G}(t)-\min_{52W}\!\bigl(\mathrm{share}_{G}\bigr)}
+                             {\max_{52W}\!\bigl(\mathrm{share}_{G}\bigr)-\min_{52W}\!\bigl(\mathrm{share}_{G}\bigr)}
+                        \times 100
                         $$
                         """, mathjax=True),
                         dcc.Markdown(r"""
@@ -112,8 +137,9 @@ def layout():
                         - **MMS:** Managed Money Short
                         - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
                         - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ am Reportdatum $t$
-                        - **$\mathrm{Traders}^{\mathrm{side}}_{\mathrm{Total}}(t)$:** Gesamtzahl aller Trader derselben Marktseite (Long oder Short) am Reportdatum $t$
-                        - **Clustering:** Anteil der Trader einer Gruppe an allen Tradern derselben Marktseite
+                        - **$\mathrm{Total\ Traders}(t)$:** Gesamtanzahl aller reportablen Trader im Markt am Reportdatum $t$
+                        - **$\min_{52W}$, $\max_{52W}$:** rollierendes Minimum bzw. Maximum über 52 Wochen
+                        - **PP Clustering:** 0 = historisches Minimum, 100 = historisches Maximum innerhalb der letzten 52 Wochen
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -162,9 +188,16 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
+                        **Visuelle Kodierung (Zeitpunkt $t$):**
+                        - **X-Achse:** $t$ (Reportdatum)
+                        - **Y-Achse:** $P_{\mathrm{2nd\ Nearby}}(t)$ (Schlusskurs des 2nd-Nearby-Futures, Databento)
+                        - **Punktgrösse:** proportional zur Anzahl Trader $\mathrm{Traders}_G(t)$ (linear skaliert)
+                        - **Punktfarbe:** $\mathrm{PP\ PositionSize}_G(t)$ (in USD)
+
+                        **Farbformel:**
                         $$
                         \mathrm{PP\ PositionSize}_{G}(t)=
-                        \frac{\mathrm{Position}_{G}(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)}
+                        \frac{\mathrm{Position}_{G}(t)\times \mathrm{ContractSize}\times P_{\mathrm{2nd\ Nearby}}(t)}
                         {\mathrm{Traders}_{G}(t)}
                         $$
                         """, mathjax=True),
@@ -175,9 +208,9 @@ def layout():
                         - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{MML}, \mathrm{MMS}\}$
                         - **$\mathrm{Position}_G(t)$:** Position der betrachteten Gruppe $G$ am Reportdatum $t$ (in Kontrakten)
                         - **$\mathrm{ContractSize}$:** Kontraktgrösse des betrachteten Futures-Marktes
-                        - **$\mathrm{Price}(t)$:** Preis des betrachteten Futures-Marktes am Reportdatum $t$
+                        - **$P_{\mathrm{2nd\ Nearby}}(t)$:** Schlusskurs des 2nd-Nearby-Futures am Reportdatum $t$ (Databento)
                         - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ am Reportdatum $t$
-                        - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader innerhalb der betrachteten Gruppe
+                        - **Position Size:** durchschnittliche preisgewichtete Positionsgrösse pro Trader (in USD)
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

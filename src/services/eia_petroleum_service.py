@@ -29,14 +29,14 @@ class EIAPetroleumService:
     def __init__(self):
         self.client = EIAClient()
 
-    def load_dataframe(self) -> pd.DataFrame:
+    def load_dataframe(self, start_date=None) -> pd.DataFrame:
         """Load raw weekly crude oil stock data from EIA API.
 
         Returns a DataFrame with columns:
             period  – datetime (UTC)
             value   – float (thousands of barrels, kb)
         """
-        return self.client.fetch_crude_oil_stocks()
+        return self.client.fetch_crude_oil_stocks(start_date=start_date)
 
     def align_to_cot_dates(
         self, stocks_df: pd.DataFrame, cot_dates: pd.Series
@@ -102,10 +102,10 @@ class EIAPetroleumService:
             )
             return result
 
-    def load_aligned(self, cot_dates: pd.Series = None) -> pd.DataFrame:
+    def load_aligned(self, cot_dates: pd.Series = None, start_date=None) -> pd.DataFrame:
         """Load EIA crude oil stocks and align to CoT dates.
 
         Returns a DataFrame with columns 'date' and 'crude_oil_stocks_kb'.
         """
-        df = self.load_dataframe()
+        df = self.load_dataframe(start_date=start_date)
         return self.align_to_cot_dates(df, cot_dates)

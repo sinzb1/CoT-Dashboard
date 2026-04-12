@@ -138,14 +138,17 @@ def layout():
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Die Berechnung erfolgt in zwei Schritten. **Schritt 1 – Roher Trader-Anteil:**
+                        """, mathjax=True),
                         dbc.Row([
                             dbc.Col(dcc.Markdown(r"""
                             **Long-Clustering (Money Manager):**
 
                             $$
-                            \mathrm{Clustering}^{\mathrm{(Long)}}_{\mathrm{MM}}(\%)=
-                            \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Long)}}_{\mathrm{MM}}}
-                            {\mathrm{Total\ number\ of\ traders}}
+                            \mathrm{share}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)=
+                            \frac{\mathrm{Traders}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)}
+                            {\mathrm{Total\ Traders}(t)}
                             $$
                             """, mathjax=True), width=12, lg=6),
 
@@ -153,19 +156,30 @@ def layout():
                             **Short-Clustering (Money Manager):**
 
                             $$
-                            \mathrm{Clustering}^{\mathrm{(Short)}}_{\mathrm{MM}}(\%)=
-                            \frac{\mathrm{Number\ of\ traders}^{\mathrm{(Short)}}_{\mathrm{MM}}}
-                            {\mathrm{Total\ number\ of\ traders}}
+                            \mathrm{share}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)=
+                            \frac{\mathrm{Traders}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)}
+                            {\mathrm{Total\ Traders}(t)}
                             $$
                             """, mathjax=True), width=12, lg=6),
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
+                        **Schritt 2 – Rollende Min-Max-Normierung (52-Wochen-Fenster):**
+
+                        $$
+                        \mathrm{Clustering}^{\mathrm{(Long/Short)}}_{\mathrm{MM}}(t)=
+                        \frac{\mathrm{share}(t)-\min_{52W}\!\bigl(\mathrm{share}\bigr)}
+                             {\max_{52W}\!\bigl(\mathrm{share}\bigr)-\min_{52W}\!\bigl(\mathrm{share}\bigr)}
+                        \times 100
+                        $$
+
                         **Variablen und Begriffe:**
                         - **MM:** Money Manager
-                        - **Number of traders $\mathrm{MM}_{\mathrm{Long}}$:** Anzahl MM-Trader mit Long-Positionen
-                        - **Number of traders $\mathrm{MM}_{\mathrm{Short}}$:** Anzahl MM-Trader mit Short-Positionen
-                        - **Total number of traders:** Gesamtanzahl Trader im Markt
+                        - **$\mathrm{Traders}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Long-Positionen am Reportdatum $t$
+                        - **$\mathrm{Traders}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Short-Positionen am Reportdatum $t$
+                        - **$\mathrm{Total\ Traders}(t)$:** Gesamtanzahl aller reportablen Trader im Markt am Reportdatum $t$
+                        - **$\min_{52W}$, $\max_{52W}$:** rollierendes Minimum bzw. Maximum über 52 Wochen
+                        - **Clustering-Wert:** 0 = historisches Minimum, 100 = historisches Maximum innerhalb der letzten 52 Wochen
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

@@ -50,18 +50,22 @@ class SocrataClient:
         print(f"[SocrataClient] Retrieved {len(rows)} rows for {dataset_id}")
         return rows
 
-    def get_traders_categories(self):
+    def get_traders_categories(self, start_date=None):
         markets = [
             "GOLD - COMMODITY EXCHANGE INC.",
             "SILVER - COMMODITY EXCHANGE INC.",
             "PLATINUM - NEW YORK MERCANTILE EXCHANGE",
             "PALLADIUM - NEW YORK MERCANTILE EXCHANGE",
+            # Copper: CFTC renamed the market in February 2022
             "COPPER- #1 - COMMODITY EXCHANGE INC.",
+            "COPPER-GRADE #1 - COMMODITY EXCHANGE INC.",
+            # Crude Oil WTI: CFTC renamed the market in February 2022
             "WTI-PHYSICAL - NEW YORK MERCANTILE EXCHANGE",
+            "CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE",
         ]
 
         end = date.today()
-        start = date(end.year - self.years_back, end.month, end.day)
+        start = start_date if start_date is not None else date(end.year - self.years_back, end.month, end.day)
 
         escaped = [v.replace("'", "''") for v in markets]
         markets_where = "market_and_exchange_names in ({})".format(

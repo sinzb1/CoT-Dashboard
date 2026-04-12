@@ -110,7 +110,7 @@ class DatabentoClient:
                     )
                     return pd.DataFrame(columns=["date", field])
 
-    def fetch_continuous_close_prices(self) -> pd.DataFrame:
+    def fetch_continuous_close_prices(self, start_date=None) -> pd.DataFrame:
         """Fetch daily close prices for all configured continuous futures symbols.
 
         Returns a wide DataFrame with columns:
@@ -118,7 +118,7 @@ class DatabentoClient:
 
         Symbols with no data result in NaN columns (outer merge).
         """
-        start = self._start_date()
+        start = start_date.isoformat() if start_date is not None else self._start_date()
         # Databento has ~1-day delay: yesterday is the latest fully available date
         end = (date.today() - timedelta(days=1)).isoformat()
 

@@ -147,14 +147,24 @@ def layout():
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Achsen (Zeitpunkt $t$):
+                        $$
+                        x_G(t) = N_G(t), \qquad y_G(t) = c_G(t)
+                        $$
+
+                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$; $y_{\mathrm{MMS}}(t)$ wird im Plot negativ dargestellt.
+
+                        **Konzentrations-Formeln:**
+                        """, mathjax=True),
                         dbc.Row([
                             dbc.Col(dcc.Markdown(r"""
                             **Für Managed Money Long (MML):**
 
                             $$
-                            \mathrm{DP\ Time}_{\mathrm{MML}}=
-                            \frac{\mathrm{Open\ Interest}_{\mathrm{MML}}}
-                            {\mathrm{Total\ Open\ Interest}} \cdot 100
+                            c_{\mathrm{MML}}(t)=
+                            \frac{\mathrm{OI}_{\mathrm{MML}}(t)}
+                            {\mathrm{OI}(t)} \cdot 100
                             $$
                             """, mathjax=True), width=12, lg=6),
 
@@ -162,9 +172,9 @@ def layout():
                             **Für Managed Money Short (MMS):**
 
                             $$
-                            \mathrm{DP\ Time}_{\mathrm{MMS}}=
-                            -\,\frac{\mathrm{Open\ Interest}_{\mathrm{MMS}}}
-                            {\mathrm{Total\ Open\ Interest}} \cdot 100
+                            c_{\mathrm{MMS}}(t)=
+                            -\,\frac{\mathrm{OI}_{\mathrm{MMS}}(t)}
+                            {\mathrm{OI}(t)} \cdot 100
                             $$
                             """, mathjax=True), width=12, lg=6),
                         ], className="mb-2"),
@@ -173,9 +183,12 @@ def layout():
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
+                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
+                        - **$c_G(t)$:** Long- bzw. Short-Konzentration der Gruppe $G$ in % (Y-Achse)
                         - **$\mathrm{OI}_{\mathrm{MML}}(t)$:** Open Interest der Managed-Money-Long-Positionen
                         - **$\mathrm{OI}_{\mathrm{MMS}}(t)$:** Open Interest der Managed-Money-Short-Positionen
                         - **$\mathrm{OI}(t)$:** gesamtes Open Interest des betrachteten Futures-Marktes
+                        - **Punktfarbe:** codiert das Kalenderjahr der Beobachtung (je Farbe = ein Jahr)
                         - **Negatives Vorzeichen bei MMS:** dient der separaten Darstellung der Short-Seite im Plot
                         """, mathjax=True),
                     ], title="Berechnung"),
@@ -225,15 +238,20 @@ def layout():
                 **Für die Long-Seite und die Short-Seite gilt:**
 
                 $$
-                c(t)=\mathit{Price}_{\mathrm{Front\ Month}}(t)
+                x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                $$
+
+                $$
+                c(t)=P_{\mathrm{2nd\ Nearby}}(t)
                 $$
 
                 **Variablen und Begriffe:**
-                - *PMPUL:** Producer/Merchant/Processor/User Long
+                - **PMPUL:** Producer/Merchant/Processor/User Long
                 - **PMPUS:** Producer/Merchant/Processor/User Short
-                - **$\mathrm{OI}_G(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$
-                - **$N_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ zum Zeitpunkt $t$
-                - **Punktfarbe:** $c(t)$, d. h. das Preisniveau des Front-Month Futures zum Zeitpunkt $t$
+                - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{PMPUL},\, \mathrm{PMPUS}\}$
+                - **$N_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
+                - **$\mathrm{OI}_G(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$ (Y-Achse)
+                - **$P_{\mathrm{2nd\ Nearby}}(t)$:** Schlusskurs des 2nd-Nearby-Futures am Reportdatum $t$ (Databento, Punktfarbe)
                 """, mathjax=True), width=12),
                         ], className="mb-2"),
                     ], title="Berechnung"),
@@ -835,21 +853,21 @@ def layout():
 
                         mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
 
-                        Farbcodierung – Hedging-Kraft der PMPU (Zeitpunkt $t$):
+                        Farbcodierung – Netto-Positionierung der PMPU (Zeitpunkt $t$):
                         $$
-                        \text{Color}_G(t)
+                        \mathrm{Color}_G(t)
                         \;=\;
-                        \frac{\mathrm{OI}_{\mathrm{PMPU}}(t) - \min\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big)}
-                             {\max\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big) - \min\!\big(\mathrm{OI}_{\mathrm{PMPU}}\big)}
+                        \mathrm{OI}^L_{\mathrm{PMPU}}(t) - \mathrm{OI}^S_{\mathrm{PMPU}}(t)
                         $$
 
                         **Variablen und Begriffe:**
                         - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
                         - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ (MM Long oder Short) zum Zeitpunkt $t$
-                        - $\mathrm{OI}_{\mathrm{PMPU}}(t)$: Open Interest der PMPU-Gruppe zum Zeitpunkt $t$
+                        - $\mathrm{OI}^L_{\mathrm{PMPU}}(t)$: Long-Open-Interest der PMPU-Gruppe zum Zeitpunkt $t$
+                        - $\mathrm{OI}^S_{\mathrm{PMPU}}(t)$: Short-Open-Interest der PMPU-Gruppe zum Zeitpunkt $t$
                         - **PMPU(L/S):** Producer/Merchant/Processor/User, je nach Auswahl Long (PMPUL) oder Short (PMPUS)
                         - **Bubble-Grösse:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
-                        - **Punktfarbe:** normiertes OI der PMPU-Gruppe; zeigt die aktuelle Position relativ zu historischem Minimum und Maximum
+                        - **Punktfarbe:** rohe Netto-Position der PMPU-Gruppe; positiv = Long-Überhang, negativ = Short-Überhang
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

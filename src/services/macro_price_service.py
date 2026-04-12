@@ -12,9 +12,9 @@ class MacroPriceService:
     def __init__(self):
         self.client = YFinanceClient()
 
-    def load_dataframe(self) -> pd.DataFrame:
+    def load_dataframe(self, start_date=None) -> pd.DataFrame:
         """Load daily close prices for all macro tickers."""
-        df = self.client.fetch_macro_close_prices()
+        df = self.client.fetch_macro_close_prices(start_date=start_date)
 
         if df.empty or "date" not in df.columns:
             return pd.DataFrame(columns=["date"])
@@ -72,7 +72,7 @@ class MacroPriceService:
             print(f"[MacroPriceService] Filtered to {len(result)} Tuesday macro points (fallback)")
             return result
 
-    def load_aligned(self, cot_dates: pd.Series = None) -> pd.DataFrame:
+    def load_aligned(self, cot_dates: pd.Series = None, start_date=None) -> pd.DataFrame:
         """Load macro prices and align them to CoT dates."""
-        df = self.load_dataframe()
+        df = self.load_dataframe(start_date=start_date)
         return self.align_to_cot_dates(df, cot_dates)

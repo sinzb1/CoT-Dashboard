@@ -36,12 +36,12 @@ class YFinanceClient:
         start = date(end.year - self.years_back, end.month, end.day)
         return start, end
 
-    def fetch_close_prices(self) -> pd.DataFrame:
+    def fetch_close_prices(self, start_date=None) -> pd.DataFrame:
         """Fetch daily close prices for all configured commodity futures.
 
         Returns a DataFrame with columns: date, gold, silver, copper, platinum, palladium
         """
-        start, end = self._default_date_range()
+        start, end = (start_date, date.today()) if start_date is not None else self._default_date_range()
 
         frames = []
         for commodity, ticker in self.tickers.items():
@@ -89,12 +89,12 @@ class YFinanceClient:
         result = result.sort_values("date").reset_index(drop=True)
         return result
 
-    def fetch_macro_close_prices(self) -> pd.DataFrame:
+    def fetch_macro_close_prices(self, start_date=None) -> pd.DataFrame:
         """Fetch daily close prices for macro factors (VIX, USD Index, USD/CHF).
 
         Returns a DataFrame with columns: date, vix, usd_index, usd_chf
         """
-        start, end = self._default_date_range()
+        start, end = (start_date, date.today()) if start_date is not None else self._default_date_range()
 
         frames = []
         for col_name, ticker in self.macro_tickers.items():

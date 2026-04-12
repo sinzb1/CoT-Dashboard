@@ -9,8 +9,8 @@ class TradesCategoryService:
     def __init__(self):
         self.client = SocrataClient()
 
-    def load_dataframe(self):
-        rows = self.client.get_traders_categories()
+    def load_dataframe(self, start_date=None):
+        rows = self.client.get_traders_categories(start_date=start_date)
         df = pd.DataFrame.from_records(rows)
         return df
 
@@ -22,8 +22,14 @@ class TradesCategoryService:
             "SILVER - COMMODITY EXCHANGE INC.": "Silver",
             "PLATINUM - NEW YORK MERCANTILE EXCHANGE": "Platinum",
             "PALLADIUM - NEW YORK MERCANTILE EXCHANGE": "Palladium",
+            # Current name (since February 2022)
             "COPPER- #1 - COMMODITY EXCHANGE INC.": "Copper",
+            # Legacy name (before February 2022)
+            "COPPER-GRADE #1 - COMMODITY EXCHANGE INC.": "Copper",
+            # Current name (since February 2022)
             "WTI-PHYSICAL - NEW YORK MERCANTILE EXCHANGE": "Crude Oil (WTI)",
+            # Legacy name (before February 2022)
+            "CRUDE OIL, LIGHT SWEET - NEW YORK MERCANTILE EXCHANGE": "Crude Oil (WTI)",
         }
 
         # Rename column

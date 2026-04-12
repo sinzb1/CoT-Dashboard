@@ -20,13 +20,13 @@ class DatabentoContinuousService:
     def __init__(self):
         self.client = DatabentoClient()
 
-    def load_dataframe(self) -> pd.DataFrame:
+    def load_dataframe(self, start_date=None) -> pd.DataFrame:
         """Fetch daily close prices for all deferred continuous futures symbols.
 
         Returns a wide DataFrame with columns:
             date (UTC), gold_2nd_close, gold_3rd_close, silver_2nd_close, ...
         """
-        df = self.client.fetch_continuous_close_prices()
+        df = self.client.fetch_continuous_close_prices(start_date=start_date)
 
         if df.empty or "date" not in df.columns:
             return pd.DataFrame(columns=["date"])
@@ -95,7 +95,7 @@ class DatabentoContinuousService:
             )
             return result
 
-    def load_aligned(self, cot_dates: pd.Series = None) -> pd.DataFrame:
+    def load_aligned(self, cot_dates: pd.Series = None, start_date=None) -> pd.DataFrame:
         """Load deferred futures prices and align them to CoT dates."""
-        df = self.load_dataframe()
+        df = self.load_dataframe(start_date=start_date)
         return self.align_to_cot_dates(df, cot_dates)
