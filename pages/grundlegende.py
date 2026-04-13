@@ -1,6 +1,11 @@
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 
+COL_DIFF_LONG    = 'Difference (Long %)'
+COL_DIFF_SHORT   = 'Difference (Short %)'
+COL_DIFF_SPREAD  = 'Difference (Spread %)'
+COL_NUM_TRADERS  = 'Number of Traders'
+
 
 def layout():
     return html.Div([
@@ -22,15 +27,17 @@ def layout():
                 html.H2("Market Overview", className="mt-3 mb-3", id="section-market-overview"),
                 dash_table.DataTable(
                     id='overview-table',
+                    tooltip_delay=400,
+                    tooltip_duration=None,
                     columns=[
                         {'name': 'Trader Group', 'id': 'Trader Group'},
                         {'name': 'Positions (OI)', 'id': 'Positions', 'presentation': 'markdown'},
-                        {'name': 'Δ Long %', 'id': 'Difference (Long %)'},
-                        {'name': 'Δ Short %', 'id': 'Difference (Short %)'},
-                        {'name': 'Δ Spread %', 'id': 'Difference (Spread %)'},
+                        {'name': 'Δ Long %', 'id': COL_DIFF_LONG},
+                        {'name': 'Δ Short %', 'id': COL_DIFF_SHORT},
+                        {'name': 'Δ Spread %', 'id': COL_DIFF_SPREAD},
                         {'name': 'Total Traders', 'id': 'Total Traders'},
                         {'name': '% of Traders', 'id': '% of Traders'},
-                        {'name': 'Number of Traders', 'id': 'Number of Traders', 'presentation': 'markdown'},
+                        {'name': COL_NUM_TRADERS, 'id': COL_NUM_TRADERS, 'presentation': 'markdown'},
                     ],
                     markdown_options={"html": True},
                     style_header={
@@ -40,11 +47,11 @@ def layout():
                         'height': 'auto'
                     },
                     css=[
-                        {"selector": 'th[data-dash-column="Number of Traders"]',
+                        {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"]',
                          "rule": "white-space: normal;"},
-                        {"selector": 'th[data-dash-column="Number of Traders"] .column-header-name',
+                        {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"] .column-header-name',
                          "rule": "display: block;"},
-                        {"selector": 'th[data-dash-column="Number of Traders"]::after',
+                        {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"]::after',
                          "rule": (
                              "content: 'Long   Short   Spread';"
                              "display: block;"
@@ -89,17 +96,17 @@ def layout():
                         {'if': {'column_id': 'Positions'},
                          'whiteSpace': 'normal', 'height': 'auto',
                          'minWidth': '260px', 'width': '260px', 'maxWidth': '260px'},
-                        {'if': {'column_id': 'Number of Traders'},
+                        {'if': {'column_id': COL_NUM_TRADERS},
                          'whiteSpace': 'normal', 'height': 'auto',
                          'minWidth': '260px', 'width': '260px', 'maxWidth': '260px'}
                     ],
                     style_data_conditional=[
-                        {'if': {'filter_query': '{Difference (Long %)} < 0',  'column_id': 'Difference (Long %)'},  'color': 'red'},
-                        {'if': {'filter_query': '{Difference (Long %)} > 0',  'column_id': 'Difference (Long %)'},  'color': 'green'},
-                        {'if': {'filter_query': '{Difference (Short %)} < 0', 'column_id': 'Difference (Short %)'}, 'color': 'red'},
-                        {'if': {'filter_query': '{Difference (Short %)} > 0', 'column_id': 'Difference (Short %)'}, 'color': 'green'},
-                        {'if': {'filter_query': '{Difference (Spread %)} < 0', 'column_id': 'Difference (Spread %)'}, 'color': 'red'},
-                        {'if': {'filter_query': '{Difference (Spread %)} > 0', 'column_id': 'Difference (Spread %)'}, 'color': 'green'},
+                        {'if': {'filter_query': '{' + COL_DIFF_LONG   + '} < 0', 'column_id': COL_DIFF_LONG},   'color': 'red'},
+                        {'if': {'filter_query': '{' + COL_DIFF_LONG   + '} > 0', 'column_id': COL_DIFF_LONG},   'color': 'green'},
+                        {'if': {'filter_query': '{' + COL_DIFF_SHORT  + '} < 0', 'column_id': COL_DIFF_SHORT},  'color': 'red'},
+                        {'if': {'filter_query': '{' + COL_DIFF_SHORT  + '} > 0', 'column_id': COL_DIFF_SHORT},  'color': 'green'},
+                        {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} < 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'red'},
+                        {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} > 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'green'},
                     ],
                     style_table={'overflowX': 'auto'},
                     style_cell={

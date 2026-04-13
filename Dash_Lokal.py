@@ -768,7 +768,10 @@ def traders_bar(long_val, short_val, spread_val=None, bar_width_px=220, height_p
 
 # Callback to update the table
 @app.callback(
-    Output('overview-table', 'data'),
+    [
+        Output('overview-table', 'data'),
+        Output('overview-table', 'tooltip_data'),
+    ],
     [
         Input(MARKET_DROPDOWN_ID, 'value'),
         Input(DATE_PICKER_ID, 'start_date'),
@@ -783,7 +786,7 @@ def update_table(selected_market, start_date, end_date):
     ]
 
     if filtered_df.empty:
-        return []
+        return [], []
 
     first_row = filtered_df.iloc[0]
     current_row = filtered_df.iloc[-1]
@@ -837,7 +840,7 @@ def update_table(selected_market, start_date, end_date):
             safe_pct_change(current_row[OTHER_REPT_SHORT_COL], first_row[OTHER_REPT_SHORT_COL])
         ],
         'Difference (Spread %)': [
-            None,  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
+            'Keine Daten ℹ️',  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
             safe_pct_change(current_row[SWAP_DEALER_SPREAD_COL], first_row[SWAP_DEALER_SPREAD_COL]),
             safe_pct_change(current_row[MANAGED_MONEY_SPREAD_COL], first_row[MANAGED_MONEY_SPREAD_COL]),
             safe_pct_change(current_row[OTHER_REPT_SPREAD_COL], first_row[OTHER_REPT_SPREAD_COL])
@@ -874,7 +877,25 @@ def update_table(selected_market, start_date, end_date):
         ],
     }
 
-    return pd.DataFrame(data).to_dict('records')
+    _pmpu_spread_tooltip = (
+        'Keine Daten verfügbar. Im CFTC Disaggregated CoT-Report werden für '
+        'PMPU keine Spread-Positionen ausgewiesen. '
+        'PMPU-Händler sind physische Martkeilnehmende (Produzenten, Händler, Verarbeiter, '
+        'Endnutzer) und halten keine separaten Spread-Positionen gemäss CFTC-Definition.'
+    )
+
+    tooltip_data = [
+        # Zeile 0: PMPU — Tooltip nur auf der Spread-Zelle
+        {
+            'Difference (Spread %)': {'value': _pmpu_spread_tooltip, 'type': 'text'},
+        },
+        # Zeilen 1–3: Swap Dealer, Managed Money, Other Reportables — kein Tooltip nötig
+        {},
+        {},
+        {},
+    ]
+
+    return pd.DataFrame(data).to_dict('records'), tooltip_data
 
 def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_title,
                               title, use_year_ticks=False, selected_market=None):
