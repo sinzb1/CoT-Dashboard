@@ -1,4 +1,3 @@
-import os
 import dash
 from dotenv import load_dotenv
 from dash import dcc, html, dash_table
@@ -10,7 +9,6 @@ from pages.obos import layout as obos_layout
 from pages.shapley import layout as shapley_layout
 from pages.decision_tree import layout as decision_tree_layout
 import pandas as pd
-from influxdb_client_3 import InfluxDBClient3
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 import webbrowser
@@ -18,6 +16,10 @@ from threading import Timer
 from datetime import datetime as dt, timedelta
 import dash_bootstrap_components as dbc
 import numpy as np
+from src.data_loading.influxdb_loader import load_all_data
+from src.analysis.feature_engineering import enrich_cot_dataframe
+from src.analysis.bubble_sizing import scaled_diameters, scaled_diameters_rank
+from src.analysis.data_merging import merge_series_asof
 from src.analysis.shapley_owen import compute_rolling_shapley, prepare_market_for_shapley, precompute_all_markets as _shapley_precompute_all
 from src.analysis.decision_tree import (
     train_decision_tree,
@@ -29,7 +31,7 @@ from src.analysis.decision_tree import (
     pr_curve_figure as dt_pr_curve_figure,
 )
 from src.analysis.market_config import get_price_col, get_contract_size, get_2nd_nearby_price_col, get_3rd_nearby_price_col
-from src.analysis.cot_indicators import clustering_0_100, rel_concentration, calculate_ranges
+from src.analysis.cot_indicators import rel_concentration, calculate_ranges
 from src.analysis.obos_indicators import (
     build_market_row as _obos_build_market_row,
     COLOR_CONTANGO as _OBOS_COLOR_CONTANGO,
@@ -126,288 +128,25 @@ SHAPLEY_COL_MM             = 'Δ MM Net'
 SHAPLEY_COL_OR             = 'Δ OR Net'
 
 
-# Connect to InfluxDB v3
-host = os.environ.get("INFLUXDB_HOST", "http://localhost:8181")
-token = os.environ["INFLUXDB_TOKEN"]
-database = os.environ.get("INFLUXDB_DATABASE", "CoT-Data")
+# ---------------------------------------------------------------------------
+# Datenladen: InfluxDB v3 + yfinance-Fallback
+# Implementierung: siehe src/data_loading/influxdb_loader.py
+# ---------------------------------------------------------------------------
+_data = load_all_data()
+df_pivoted         = _data["df_pivoted"]
+df_futures_prices  = _data["df_futures_prices"]
+df_macro           = _data["df_macro"]
+df_eia             = _data["df_eia"]
+df_deferred_prices = _data["df_deferred_prices"]
+del _data
 
-print("Connecting to InfluxDB v3...")
-client = InfluxDBClient3(host=host, token=token, database=database)
-
-# Define SQL query to fetch data (v3 Core uses SQL instead of Flux)
-query = """
-SELECT *
-FROM cot_data
-WHERE time >= now() - INTERVAL '10 years'
-"""
-
-print("Fetching data from InfluxDB v3...")
-# Execute query - v3 returns data as PyArrow Table, convert to pandas DataFrame
-table = client.query(query=query, language="sql")
-
-# Convert PyArrow Table to pandas DataFrame
-df_pivoted = table.to_pandas()
-
-print(f"Fetched {len(df_pivoted)} rows from InfluxDB v3")
-
-# Fetch futures prices for PPCI (stored by the pipeline in futures_prices measurement)
-query_futures = """
-SELECT *
-FROM futures_prices
-WHERE time >= now() - INTERVAL '10 years'
-"""
-print("Fetching futures prices from InfluxDB v3...")
-try:
-    table_futures = client.query(query=query_futures, language="sql")
-    df_futures_prices = table_futures.to_pandas()
-    df_futures_prices.rename(columns={'time': 'Date'}, inplace=True)
-    df_futures_prices['Date'] = pd.to_datetime(df_futures_prices['Date']).dt.tz_localize(None)
-    df_futures_prices = df_futures_prices.sort_values('Date').reset_index(drop=True)
-    print(f"[PPCI] Loaded {len(df_futures_prices)} futures price rows")
-except Exception as _e:
-    print(f"[PPCI] Could not load futures prices: {_e}")
-    df_futures_prices = pd.DataFrame(columns=['Date'])
-
-# Fetch macro data (VIX, USD Index etc.) – stored by pipeline in macro_by_date
-query_macro = """
-SELECT *
-FROM macro_by_date
-WHERE time >= now() - INTERVAL '10 years'
-"""
-print("Fetching macro data (yfinance) from InfluxDB v3...")
-try:
-    table_macro = client.query(query=query_macro, language="sql")
-    df_macro = table_macro.to_pandas()
-    df_macro.rename(columns={'time': 'Date'}, inplace=True)
-    df_macro['Date'] = pd.to_datetime(df_macro['Date']).dt.tz_localize(None)
-    df_macro = df_macro.sort_values('Date').reset_index(drop=True)
-    print(f"[Macro] Loaded {len(df_macro)} macro rows")
-except Exception as _e:
-    print(f"[Macro] Could not load macro data: {_e}")
-    df_macro = pd.DataFrame(columns=['Date'])
-
-# Fill macro gaps: fetch 4 years from yfinance as base, InfluxDB values take precedence
-_MACRO_FALLBACK = {
-    "vix":       "^VIX",
-    "usd_index": "DX-Y.NYB",
-    "usd_chf":   "CHF=X",
-}
-try:
-    import yfinance as yf
-    from datetime import date as _date
-    _fb_start = _date.today().replace(year=_date.today().year - 10)
-    for _col, _ticker in _MACRO_FALLBACK.items():
-        _raw = yf.download(_ticker, start=_fb_start.isoformat(), progress=False, auto_adjust=True)
-        if _raw.empty:
-            print(f"[Macro fallback] No data returned for {_col} ({_ticker})")
-            continue
-        if isinstance(_raw.columns, pd.MultiIndex):
-            _cc = next((c for c in _raw.columns if c[0] == "Close"), None)
-            _series = _raw[_cc] if _cc else None
-        else:
-            _series = _raw["Close"]
-        if _series is None:
-            continue
-        _fb = _series.reset_index()
-        _fb.columns = ["Date", _col]
-        _fb["Date"] = pd.to_datetime(_fb["Date"]).dt.tz_localize(None)
-        if df_macro.empty or 'Date' not in df_macro.columns:
-            df_macro = _fb
-        elif _col in df_macro.columns:
-            # Merge yfinance (4yr base) with InfluxDB; InfluxDB values take precedence
-            _tmp = pd.merge(_fb, df_macro[['Date', _col]].rename(columns={_col: f'{_col}_db'}),
-                            on="Date", how="outer", validate="1:1")
-            _tmp[_col] = _tmp[f'{_col}_db'].combine_first(_tmp[_col])
-            _tmp.drop(columns=[f'{_col}_db'], inplace=True)
-            df_macro = pd.merge(df_macro.drop(columns=[_col]), _tmp[['Date', _col]],
-                                on="Date", how="outer", validate="1:1").sort_values("Date").reset_index(drop=True)
-        else:
-            df_macro = pd.merge(df_macro, _fb, on="Date", how="outer", validate="1:1").sort_values("Date").reset_index(drop=True)
-        print(f"[Macro fallback] Loaded {len(_fb)} rows for {_col} from yfinance")
-except Exception as _fb_e:
-    print(f"[Macro fallback] Error: {_fb_e}")
-
-# Fetch EIA crude oil inventory data (eia_petroleum_stocks measurement)
-query_eia = """
-SELECT time, crude_oil_stocks_kb
-FROM eia_petroleum_stocks
-WHERE time >= now() - INTERVAL '10 years'
-ORDER BY time ASC
-"""
-print("Fetching EIA crude oil inventory data from InfluxDB v3...")
-try:
-    table_eia = client.query(query=query_eia, language="sql")
-    df_eia = table_eia.to_pandas()
-    df_eia.rename(columns={'time': 'Date'}, inplace=True)
-    df_eia['Date'] = pd.to_datetime(df_eia['Date']).dt.tz_localize(None)
-    df_eia = df_eia.sort_values('Date').reset_index(drop=True)
-    print(f"[EIA] Loaded {len(df_eia)} crude oil inventory rows")
-except Exception as _e:
-    print(f"[EIA] Could not load EIA inventory data: {_e}")
-    df_eia = pd.DataFrame(columns=['Date'])
-
-# Fetch Databento 2nd-nearby deferred futures prices
-query_deferred = """
-SELECT *
-FROM futures_deferred_prices
-WHERE time >= now() - INTERVAL '10 years'
-"""
-print("Fetching Databento deferred futures prices from InfluxDB v3...")
-try:
-    table_deferred = client.query(query=query_deferred, language="sql")
-    df_deferred_prices = table_deferred.to_pandas()
-    df_deferred_prices.rename(columns={'time': 'Date'}, inplace=True)
-    df_deferred_prices['Date'] = pd.to_datetime(df_deferred_prices['Date']).dt.tz_localize(None)
-    df_deferred_prices = df_deferred_prices.sort_values('Date').reset_index(drop=True)
-    print(f"[Deferred] Loaded {len(df_deferred_prices)} deferred futures price rows")
-except Exception as _e:
-    print(f"[Deferred] Could not load deferred futures prices: {_e}")
-    df_deferred_prices = pd.DataFrame(columns=['Date'])
-
-# Close the client
-client.close()
-
-# Rename columns for convenience
-# v3 uses 'time' instead of '_time', data is already pivoted
-df_pivoted.rename(columns={'time': 'Date', 'market_names': MARKET_NAMES_COL}, inplace=True)
-
-# Berechnung der Spalte TOTAL_TRADERS_LABEL
-df_pivoted = df_pivoted.sort_values([MARKET_NAMES_COL, 'Date'])
-
-# 1) Total Traders (TTF)
-TOTAL_TRADERS_COL = 'Total Traders'
-df_pivoted[TOTAL_TRADERS_LABEL] = df_pivoted[TOTAL_TRADERS_COL]
-
-# 2) Anteil Trader in Gruppe (nicht Open Interest!)
-df_pivoted['MM_Long_share']  = df_pivoted[TRADERS_MM_LONG_COL]  / df_pivoted[TOTAL_TRADERS_LABEL]
-df_pivoted['MM_Short_share'] = df_pivoted[TRADERS_MM_SHORT_COL] / df_pivoted[TOTAL_TRADERS_LABEL]
-
-# 3) 1 Jahr = ~52 Wochen, und pro Markt (keine Markt-Mischung)
-df_pivoted[LONG_CLUSTERING_COL] = (
-    df_pivoted.groupby(MARKET_NAMES_COL)['MM_Long_share']
-    .transform(lambda s: clustering_0_100(s, window=52))
-)
-
-df_pivoted[SHORT_CLUSTERING_COL] = (
-    df_pivoted.groupby(MARKET_NAMES_COL)['MM_Short_share']
-    .transform(lambda s: clustering_0_100(s, window=52))
-)
-
-df_pivoted['Rolling Min'] = df_pivoted[PMPU_LONG_COL].rolling(365, min_periods=1).min()
-df_pivoted['Rolling Max'] = df_pivoted[PMPU_LONG_COL].rolling(365, min_periods=1).max()
-
-# Define size categories for traders
-df_pivoted['Trader Size'] = pd.cut(
-    df_pivoted[TOTAL_TRADERS_LABEL],
-    bins=[0, 50, 100, 150],
-    labels=['≤ 50 Traders', '51–100 Traders', '101–150 Traders']
-)
-
-print(df_pivoted.columns)  # Zeigt alle Spalten in df_pivoted
-print(df_pivoted.head())   # Zeigt die ersten Zeilen
-
-
-# Additional calculations for the new graphs
-df_pivoted['Total Long Traders'] = df_pivoted[[TRADERS_PROD_MERC_SHORT, TRADERS_SWAP_LONG_COL, TRADERS_MM_LONG_COL]].sum(axis=1)
-df_pivoted['Total Short Traders'] = df_pivoted[[TRADERS_PROD_MERC_SHORT, TRADERS_SWAP_SHORT_COL, TRADERS_MM_SHORT_COL]].sum(axis=1)
-df_pivoted[LONG_POSITION_SIZE_COL] = df_pivoted[PMPU_LONG_COL]
-df_pivoted[SHORT_POSITION_SIZE_COL] = df_pivoted[PMPU_SHORT_COL]
-df_pivoted[MML_POSITION_SIZE_COL] = (
-    df_pivoted[MANAGED_MONEY_LONG_COL] / df_pivoted[TRADERS_MM_LONG_COL]
-).replace([np.inf, -np.inf], np.nan)
-df_pivoted[MMS_POSITION_SIZE_COL] = (
-    df_pivoted[MANAGED_MONEY_SHORT_COL] / df_pivoted[TRADERS_MM_SHORT_COL]
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted['Net Short Position Size'] = (
-    df_pivoted[SHORT_POSITION_SIZE_COL] - df_pivoted[LONG_POSITION_SIZE_COL]
-)
-df_pivoted[PMPUL_POSITION_SIZE_COL] = (
-    df_pivoted[PMPU_LONG_COL] / df_pivoted[TRADERS_PROD_MERC_LONG]
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted[PMPUS_POSITION_SIZE_COL] = (
-    df_pivoted[PMPU_SHORT_COL] / df_pivoted[TRADERS_PROD_MERC_SHORT]
-).replace([np.inf, -np.inf], np.nan)
-df_pivoted[SDL_POSITION_SIZE_COL] = (
-    df_pivoted[SWAP_DEALER_LONG_COL] / df_pivoted[TRADERS_SWAP_LONG_COL]
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted[SDS_POSITION_SIZE_COL] = (
-    df_pivoted[SWAP_DEALER_SHORT_COL] / df_pivoted[TRADERS_SWAP_SHORT_COL]
-).replace([np.inf, -np.inf], np.nan)
-df_pivoted[ORL_POSITION_SIZE_COL] = (
-    df_pivoted[OTHER_REPT_LONG_COL] / df_pivoted[TRADERS_OTHER_REPT_LONG]
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted[ORS_POSITION_SIZE_COL] = (
-    df_pivoted[OTHER_REPT_SHORT_COL] / df_pivoted[TRADERS_OTHER_REPT_SHORT]
-).replace([np.inf, -np.inf], np.nan)
-
-df_pivoted[MML_LONG_OI_COL] = df_pivoted[MANAGED_MONEY_LONG_COL]
-df_pivoted[MML_SHORT_OI_COL] = -df_pivoted[MANAGED_MONEY_SHORT_COL]
-df_pivoted['MMS Long OI'] = df_pivoted[MANAGED_MONEY_LONG_COL]
-df_pivoted[MMS_SHORT_OI_COL] = -df_pivoted[MANAGED_MONEY_SHORT_COL]
-df_pivoted[MML_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL]
-df_pivoted[MMS_TRADERS_COL] = df_pivoted[TRADERS_MM_SHORT_COL]
-
-max_bubble_size = 100
-max_oi = max(df_pivoted[MML_LONG_OI_COL].max(), abs(df_pivoted[MML_SHORT_OI_COL].max()))
-max_oi = max(df_pivoted[MMS_SHORT_OI_COL].max(), abs(df_pivoted[MML_SHORT_OI_COL].max()))
-
-sizeref = 2. * max_oi / (max_bubble_size**3.2)
-
-# Calculate relative concentration for each trader group
-df_pivoted[PMPUL_REL_CONC_COL] = df_pivoted[PMPU_LONG_COL] - df_pivoted[PMPU_SHORT_COL]
-df_pivoted[PMPUS_REL_CONC_COL] = df_pivoted[PMPU_SHORT_COL] - df_pivoted[PMPU_LONG_COL]
-df_pivoted[SDL_REL_CONC_COL] = df_pivoted[SWAP_DEALER_LONG_COL] - df_pivoted[SWAP_DEALER_SHORT_COL]
-df_pivoted[SDS_REL_CONC_COL] = df_pivoted[SWAP_DEALER_SHORT_COL] - df_pivoted[SWAP_DEALER_LONG_COL]
-df_pivoted[MML_REL_CONC_COL] = df_pivoted[MANAGED_MONEY_LONG_COL] - df_pivoted[MANAGED_MONEY_SHORT_COL]
-df_pivoted[MMS_REL_CONC_COL] = df_pivoted[MANAGED_MONEY_SHORT_COL] - df_pivoted[MANAGED_MONEY_LONG_COL]
-df_pivoted[ORL_REL_CONC_COL] = df_pivoted[OTHER_REPT_LONG_COL] - df_pivoted[OTHER_REPT_SHORT_COL]
-df_pivoted[ORS_REL_CONC_COL] = df_pivoted[OTHER_REPT_SHORT_COL] - df_pivoted[OTHER_REPT_LONG_COL]
-
-# Aliase für Shapley-Owen: lesbare Kurzbezeichnungen der Netto-Positionierungen
-df_pivoted['PMPU Net'] = df_pivoted[PMPUL_REL_CONC_COL]
-df_pivoted['SD Net']   = df_pivoted[SDL_REL_CONC_COL]
-df_pivoted['MM Net']   = df_pivoted[MML_REL_CONC_COL]
-df_pivoted['OR Net']   = df_pivoted[ORL_REL_CONC_COL]
-
-# Columns for the number of traders for each group
-df_pivoted[PMPUL_TRADERS_COL] = df_pivoted[TRADERS_PROD_MERC_LONG]
-df_pivoted['PMPUS Traders'] = df_pivoted[TRADERS_PROD_MERC_SHORT]
-df_pivoted['SDL Traders'] = df_pivoted[TRADERS_SWAP_LONG_COL]
-df_pivoted['SDS Traders'] = df_pivoted[TRADERS_SWAP_SHORT_COL]
-df_pivoted[MML_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL]
-df_pivoted[MMS_TRADERS_COL] = df_pivoted[TRADERS_MM_SHORT_COL]
-df_pivoted['ORL Traders'] = df_pivoted[TRADERS_OTHER_REPT_LONG]
-df_pivoted['ORS Traders'] = df_pivoted[TRADERS_OTHER_REPT_SHORT]
-
-# Determine the quarter for each date
-df_pivoted['Quarter'] = df_pivoted['Date'].dt.quarter.map({1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4'})
-
-# Calculate a global sizeref to ensure consistency across markets
-max_bubble_size = 100  # Adjusted for better visualization
-max_oi = max(df_pivoted[[PMPUL_REL_CONC_COL, PMPUS_REL_CONC_COL, 
-                         SDL_REL_CONC_COL, SDS_REL_CONC_COL, 
-                         MML_REL_CONC_COL, MMS_REL_CONC_COL, 
-                         ORL_REL_CONC_COL, ORS_REL_CONC_COL]].max().max(),
-             abs(df_pivoted[[PMPUL_REL_CONC_COL, PMPUS_REL_CONC_COL,
-                             SDL_REL_CONC_COL, SDS_REL_CONC_COL, 
-                             MML_REL_CONC_COL, MMS_REL_CONC_COL, 
-                             ORL_REL_CONC_COL, ORS_REL_CONC_COL]].min().min()))
-sizeref = 2. * max_oi / (max_bubble_size**2.5)
-
-min_bubble_size = 10  # Set minimum bubble size
-
-# Add Year column for color coding
-df_pivoted['Year'] = df_pivoted['Date'].dt.year
-
-# Calculate Net OI for Managed Money (MM)
-df_pivoted[MM_NET_OI_COL] = df_pivoted[MANAGED_MONEY_LONG_COL] - df_pivoted[MANAGED_MONEY_SHORT_COL]
-
-# Calculate Net Number of Traders for MM
-df_pivoted[MM_NET_TRADERS_COL] = df_pivoted[TRADERS_MM_LONG_COL] - df_pivoted[TRADERS_MM_SHORT_COL]
+# ---------------------------------------------------------------------------
+# DataFrame-Anreicherung: abgeleitete Spalten berechnen
+# Implementierung: siehe src/analysis/feature_engineering.py
+# ---------------------------------------------------------------------------
+df_pivoted = enrich_cot_dataframe(df_pivoted)
+print(df_pivoted.columns)
+print(df_pivoted.head())
 
 # Define the default end date (most recent date)
 default_end_date = df_pivoted['Date'].max()
@@ -520,58 +259,7 @@ def _indicator_cols(indicator: str) -> tuple[str, str]:
 def nz(series):
     return pd.to_numeric(series, errors='coerce')
 
-def scaled_diameters(vals, min_px=6, max_px=26, lo=None, hi=None, log_scale=False):
-    """Mappe Werte auf Pixeldurchmesser [min_px, max_px].
-
-    Parameters
-    ----------
-    vals      : Werte (Series, ndarray, list, scalar)
-    min_px    : kleinster Durchmesser in Pixel
-    max_px    : größter  Durchmesser in Pixel
-    lo, hi    : explizite Referenz-Grenzen (None → aus vals berechnen).
-                Für die Legende MUSS derselbe lo/hi wie für den Scatter
-                übergeben werden, damit Legende und Punkte konsistent sind.
-    log_scale : True → log1p-Transformation vor der Interpolation
-                (empfohlen für stark rechts-schiefe Daten wie Open Interest).
-    """
-    # In ein float-Array konvertieren (verträglich mit Series/ndarray/list/scalar)
-    v = np.asarray(vals, dtype=float)
-
-    # Nicht-finite durch 0 ersetzen
-    v = np.where(np.isfinite(v), v, 0.0)
-
-    if v.size == 0:
-        return np.array([], dtype=float)
-
-    _lo = float(lo) if lo is not None else float(np.nanmin(v))
-    _hi = float(hi) if hi is not None else float(np.nanmax(v))
-
-    # Falls alle Werte gleich (oder leer), mittlere Größe verwenden
-    if not np.isfinite(_lo) or not np.isfinite(_hi) or _hi <= _lo:
-        return np.full_like(v, (min_px + max_px) / 2.0, dtype=float)
-
-    if log_scale:
-        v_t  = np.log1p(np.maximum(v, 0.0))
-        lo_t = np.log1p(max(_lo, 0.0))
-        hi_t = np.log1p(_hi)
-    else:
-        v_t, lo_t, hi_t = v, _lo, _hi
-
-    return np.interp(v_t, (lo_t, hi_t), (min_px, max_px))
-
-def scaled_diameters_rank(vals, min_px=6, max_px=45, gamma=0.8):
-
-    s = pd.to_numeric(pd.Series(vals), errors='coerce').fillna(0).clip(lower=0)
-
-    # alles gleich / keine Variation -> konstante Größe
-    if s.nunique(dropna=False) <= 1:
-        return np.full(len(s), (min_px + max_px) / 2.0, dtype=float)
-
-    # Rang/Perzentil (0..1)
-    p = s.rank(pct=True, method='average').to_numpy(dtype=float)
-
-    # in Pixel mappen
-    return (min_px + (p ** gamma) * (max_px - min_px)).astype(float)
+# scaled_diameters / scaled_diameters_rank: siehe src/analysis/bubble_sizing.py
 
 def _oi_dtick(market: str) -> int:
     """dtick-Wert für OI-Achse je nach Markt (S3358: kein verschachtelter Ternary)."""
@@ -1666,16 +1354,7 @@ def update_ppci(selected_market, start_date, end_date, direction):
     y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
-        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
-        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
-        dff = dff.sort_values('_date')
-
-        dff = pd.merge_asof(
-            dff, prices,
-            left_on='_date', right_on='_pdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
-        )
+        dff = merge_series_asof(dff, df_deferred_prices, price_col)
         y_vals = pd.to_numeric(dff[price_col], errors='coerce')
     else:
         y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
@@ -1831,15 +1510,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
     y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
-        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
-        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
-        dff = dff.sort_values('_date')
-        dff = pd.merge_asof(
-            dff, prices,
-            left_on='_date', right_on='_pdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
-        )
+        dff = merge_series_asof(dff, df_deferred_prices, price_col)
         y_vals = pd.to_numeric(dff[price_col], errors='coerce')
     else:
         y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
@@ -1987,15 +1658,7 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     y_title = PRICE_2ND_NEARBY_LABEL
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
-        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
-        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
-        dff = dff.sort_values('_date')
-        dff = pd.merge_asof(
-            dff, prices,
-            left_on='_date', right_on='_pdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
-        )
+        dff = merge_series_asof(dff, df_deferred_prices, price_col)
         y_vals = pd.to_numeric(dff[price_col], errors='coerce')
     else:
         y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
@@ -2159,15 +1822,7 @@ def update_dp_notional(selected_market, start_date, end_date):
     price_col = _ppci_get_price_col(selected_market)
 
     if price_col and not df_futures_prices.empty and price_col in df_futures_prices.columns:
-        prices = df_futures_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
-        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
-        dff = pd.merge_asof(
-            dff, prices,
-            left_on='_date', right_on='_pdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
-        )
+        dff = merge_series_asof(dff, df_futures_prices, price_col)
         price_series = pd.to_numeric(dff[price_col], errors='coerce')
     else:
         price_series = pd.Series([np.nan] * len(dff), index=dff.index)
@@ -2453,17 +2108,9 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     price_col = _ppci_get_2nd_nearby_col(selected_market)
 
     if price_col and not df_deferred_prices.empty and price_col in df_deferred_prices.columns:
-        prices = df_deferred_prices[['Date', price_col]].dropna(subset=[price_col]).copy()
-        prices = prices.rename(columns={'Date': '_pdate'}).sort_values('_pdate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = merge_series_asof(dff, df_deferred_prices, price_col)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
         y_vals = pd.to_numeric(dff[y_col], errors='coerce')
-        dff = pd.merge_asof(
-            dff, prices,
-            left_on='_date', right_on='_pdate',
-            direction='backward',
-            tolerance=pd.Timedelta(days=7)
-        )
         color_vals    = pd.to_numeric(dff[price_col], errors='coerce')
         colorbar_title = 'Price 2nd Nearby (USD)'
     else:
@@ -2773,16 +2420,9 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_macro.empty and 'vix' in df_macro.columns:
-        vix_df = df_macro[['Date', 'vix']].dropna(subset=['vix']).copy()
-        vix_df = vix_df.rename(columns={'Date': '_vdate'}).sort_values('_vdate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = merge_series_asof(dff, df_macro, 'vix', tolerance_days=None)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
         y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
-        dff = pd.merge_asof(
-            dff, vix_df,
-            left_on='_date', right_on='_vdate',
-            direction='backward'
-        )
         color_vals     = pd.to_numeric(dff['vix'], errors='coerce')
         colorbar_title = 'VIX'
     else:
@@ -2908,16 +2548,9 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_macro.empty and 'usd_index' in df_macro.columns:
-        dxy_df = df_macro[['Date', 'usd_index']].dropna(subset=['usd_index']).copy()
-        dxy_df = dxy_df.rename(columns={'Date': '_ddate'}).sort_values('_ddate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = merge_series_asof(dff, df_macro, 'usd_index', tolerance_days=None)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
         y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
-        dff = pd.merge_asof(
-            dff, dxy_df,
-            left_on='_date', right_on='_ddate',
-            direction='backward'
-        )
         color_vals     = pd.to_numeric(dff['usd_index'], errors='coerce')
         colorbar_title = 'DXY'
     else:
@@ -3043,16 +2676,9 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_macro.empty and 'usd_chf' in df_macro.columns:
-        chf_df = df_macro[['Date', 'usd_chf']].dropna(subset=['usd_chf']).copy()
-        chf_df = chf_df.rename(columns={'Date': '_cdate'}).sort_values('_cdate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = merge_series_asof(dff, df_macro, 'usd_chf', tolerance_days=None)
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
         y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
-        dff = pd.merge_asof(
-            dff, chf_df,
-            left_on='_date', right_on='_cdate',
-            direction='backward'
-        )
         color_vals     = pd.to_numeric(dff['usd_chf'], errors='coerce')
         colorbar_title = 'USD/CHF'
     else:
@@ -3208,17 +2834,9 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
     if not df_eia.empty and CRUDE_OIL_STOCKS_COL in df_eia.columns:
-        eia_ref = df_eia[['Date', CRUDE_OIL_STOCKS_COL]].dropna(subset=[CRUDE_OIL_STOCKS_COL]).copy()
-        eia_ref = eia_ref.rename(columns={'Date': '_edate'}).sort_values('_edate')
-        dff = dff.sort_values('_date').reset_index(drop=True)
+        dff = merge_series_asof(dff, df_eia, CRUDE_OIL_STOCKS_COL, direction='nearest')
         x_vals = pd.to_numeric(dff[x_col], errors='coerce')
         y_vals = pd.to_numeric(dff[y_col], errors='coerce').abs()
-        dff = pd.merge_asof(
-            dff, eia_ref,
-            left_on='_date', right_on='_edate',
-            direction='nearest',
-            tolerance=pd.Timedelta(days=7)
-        )
         color_vals     = pd.to_numeric(dff[CRUDE_OIL_STOCKS_COL], errors='coerce')
         colorbar_title = 'Inventory (kb)'
     else:
