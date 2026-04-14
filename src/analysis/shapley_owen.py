@@ -23,19 +23,19 @@ import pandas as pd
 # Interne Hilfsfunktionen
 # ---------------------------------------------------------------------------
 
-def _r2_ols(y: np.ndarray, X_cols: np.ndarray) -> float:
-    """OLS-R² von  y ~ X_cols  (Intercept wird intern ergänzt).
+def _r2_ols(y: np.ndarray, x_cols: np.ndarray) -> float:
+    """OLS-R² von  y ~ x_cols  (Intercept wird intern ergänzt).
 
-    Gibt 0.0 zurück, wenn X_cols leer ist oder die Regression fehlschlägt.
+    Gibt 0.0 zurück, wenn x_cols leer ist oder die Regression fehlschlägt.
     Klippt das Ergebnis auf [0, 1] um numerische Artefakte zu vermeiden.
     """
-    if X_cols.shape[1] == 0:
+    if x_cols.shape[1] == 0:
         return 0.0
 
-    Xc = np.column_stack([np.ones(len(y)), X_cols])
+    xc = np.column_stack([np.ones(len(y)), x_cols])
     try:
-        beta, _, _, _ = np.linalg.lstsq(Xc, y, rcond=None)
-        y_hat = Xc @ beta
+        beta, _, _, _ = np.linalg.lstsq(xc, y, rcond=None)
+        y_hat = xc @ beta
     except np.linalg.LinAlgError:
         return 0.0
 
@@ -81,14 +81,14 @@ def _compute_shapley_values(y: np.ndarray, X: np.ndarray) -> np.ndarray:
                 r2_cache[key] = _r2_ols(y, X[:, list(subset)])
 
     # --- Shapley-Gewichte und Summation ---
-    N_fact = math.factorial(N)
+    n_fact = math.factorial(N)
     phi = np.zeros(N)
 
     for i in range(N):
         others = [j for j in range(N) if j != i]
         for size in range(N):          # |S| = 0 .. N-1
             weight = (
-                math.factorial(size) * math.factorial(N - size - 1) / N_fact
+                math.factorial(size) * math.factorial(N - size - 1) / n_fact
             )
             for subset in combinations(others, size):
                 s_set = frozenset(subset)
@@ -141,20 +141,20 @@ def compute_rolling_shapley(
     for t in range(n):
         start = max(0, t - window + 1)
         y_w = Y[start : t + 1]
-        X_w = X[start : t + 1]
+        x_w = X[start : t + 1]
 
         # NaN-Zeilen entfernen
-        mask = np.isfinite(y_w) & np.all(np.isfinite(X_w), axis=1)
+        mask = np.isfinite(y_w) & np.all(np.isfinite(x_w), axis=1)
         y_w = y_w[mask]
-        X_w = X_w[mask]
+        x_w = x_w[mask]
 
         if len(y_w) < min_periods:
             row = [dates[t]] + [np.nan] * N + [np.nan] + [np.nan] * N
             records.append(row)
             continue
 
-        phi = _compute_shapley_values(y_w, X_w)
-        r2_full = _r2_ols(y_w, X_w)
+        phi = _compute_shapley_values(y_w, x_w)
+        r2_full = _r2_ols(y_w, x_w)
 
         # Anteil in % (nur wenn R² > 0 und alle phi endlich)
         if r2_full > 1e-8 and np.all(np.isfinite(phi)):
@@ -169,6 +169,61 @@ def compute_rolling_shapley(
     result = pd.DataFrame(records, columns=cols)
     result["Date"] = pd.to_datetime(result["Date"])
     return result
+
+
+def precompute_all_markets(
+    df_pivoted: pd.DataFrame,
+    df_futures_prices: pd.DataFrame,
+    market_names_col: str = "Market Names",
+    x_cols: list | None = None,
+    y_col: str = "_price_change",
+    window: int = 52,
+    min_periods: int = 26,
+) -> dict:
+    """Berechnet rollende Shapley-Zerlegung für alle Märkte in df_pivoted.
+
+    Wrapper um prepare_market_for_shapley() + compute_rolling_shapley()
+    für die Batch-Vorberechnung aller Märkte beim App-Start.
+
+    Parameters
+    ----------
+    df_pivoted        : Vollständiger CoT-Datensatz (alle Märkte).
+    df_futures_prices : DataFrame mit Futures-Preisspalten.
+    market_names_col  : Spaltenname für den Marktnamen in df_pivoted.
+    x_cols            : Prädiktor-Spaltennamen (default: vier Standard-Gruppen).
+    y_col             : Zielvariable (default: '_price_change').
+    window            : Rollierendes Fenster in Beobachtungen.
+    min_periods       : Mindestanzahl gültiger Beobachtungen.
+
+    Returns
+    -------
+    dict: market_name → DataFrame mit Shapley-Resultaten.
+    """
+    from src.analysis.market_config import get_price_col
+
+    if x_cols is None:
+        x_cols = ["Δ PMPU Net", "Δ SD Net", "Δ MM Net", "Δ OR Net"]
+
+    results: dict = {}
+    for mkt in df_pivoted[market_names_col].unique():
+        pcol = get_price_col(mkt)
+        if pcol is None or df_futures_prices.empty or pcol not in df_futures_prices.columns:
+            print(f"[Shapley] Kein Preisdaten für {mkt} – überspringe.")
+            continue
+
+        dff = df_pivoted[df_pivoted[market_names_col] == mkt].copy()
+        dff = prepare_market_for_shapley(dff, df_futures_prices, pcol)
+        if dff is None:
+            print(f"[Shapley] {mkt}: Keine Preisdaten nach Merge – überspringe.")
+            continue
+
+        result = compute_rolling_shapley(
+            dff, x_cols=x_cols, y_col=y_col, window=window, min_periods=min_periods
+        )
+        results[mkt] = result
+        print(f"[Shapley] {mkt}: {len(result)} Datenpunkte berechnet.")
+
+    return results
 
 
 def prepare_market_for_shapley(

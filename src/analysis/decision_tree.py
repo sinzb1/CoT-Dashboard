@@ -242,6 +242,47 @@ def train_decision_tree(
 # Visualisierungen – Prognose-Modell
 # ---------------------------------------------------------------------------
 
+def train_all_markets(
+    df_pivoted: pd.DataFrame,
+    df_futures_prices: pd.DataFrame,
+    market_names_col: str = "Market Names",
+) -> dict:
+    """Trainiert Decision Trees für alle Märkte in df_pivoted.
+
+    Wrapper um train_decision_tree() für die Batch-Vorberechnung aller
+    Märkte beim App-Start.
+
+    Parameters
+    ----------
+    df_pivoted        : Vollständiger CoT-Datensatz (alle Märkte).
+    df_futures_prices : DataFrame mit Futures-Preisspalten.
+    market_names_col  : Spaltenname für den Marktnamen in df_pivoted.
+
+    Returns
+    -------
+    dict: market_name → Ergebnis-dict von train_decision_tree().
+    """
+    from src.analysis.market_config import get_price_col
+
+    results: dict = {}
+    for mkt in df_pivoted[market_names_col].unique():
+        pcol = get_price_col(mkt)
+        if pcol is None or df_futures_prices.empty or pcol not in df_futures_prices.columns:
+            print(f"[DecisionTree] Keine Preisdaten für {mkt} – überspringe.")
+            continue
+
+        dff = df_pivoted[df_pivoted[market_names_col] == mkt].copy()
+        result = train_decision_tree(dff, df_futures_prices, pcol)
+        if result is not None:
+            results[mkt] = result
+            direction = "steigend" if result["prediction"] == 1 else "fallend"
+            print(f"[DecisionTree] {mkt}: Prognose {direction} ({result['n_samples']} Beobachtungen)")
+        else:
+            print(f"[DecisionTree] {mkt}: zu wenige Daten – überspringe.")
+
+    return results
+
+
 def render_tree_image(result: dict) -> str:
     """Rendert den Entscheidungsbaum als eingebettetes base64-PNG.
 

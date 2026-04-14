@@ -18,9 +18,10 @@ from threading import Timer
 from datetime import datetime as dt, timedelta
 import dash_bootstrap_components as dbc
 import numpy as np
-from src.analysis.shapley_owen import compute_rolling_shapley, prepare_market_for_shapley
+from src.analysis.shapley_owen import compute_rolling_shapley, prepare_market_for_shapley, precompute_all_markets as _shapley_precompute_all
 from src.analysis.decision_tree import (
     train_decision_tree,
+    train_all_markets as _dt_train_all,
     render_tree_image,
     feature_importance_figure as dt_feature_importance_figure,
     confusion_matrix_figure as dt_confusion_matrix_figure,
@@ -29,6 +30,12 @@ from src.analysis.decision_tree import (
 )
 from src.analysis.market_config import get_price_col, get_contract_size, get_2nd_nearby_price_col, get_3rd_nearby_price_col
 from src.analysis.cot_indicators import clustering_0_100, rel_concentration, calculate_ranges
+from src.analysis.obos_indicators import (
+    build_market_row as _obos_build_market_row,
+    COLOR_CONTANGO as _OBOS_COLOR_CONTANGO,
+    COLOR_BACKWARDATION as _OBOS_COLOR_BACKWARDATION,
+    COLOR_NA as _OBOS_COLOR_NA,
+)
 
 # Function to open the web browser
 def open_browser():
@@ -585,49 +592,18 @@ _SHAPLEY_Y_COL       = '_price_change'
 _SHAPLEY_WINDOW      = 52
 _SHAPLEY_MIN_PERIODS = 26
 
-_shapley_results: dict = {}   # market_name → DataFrame (Shapley-Resultate)
-
-for _mkt in df_pivoted[MARKET_NAMES_COL].unique():
-    _pcol = get_price_col(_mkt)
-    if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
-        print(f"[Shapley] Kein Preisdaten für {_mkt} – überspringe.")
-        continue
-
-    _dff = df_pivoted[df_pivoted[MARKET_NAMES_COL] == _mkt].copy()
-    _dff = prepare_market_for_shapley(_dff, df_futures_prices, _pcol)
-    if _dff is None:
-        print(f"[Shapley] {_mkt}: Keine Preisdaten nach Merge – überspringe.")
-        continue
-
-    _result = compute_rolling_shapley(
-        _dff,
-        x_cols=_SHAPLEY_X_COLS,
-        y_col=_SHAPLEY_Y_COL,
-        window=_SHAPLEY_WINDOW,
-        min_periods=_SHAPLEY_MIN_PERIODS,
-    )
-    _shapley_results[_mkt] = _result
-    print(f"[Shapley] {_mkt}: {len(_result)} Datenpunkte berechnet.")
+_shapley_results: dict = _shapley_precompute_all(
+    df_pivoted, df_futures_prices,
+    x_cols=_SHAPLEY_X_COLS,
+    y_col=_SHAPLEY_Y_COL,
+    window=_SHAPLEY_WINDOW,
+    min_periods=_SHAPLEY_MIN_PERIODS,
+)
 
 # ---------------------------------------------------------------------------
 # Decision Tree: vorberechnen für alle Märkte mit Preisdaten
 # ---------------------------------------------------------------------------
-_dt_results: dict = {}   # market_name → dict (Modell + Prognose)
-
-for _mkt in df_pivoted[MARKET_NAMES_COL].unique():
-    _pcol = get_price_col(_mkt)
-    if _pcol is None or df_futures_prices.empty or _pcol not in df_futures_prices.columns:
-        print(f"[DecisionTree] Keine Preisdaten für {_mkt} – überspringe.")
-        continue
-
-    _dff = df_pivoted[df_pivoted[MARKET_NAMES_COL] == _mkt].copy()
-    _result = train_decision_tree(_dff, df_futures_prices, _pcol)
-    if _result is not None:
-        _dt_results[_mkt] = _result
-        _dir = "steigend" if _result["prediction"] == 1 else "fallend"
-        print(f"[DecisionTree] {_mkt}: Prognose {_dir} ({_result['n_samples']} Beobachtungen)")
-    else:
-        print(f"[DecisionTree] {_mkt}: zu wenige Daten – überspringe.")
+_dt_results: dict = _dt_train_all(df_pivoted, df_futures_prices)
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -3331,115 +3307,7 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
 # innerhalb des gewählten Zeitraums. Keine Marktauswahl via Dropdown.
 # ---------------------------------------------------------------------------
 
-# Ticker-Kürzel für die Marktnamen (UPPERCASE-Substring → Ticker)
-_OBOS_TICKERS: dict[str, str] = {
-    "GOLD":      "GC",
-    "SILVER":    "SI",
-    "COPPER":    "HG",
-    "PLATINUM":  "PL",
-    "PALLADIUM": "PA",
-    "CRUDE OIL": "CL",
-    "WTI":       "CL",
-}
-
-_OBOS_COLOR_CONTANGO      = '#1f77b4'   # Blau
-_OBOS_COLOR_BACKWARDATION = '#2ca02c'   # Grün
-_OBOS_COLOR_NA            = '#aaaaaa'   # Grau – Kurvenstruktur nicht ermittelbar
-
-
-def _obos_get_ticker(market_name: str) -> str:
-    mn = (market_name or "").upper()
-    for key, ticker in _OBOS_TICKERS.items():
-        if key in mn:
-            return ticker
-    return mn[:3]
-
-
-def _obos_curve_style(p2, p3):
-    """Gibt (color, curve_label) für ein Preispaar zurück."""
-    if pd.notna(p2) and pd.notna(p3):
-        spread = p2 - p3  # Positiv: Backwardation, Negativ: Contango
-        if spread > 0:
-            return _OBOS_COLOR_BACKWARDATION, 'Backwardation'
-        return _OBOS_COLOR_CONTANGO, 'Contango'
-    return _OBOS_COLOR_NA, 'Kurvenstruktur n/a'
-
-
-def _obos_merge_prices(dff, market):
-    """Mergt 2nd- und 3rd-Nearby-Preise in dff via merge_asof."""
-    col_2nd = _ppci_get_2nd_nearby_col(market)
-    col_3rd = _ppci_get_3rd_nearby_col(market)
-
-    if not (col_2nd and not df_deferred_prices.empty and col_2nd in df_deferred_prices.columns):
-        dff['_price2'] = np.nan
-        dff['_price3'] = np.nan
-        return dff
-
-    cols_deferred = ['Date', col_2nd]
-    if col_3rd and col_3rd in df_deferred_prices.columns:
-        cols_deferred.append(col_3rd)
-
-    prices = df_deferred_prices[cols_deferred].copy()
-    prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None)
-    prices = prices.sort_values('_pdate')
-
-    rename_map = {col_2nd: '_price2'}
-    if col_3rd and col_3rd in df_deferred_prices.columns:
-        rename_map[col_3rd] = '_price3'
-
-    prices_ren = prices.drop(columns=['Date']).rename(columns=rename_map)
-
-    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
-    dff = dff.sort_values('_date')
-    dff = pd.merge_asof(
-        dff, prices_ren,
-        left_on='_date', right_on='_pdate',
-        direction='backward',
-        tolerance=pd.Timedelta(days=7),
-    )
-    return dff
-
-
-def _obos_build_market_row(market, report_start, report_end):
-    """Berechnet eine Zeile für den OBOS-Chart für einen Markt. Gibt None zurück wenn nicht genug Daten."""
-    dff = df_pivoted[
-        (df_pivoted[MARKET_NAMES_COL] == market) &
-        (df_pivoted['Date'] <= report_end)
-    ].copy().sort_values('Date')
-
-    if len(dff) < 10:
-        return None
-
-    total_oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').replace(0, np.nan)
-    dff['_mml_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce') / total_oi
-    dff['_mms_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce') / total_oi
-    dff['_mml_range'] = clustering_0_100(dff['_mml_conc'], window=52)
-    dff['_mms_range'] = clustering_0_100(dff['_mms_conc'], window=52)
-
-    dff = _obos_merge_prices(dff, market)
-    dff['_price2_range'] = clustering_0_100(
-        pd.to_numeric(dff.get('_price2', np.nan), errors='coerce'), window=52
-    )
-
-    dff_window = dff[dff['Date'] >= report_start]
-    if dff_window.empty:
-        dff_window = dff  # Fallback: letzter insgesamt verfügbarer Punkt
-
-    last = dff_window.iloc[-1]
-    p2 = float(last.get('_price2', np.nan)) if '_price2' in last.index else np.nan
-    p3 = float(last.get('_price3', np.nan)) if '_price3' in last.index else np.nan
-    color, curve_label = _obos_curve_style(p2, p3)
-
-    return {
-        'market':      market,
-        'ticker':      _obos_get_ticker(market),
-        'mml_range':   float(last['_mml_range'])    if pd.notna(last['_mml_range'])    else np.nan,
-        'mms_range':   float(last['_mms_range'])    if pd.notna(last['_mms_range'])    else np.nan,
-        'price_range': float(last['_price2_range']) if pd.notna(last['_price2_range']) else np.nan,
-        'color':       color,
-        'curve_label': curve_label,
-        'report_date': last['Date'],
-    }
+# OBOS-Konstanten und -Funktionen: siehe src/analysis/obos_indicators.py
 
 
 def _obos_add_chart_shapes(fig):
@@ -3509,7 +3377,7 @@ def update_obos(start_date, end_date):
 
     rows = []
     for market in df_pivoted[MARKET_NAMES_COL].unique():
-        row = _obos_build_market_row(market, report_start, report_end)
+        row = _obos_build_market_row(market, report_start, report_end, df_pivoted, df_deferred_prices)
         if row is not None:
             rows.append(row)
 
