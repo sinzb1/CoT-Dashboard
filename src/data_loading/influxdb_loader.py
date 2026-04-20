@@ -31,7 +31,10 @@ _MACRO_FALLBACK_TICKERS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 def _to_datetime_naive(df: pd.DataFrame, col: str = "Date") -> pd.DataFrame:
-    df[col] = pd.to_datetime(df[col]).dt.tz_localize(None)
+    s = pd.to_datetime(df[col])
+    if s.dt.tz is not None:
+        s = s.dt.tz_convert(None)
+    df[col] = s.astype("datetime64[s]")
     return df.sort_values(col).reset_index(drop=True)
 
 
@@ -50,6 +53,32 @@ def _load_table(client: InfluxDBClient3, query: str, label: str) -> pd.DataFrame
         return None
 
 
+def _extract_close_series(raw: pd.DataFrame) -> pd.Series | None:
+    if isinstance(raw.columns, pd.MultiIndex):
+        close_col = next((c for c in raw.columns if c[0] == "Close"), None)
+        return raw[close_col] if close_col else None
+    return raw["Close"]
+
+
+def _merge_ticker_into_macro(df_macro: pd.DataFrame, fb: pd.DataFrame, col: str) -> pd.DataFrame:
+    if df_macro.empty or "Date" not in df_macro.columns:
+        return fb
+    if col not in df_macro.columns:
+        return pd.merge(df_macro, fb, on="Date", how="outer", validate="1:1").sort_values("Date").reset_index(drop=True)
+    tmp = pd.merge(
+        fb,
+        df_macro[["Date", col]].rename(columns={col: f"{col}_db"}),
+        on="Date", how="outer", validate="1:1",
+    )
+    tmp[col] = tmp[f"{col}_db"].combine_first(tmp[col])
+    tmp = tmp.drop(columns=[f"{col}_db"])
+    return pd.merge(
+        df_macro.drop(columns=[col]),
+        tmp[["Date", col]],
+        on="Date", how="outer", validate="1:1",
+    ).sort_values("Date").reset_index(drop=True)
+
+
 def _apply_yfinance_fallback(df_macro: pd.DataFrame, lookback_years: int = 10) -> pd.DataFrame:
     """Füllt Lücken in df_macro mit yfinance-Daten.
 
@@ -65,12 +94,7 @@ def _apply_yfinance_fallback(df_macro: pd.DataFrame, lookback_years: int = 10) -
                 print(f"[Macro fallback] Keine Daten für {col} ({ticker})")
                 continue
 
-            if isinstance(raw.columns, pd.MultiIndex):
-                close_col = next((c for c in raw.columns if c[0] == "Close"), None)
-                series = raw[close_col] if close_col else None
-            else:
-                series = raw["Close"]
-
+            series = _extract_close_series(raw)
             if series is None:
                 continue
 
@@ -78,26 +102,7 @@ def _apply_yfinance_fallback(df_macro: pd.DataFrame, lookback_years: int = 10) -
             fb.columns = ["Date", col]
             fb["Date"] = pd.to_datetime(fb["Date"]).dt.tz_localize(None)
 
-            if df_macro.empty or "Date" not in df_macro.columns:
-                df_macro = fb
-            elif col in df_macro.columns:
-                tmp = pd.merge(
-                    fb,
-                    df_macro[["Date", col]].rename(columns={col: f"{col}_db"}),
-                    on="Date", how="outer", validate="1:1",
-                )
-                tmp[col] = tmp[f"{col}_db"].combine_first(tmp[col])
-                tmp.drop(columns=[f"{col}_db"], inplace=True)
-                df_macro = pd.merge(
-                    df_macro.drop(columns=[col]),
-                    tmp[["Date", col]],
-                    on="Date", how="outer", validate="1:1",
-                ).sort_values("Date").reset_index(drop=True)
-            else:
-                df_macro = pd.merge(
-                    df_macro, fb, on="Date", how="outer", validate="1:1"
-                ).sort_values("Date").reset_index(drop=True)
-
+            df_macro = _merge_ticker_into_macro(df_macro, fb, col)
             print(f"[Macro fallback] {len(fb)} Zeilen für {col} aus yfinance geladen.")
 
     except Exception as exc:

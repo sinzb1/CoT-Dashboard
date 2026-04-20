@@ -45,9 +45,6 @@ def open_browser():
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# String-Konstanten (SonarQube S1192 – duplizierte Literale vermeiden)
-# ---------------------------------------------------------------------------
 # DataFrame-Spalten
 MARKET_NAMES_COL         = 'Market Names'
 OPEN_INTEREST_LABEL      = 'Open Interest'

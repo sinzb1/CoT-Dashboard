@@ -8,6 +8,13 @@ Muster in den Dash-Callbacks (Preise, Macro-Daten, EIA).
 import pandas as pd
 
 
+def _norm_dt(s: pd.Series) -> pd.Series:
+    s = pd.to_datetime(s)
+    if s.dt.tz is not None:
+        s = s.dt.tz_convert(None)
+    return s.astype("datetime64[s]")
+
+
 def merge_series_asof(
     dff: pd.DataFrame,
     series_df: pd.DataFrame,
@@ -43,12 +50,12 @@ def merge_series_asof(
         .dropna(subset=[series_col])
         .copy()
     )
-    ref["_ref_date"] = pd.to_datetime(ref["Date"]).dt.tz_localize(None)
+    ref["_ref_date"] = _norm_dt(ref["Date"])
     ref = ref.drop(columns=["Date"]).sort_values("_ref_date")
 
     if "_date" not in dff.columns:
         dff = dff.copy()
-        dff["_date"] = pd.to_datetime(dff["Date"]).dt.tz_localize(None)
+        dff["_date"] = _norm_dt(dff["Date"])
 
     dff = dff.sort_values("_date").reset_index(drop=True)
 
