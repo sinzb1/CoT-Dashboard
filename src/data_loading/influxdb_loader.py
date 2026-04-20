@@ -100,7 +100,7 @@ def _apply_yfinance_fallback(df_macro: pd.DataFrame, lookback_years: int = 10) -
 
             fb = series.reset_index()
             fb.columns = ["Date", col]
-            fb["Date"] = pd.to_datetime(fb["Date"]).dt.tz_localize(None)
+            fb["Date"] = pd.to_datetime(fb["Date"]).dt.tz_localize(None).astype("datetime64[s]")
 
             df_macro = _merge_ticker_into_macro(df_macro, fb, col)
             print(f"[Macro fallback] {len(fb)} Zeilen für {col} aus yfinance geladen.")

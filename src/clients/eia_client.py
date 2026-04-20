@@ -34,6 +34,34 @@ class EIAClient:
         today = date.today()
         return date(today.year - self.years_back, today.month, today.day).isoformat()
 
+    def _build_params(self, offset: int, start_date) -> dict:
+        return {
+            "api_key": self.api_key,
+            "frequency": "weekly",
+            "data[]": "value",
+            "facets[product][]": self.product_facet,
+            "facets[process][]": self.process_facet,
+            "facets[duoarea][]": self.duoarea_facet,
+            "start": start_date.isoformat() if start_date is not None else self._start_date(),
+            "sort[0][column]": "period",
+            "sort[0][direction]": "asc",
+            "length": self.page_size,
+            "offset": offset,
+        }
+
+    def _log_no_data(self, body: dict, response_section: dict) -> None:
+        print(f"[EIAClient] No data returned. Top-level keys: {list(body.keys())}")
+        print(f"[EIAClient] response keys: {list(response_section.keys())}")
+        warnings = body.get("warnings", [])
+        if warnings:
+            print(f"[EIAClient] API warnings: {warnings}")
+        print(
+            f"[EIAClient] Hint: verify facet values in config/config.json "
+            f"(product_facet='{self.product_facet}', process_facet='{self.process_facet}', "
+            f"duoarea_facet='{self.duoarea_facet}'). "
+            f"Valid values: product='EPC0', process='SAX'/'SAE'/'SAXL', duoarea='NUS'."
+        )
+
     def fetch_crude_oil_stocks(self, start_date=None) -> pd.DataFrame:
         """Fetch weekly US crude oil inventory data from EIA API v2.
 
@@ -59,20 +87,7 @@ class EIAClient:
         all_rows = []
 
         while True:
-            params = {
-                "api_key": self.api_key,
-                "frequency": "weekly",
-                "data[]": "value",
-                "facets[product][]": self.product_facet,
-                "facets[process][]": self.process_facet,
-                "facets[duoarea][]": self.duoarea_facet,
-                "start": start_date.isoformat() if start_date is not None else self._start_date(),
-                "sort[0][column]": "period",
-                "sort[0][direction]": "asc",
-                "length": self.page_size,
-                "offset": offset,
-            }
-
+            params = self._build_params(offset, start_date)
             print(f"[EIAClient] GET {url}  offset={offset}")
             try:
                 resp = requests.get(url, params=params, timeout=30)
@@ -87,18 +102,7 @@ class EIAClient:
 
             if not rows:
                 if not all_rows:
-                    # Log enough detail to diagnose wrong facet values
-                    print(f"[EIAClient] No data returned. Top-level keys: {list(body.keys())}")
-                    print(f"[EIAClient] response keys: {list(response_section.keys())}")
-                    warnings = body.get("warnings", [])
-                    if warnings:
-                        print(f"[EIAClient] API warnings: {warnings}")
-                    print(
-                        f"[EIAClient] Hint: verify facet values in config/config.json "
-                        f"(product_facet='{self.product_facet}', process_facet='{self.process_facet}', "
-                        f"duoarea_facet='{self.duoarea_facet}'). "
-                        f"Valid values: product='EPC0', process='SAX'/'SAE'/'SAXL', duoarea='NUS'."
-                    )
+                    self._log_no_data(body, response_section)
                 break
 
             all_rows.extend(rows)
@@ -122,7 +126,7 @@ class EIAClient:
             return pd.DataFrame(columns=["period", "value"])
 
         df = df[["period", "value"]].copy()
-        df["period"] = pd.to_datetime(df["period"], utc=True)
+        df["period"] = pd.to_datetime(df["period"], utc=True).astype("datetime64[s, UTC]")
         df["value"] = pd.to_numeric(df["value"], errors="coerce")
         df = df.dropna(subset=["value"]).sort_values("period").reset_index(drop=True)
 

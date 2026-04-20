@@ -19,7 +19,7 @@ class MacroPriceService:
         if df.empty or "date" not in df.columns:
             return pd.DataFrame(columns=["date"])
 
-        df["date"] = pd.to_datetime(df["date"], utc=True)
+        df["date"] = pd.to_datetime(df["date"], utc=True).astype("datetime64[s, UTC]")
         df = df.sort_values("date").reset_index(drop=True)
 
         value_cols = [c for c in df.columns if c != "date"]
@@ -41,6 +41,7 @@ class MacroPriceService:
         if cot_dates is not None and len(cot_dates) > 0:
             cot_dt = (
                 pd.to_datetime(cot_dates, utc=True)
+                .astype("datetime64[s, UTC]")
                 .drop_duplicates()
                 .sort_values()
                 .reset_index(drop=True)

@@ -99,7 +99,7 @@ def merge_deferred_prices(
         cols_deferred.append(col_3rd)
 
     prices = df_deferred_prices[cols_deferred].copy()
-    prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None)
+    prices['_pdate'] = pd.to_datetime(prices['Date']).dt.tz_localize(None).astype("datetime64[s]")
     prices = prices.sort_values('_pdate')
 
     rename_map = {col_2nd: '_price2'}
@@ -108,7 +108,7 @@ def merge_deferred_prices(
 
     prices_ren = prices.drop(columns=['Date']).rename(columns=rename_map)
 
-    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
+    dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None).astype("datetime64[s]")
     dff = dff.sort_values('_date')
     dff = pd.merge_asof(
         dff, prices_ren,
