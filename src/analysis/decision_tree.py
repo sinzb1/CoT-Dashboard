@@ -189,12 +189,12 @@ def train_decision_tree(
     # ------------------------------------------------------------------
     # 1) Prognose-Modell: trainiert auf 100 % der Daten
     # ------------------------------------------------------------------
-    clf = DecisionTreeClassifier(max_depth=3, min_samples_leaf=3, random_state=42)
+    clf = DecisionTreeClassifier(max_depth=3, min_samples_leaf=3, random_state=42, ccp_alpha=0.0)
     clf.fit(X, y)
 
-    last_X = df[FEATURE_COLS].iloc[-1].values.reshape(1, -1)
-    pred   = int(clf.predict(last_X)[0])
-    proba  = clf.predict_proba(last_X)[0]
+    last_x = df[FEATURE_COLS].iloc[-1].values.reshape(1, -1)
+    pred   = int(clf.predict(last_x)[0])
+    proba  = clf.predict_proba(last_x)[0]
 
     # ------------------------------------------------------------------
     # 2) Evaluierungs-Modell: zeitbasierter 70/30-Split (Out-of-Sample)
@@ -204,16 +204,18 @@ def train_decision_tree(
     train_df = df.iloc[:split_idx]
     test_df  = df.iloc[split_idx:]
 
-    X_train_e = train_df[FEATURE_COLS].values
+    x_train_e = train_df[FEATURE_COLS].values
     y_train_e = train_df["_y"].values
-    X_test_e  = test_df[FEATURE_COLS].values
+    x_test_e  = test_df[FEATURE_COLS].values
     y_test_e  = test_df["_y"].values
 
-    clf_eval = DecisionTreeClassifier(max_depth=3, min_samples_leaf=3, random_state=42)
-    clf_eval.fit(X_train_e, y_train_e)
+    clf_eval = DecisionTreeClassifier(max_depth=3, min_samples_leaf=3, random_state=42, ccp_alpha=0.0)
+    clf_eval.fit(x_train_e, y_train_e)
 
-    y_pred_e  = clf_eval.predict(X_test_e)
-    y_score_e = clf_eval.predict_proba(X_test_e)[:, 1]   # P(steigt)
+    y_pred_e  = clf_eval.predict(x_test_e)
+    proba_e   = clf_eval.predict_proba(x_test_e)
+    pos_idx   = list(clf_eval.classes_).index(1) if 1 in clf_eval.classes_ else 0
+    y_score_e = proba_e[:, pos_idx]
 
     eval_data = {
         "y_test":      y_test_e,
@@ -335,9 +337,9 @@ def feature_importance_figure(result: dict, market_name: str) -> go.Figure:
         yaxis_title="",
         plot_bgcolor="white",
         height=340,
-        margin=dict(l=10, r=20, t=45, b=40),
+        margin={"l": 10, "r": 20, "t": 45, "b": 40},
         showlegend=False,
-        xaxis=dict(showgrid=True, gridcolor="LightGray"),
+        xaxis={"showgrid": True, "gridcolor": "LightGray"},
     )
     return fig
 
@@ -362,20 +364,20 @@ def confusion_matrix_figure(result: dict, market_name: str) -> go.Figure:
         y=[f"Tatsächlich:<br><b>{l}</b>"  for l in labels],
         text=z_text,
         texttemplate="%{text}",
-        textfont=dict(size=18, color="white"),
+        textfont={"size": 18, "color": "white"},
         colorscale=[[0, "#bbdefb"], [1, "#1565c0"]],
         showscale=False,
         hovertemplate="Tatsächlich: %{y}<br>Vorhergesagt: %{x}<br>Anzahl: %{z}<extra></extra>",
     ))
     fig.update_layout(
-        title=dict(text=f"Konfusionsmatrix – {market_name}<br>"
-                        f"<sup>Testset: {ev['n_test']} Beobachtungen</sup>",
-                   font=dict(size=14)),
+        title={"text": f"Konfusionsmatrix – {market_name}<br>"
+                       f"<sup>Testset: {ev['n_test']} Beobachtungen</sup>",
+               "font": {"size": 14}},
         plot_bgcolor="white",
         height=360,
-        margin=dict(l=10, r=10, t=70, b=10),
-        xaxis=dict(side="bottom"),
-        yaxis=dict(autorange="reversed"),
+        margin={"l": 10, "r": 10, "t": 70, "b": 10},
+        xaxis={"side": "bottom"},
+        yaxis={"autorange": "reversed"},
     )
     return fig
 
@@ -392,7 +394,7 @@ def roc_curve_figure(result: dict, market_name: str) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=[0, 1], y=[0, 1],
         mode="lines",
-        line=dict(dash="dash", color="#9e9e9e", width=1.5),
+        line={"dash": "dash", "color": "#9e9e9e", "width": 1.5},
         name="Zufall (AUC = 0.50)",
         hoverinfo="skip",
     ))
@@ -401,7 +403,7 @@ def roc_curve_figure(result: dict, market_name: str) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=fpr, y=tpr,
         mode="lines",
-        line=dict(color="#1565c0", width=2.5),
+        line={"color": "#1565c0", "width": 2.5},
         name=f"Modell (AUC = {roc_auc:.2f})",
         hovertemplate="FPR: %{x:.2f}<br>TPR: %{y:.2f}<extra></extra>",
         fill="tozeroy",
@@ -409,18 +411,18 @@ def roc_curve_figure(result: dict, market_name: str) -> go.Figure:
     ))
 
     fig.update_layout(
-        title=dict(text=f"ROC-Kurve – {market_name}<br>"
-                        f"<sup>Testset: {ev['n_test']} Beobachtungen | AUC = {roc_auc:.2f}</sup>",
-                   font=dict(size=14)),
-        xaxis=dict(title="False Positive Rate", showgrid=True, gridcolor="LightGray",
-                   range=[0, 1]),
-        yaxis=dict(title="True Positive Rate", showgrid=True, gridcolor="LightGray",
-                   range=[0, 1]),
+        title={"text": f"ROC-Kurve – {market_name}<br>"
+                       f"<sup>Testset: {ev['n_test']} Beobachtungen | AUC = {roc_auc:.2f}</sup>",
+               "font": {"size": 14}},
+        xaxis={"title": "False Positive Rate", "showgrid": True, "gridcolor": "LightGray",
+               "range": [0, 1]},
+        yaxis={"title": "True Positive Rate", "showgrid": True, "gridcolor": "LightGray",
+               "range": [0, 1]},
         plot_bgcolor="white",
         height=360,
-        margin=dict(l=10, r=10, t=70, b=40),
-        legend=dict(x=0.55, y=0.08, bgcolor="rgba(255,255,255,0.8)",
-                    bordercolor="#ccc", borderwidth=1),
+        margin={"l": 10, "r": 10, "t": 70, "b": 40},
+        legend={"x": 0.55, "y": 0.08, "bgcolor": "rgba(255,255,255,0.8)",
+                "bordercolor": "#ccc", "borderwidth": 1},
     )
     return fig
 
@@ -440,7 +442,7 @@ def pr_curve_figure(result: dict, market_name: str) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=[0, 1], y=[baseline, baseline],
         mode="lines",
-        line=dict(dash="dash", color="#9e9e9e", width=1.5),
+        line={"dash": "dash", "color": "#9e9e9e", "width": 1.5},
         name=f"Baseline (Anteil Klasse 1: {baseline:.2f})",
         hoverinfo="skip",
     ))
@@ -449,7 +451,7 @@ def pr_curve_figure(result: dict, market_name: str) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=recall, y=precision,
         mode="lines",
-        line=dict(color="#c62828", width=2.5),
+        line={"color": "#c62828", "width": 2.5},
         name=f"Modell (AUC = {pr_auc:.2f})",
         hovertemplate="Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
         fill="tozeroy",
@@ -457,15 +459,15 @@ def pr_curve_figure(result: dict, market_name: str) -> go.Figure:
     ))
 
     fig.update_layout(
-        title=dict(text=f"Precision-Recall-Kurve – {market_name}<br>"
-                        f"<sup>Testset: {ev['n_test']} Beobachtungen | AUC = {pr_auc:.2f}</sup>",
-                   font=dict(size=14)),
-        xaxis=dict(title="Recall", showgrid=True, gridcolor="LightGray", range=[0, 1]),
-        yaxis=dict(title="Precision", showgrid=True, gridcolor="LightGray", range=[0, 1]),
+        title={"text": f"Precision-Recall-Kurve – {market_name}<br>"
+                       f"<sup>Testset: {ev['n_test']} Beobachtungen | AUC = {pr_auc:.2f}</sup>",
+               "font": {"size": 14}},
+        xaxis={"title": "Recall", "showgrid": True, "gridcolor": "LightGray", "range": [0, 1]},
+        yaxis={"title": "Precision", "showgrid": True, "gridcolor": "LightGray", "range": [0, 1]},
         plot_bgcolor="white",
         height=360,
-        margin=dict(l=10, r=10, t=70, b=40),
-        legend=dict(x=0.02, y=0.08, bgcolor="rgba(255,255,255,0.8)",
-                    bordercolor="#ccc", borderwidth=1),
+        margin={"l": 10, "r": 10, "t": 70, "b": 40},
+        legend={"x": 0.02, "y": 0.08, "bgcolor": "rgba(255,255,255,0.8)",
+                "bordercolor": "#ccc", "borderwidth": 1},
     )
     return fig
