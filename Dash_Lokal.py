@@ -382,8 +382,8 @@ def positions_bar(long_val, short_val, spread_val=None, bar_width_px=220, height
     p_short = 100 * sv / total
     p_spread = 100 * sp / total
 
-    spread_div = f"<div title='Spread: {int(sp)}' style='width:{p_spread:.2f}%;background:#1f77b4;'></div>" if sp > 0 else ""
-    spread_txt = f", <b>Spread:</b> {int(sp)}" if sp > 0 else ""
+    spread_div  = f"<div title='Spread: {int(sp)}' style='width:{p_spread:.2f}%;background:#1f77b4;'></div>" if sp > 0 else ""
+    spread_span = f"<span style='color:#1f77b4;margin-left:6px'>{int(sp)}</span>" if sp > 0 else ""
 
     return (
         f"<div style='width:{bar_width_px}px;display:flex;flex-direction:column;'>"
@@ -392,8 +392,10 @@ def positions_bar(long_val, short_val, spread_val=None, bar_width_px=220, height
         f"    <div title='Short: {int(sv)}' style='width:{p_short:.2f}%;background:#d62728;'></div>"
         f"    {spread_div}"
         f"  </div>"
-        f"  <div style='font-size:11px;margin-top:4px;font-family:\"Courier New\", Courier, monospace;'>"
-        f"    <b>Long:</b> {int(lv)}, <b>Short:</b> {int(sv)}{spread_txt}"
+        f"  <div style='font-size:13px;margin-top:4px;font-family:\"Courier New\", Courier, monospace;'>"
+        f"    <span style='color:#2ca02c'>{int(lv)}</span>"
+        f"    <span style='color:#d62728;margin-left:6px'>{int(sv)}</span>"
+        f"    {spread_span}"
         f"  </div>"
         f"</div>"
     )
@@ -411,8 +413,8 @@ def traders_bar(long_val, short_val, spread_val=None, bar_width_px=220, height_p
     p_short = 100 * sv / total
     p_spread = 100 * tv / total
 
-    spread_div = f"<div title='Spread: {int(tv)}' style='width:{p_spread:.2f}%;background:#1f77b4;'></div>" if tv > 0 else ""
-    spread_txt = f", <b>Spread:</b> {int(tv)}" if tv > 0 else ""
+    spread_div  = f"<div title='Spread: {int(tv)}' style='width:{p_spread:.2f}%;background:#1f77b4;'></div>" if tv > 0 else ""
+    spread_span = f"<span style='color:#1f77b4;margin-left:6px'>{int(tv)}</span>" if tv > 0 else ""
 
     return (
         f"<div style='width:{bar_width_px}px;display:flex;flex-direction:column;'>"
@@ -421,17 +423,28 @@ def traders_bar(long_val, short_val, spread_val=None, bar_width_px=220, height_p
         f"    <div title='Short: {int(sv)}' style='width:{p_short:.2f}%;background:#d62728;'></div>"
         f"    {spread_div}"
         f"  </div>"
-        f"  <div style='font-size:11px;margin-top:4px;font-family:\"Courier New\", Courier, monospace;'>"
-        f"    <b>Long:</b> {int(lv)}, <b>Short:</b> {int(sv)}{spread_txt}"
+        f"  <div style='font-size:13px;margin-top:4px;font-family:\"Courier New\", Courier, monospace;'>"
+        f"    <span style='color:#2ca02c'>{int(lv)}</span>"
+        f"    <span style='color:#d62728;margin-left:6px'>{int(sv)}</span>"
+        f"    {spread_span}"
         f"  </div>"
         f"</div>"
     )
 
 # Callback to update the table
+_DE_WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
+_DE_MONTHS   = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+
+def _format_date_de(dt) -> str:
+    d = pd.Timestamp(dt)
+    return f"Stand: {_DE_WEEKDAYS[d.weekday()]}, {d.day}. {_DE_MONTHS[d.month - 1]} {d.year}"
+
 @app.callback(
     [
         Output('overview-table', 'data'),
         Output('overview-table', 'tooltip_data'),
+        Output('table-date-label', 'children'),
     ],
     [
         Input(MARKET_DROPDOWN_ID, 'value'),
@@ -447,7 +460,7 @@ def update_table(selected_market, start_date, end_date):
     ]
 
     if filtered_df.empty:
-        return [], []
+        return [], [], ''
 
     first_row = filtered_df.iloc[0]
     current_row = filtered_df.iloc[-1]
@@ -458,83 +471,88 @@ def update_table(selected_market, start_date, end_date):
             return 0
         return round(((float(curr) - float(first)) / float(first)) * 100, 2)
 
+    total_oi = int(current_row[OPEN_INTEREST_LABEL])
+
     data = {
         TRADER_GROUP_COL: [
             'Producer/Merchant/Processor/User',
             'Swap Dealer',
             'Managed Money',
-            'Other Reportables'
+            'Other Reportables',
+            'Markt gesamt',
+        ],
+        'Open Interest': [
+            int(current_row[PMPU_LONG_COL] + current_row[PMPU_SHORT_COL]),
+            int(current_row[SWAP_DEALER_LONG_COL] + current_row[SWAP_DEALER_SHORT_COL] + current_row[SWAP_DEALER_SPREAD_COL]),
+            int(current_row[MANAGED_MONEY_LONG_COL] + current_row[MANAGED_MONEY_SHORT_COL] + current_row[MANAGED_MONEY_SPREAD_COL]),
+            int(current_row[OTHER_REPT_LONG_COL] + current_row[OTHER_REPT_SHORT_COL] + current_row[OTHER_REPT_SPREAD_COL]),
+            total_oi,
         ],
         'Positions': [
-            positions_bar(
-                first_row[PMPU_LONG_COL],
-                first_row[PMPU_SHORT_COL],
-                None
-            ),
-            positions_bar(
-                first_row[SWAP_DEALER_LONG_COL],
-                first_row[SWAP_DEALER_SHORT_COL],
-                first_row[SWAP_DEALER_SPREAD_COL]
-            ),
-            positions_bar(
-                first_row[MANAGED_MONEY_LONG_COL],
-                first_row[MANAGED_MONEY_SHORT_COL],
-                first_row[MANAGED_MONEY_SPREAD_COL]
-            ),
-            positions_bar(
-                first_row[OTHER_REPT_LONG_COL],
-                first_row[OTHER_REPT_SHORT_COL],
-                first_row[OTHER_REPT_SPREAD_COL]
-            ),
+            positions_bar(current_row[PMPU_LONG_COL], current_row[PMPU_SHORT_COL], None),
+            positions_bar(current_row[SWAP_DEALER_LONG_COL], current_row[SWAP_DEALER_SHORT_COL], current_row[SWAP_DEALER_SPREAD_COL]),
+            positions_bar(current_row[MANAGED_MONEY_LONG_COL], current_row[MANAGED_MONEY_SHORT_COL], current_row[MANAGED_MONEY_SPREAD_COL]),
+            positions_bar(current_row[OTHER_REPT_LONG_COL], current_row[OTHER_REPT_SHORT_COL], current_row[OTHER_REPT_SPREAD_COL]),
+            '',
         ],
 
         'Difference (Long %)': [
             safe_pct_change(current_row[PMPU_LONG_COL], first_row[PMPU_LONG_COL]),
             safe_pct_change(current_row[SWAP_DEALER_LONG_COL], first_row[SWAP_DEALER_LONG_COL]),
             safe_pct_change(current_row[MANAGED_MONEY_LONG_COL], first_row[MANAGED_MONEY_LONG_COL]),
-            safe_pct_change(current_row[OTHER_REPT_LONG_COL], first_row[OTHER_REPT_LONG_COL])
+            safe_pct_change(current_row[OTHER_REPT_LONG_COL], first_row[OTHER_REPT_LONG_COL]),
+            '',
         ],
         'Difference (Short %)': [
             safe_pct_change(current_row[PMPU_SHORT_COL], first_row[PMPU_SHORT_COL]),
             safe_pct_change(current_row[SWAP_DEALER_SHORT_COL], first_row[SWAP_DEALER_SHORT_COL]),
             safe_pct_change(current_row[MANAGED_MONEY_SHORT_COL], first_row[MANAGED_MONEY_SHORT_COL]),
-            safe_pct_change(current_row[OTHER_REPT_SHORT_COL], first_row[OTHER_REPT_SHORT_COL])
+            safe_pct_change(current_row[OTHER_REPT_SHORT_COL], first_row[OTHER_REPT_SHORT_COL]),
+            '',
         ],
         'Difference (Spread %)': [
-            'Keine Daten ℹ️',  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
+            'n/a ℹ️',  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
             safe_pct_change(current_row[SWAP_DEALER_SPREAD_COL], first_row[SWAP_DEALER_SPREAD_COL]),
             safe_pct_change(current_row[MANAGED_MONEY_SPREAD_COL], first_row[MANAGED_MONEY_SPREAD_COL]),
-            safe_pct_change(current_row[OTHER_REPT_SPREAD_COL], first_row[OTHER_REPT_SPREAD_COL])
+            safe_pct_change(current_row[OTHER_REPT_SPREAD_COL], first_row[OTHER_REPT_SPREAD_COL]),
+            '',
         ],
 
         'Total Traders': [
             current_row[TRADERS_PROD_MERC_LONG] + current_row[TRADERS_PROD_MERC_SHORT],
             current_row[TRADERS_SWAP_LONG_COL] + current_row[TRADERS_SWAP_SHORT_COL] + current_row['Traders Swap Spread'],
             current_row[TRADERS_MM_LONG_COL] + current_row[TRADERS_MM_SHORT_COL] + current_row['Traders M Money Spread'],
-            current_row[TRADERS_OTHER_REPT_LONG] + current_row[TRADERS_OTHER_REPT_SHORT] + current_row['Traders Other Rept Spread']
+            current_row[TRADERS_OTHER_REPT_LONG] + current_row[TRADERS_OTHER_REPT_SHORT] + current_row['Traders Other Rept Spread'],
+            int(current_row[TOTAL_TRADERS_LABEL]),
         ],
-        '% of Traders': [
-            f"Long: {round(current_row[TRADERS_PROD_MERC_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Short: {round(current_row[TRADERS_PROD_MERC_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
-
-            f"Long: {round(current_row[TRADERS_SWAP_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Short: {round(current_row[TRADERS_SWAP_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders Swap Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
-
-            f"Long: {round(current_row[TRADERS_MM_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Short: {round(current_row[TRADERS_MM_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders M Money Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%",
-
-            f"Long: {round(current_row[TRADERS_OTHER_REPT_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Short: {round(current_row[TRADERS_OTHER_REPT_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%, "
-            f"Spread: {round(current_row['Traders Other Rept Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100, 2)}%"
+        '% Long': [
+            f"{current_row[TRADERS_PROD_MERC_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_SWAP_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_MM_LONG_COL] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_OTHER_REPT_LONG] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            '',
+        ],
+        '% Short': [
+            f"{current_row[TRADERS_PROD_MERC_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_SWAP_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_MM_SHORT_COL] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row[TRADERS_OTHER_REPT_SHORT] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            '',
+        ],
+        '% Spread': [
+            'n/a ℹ️',  # PMPU hat keinen Spread im CFTC Disaggregated COT-Report
+            f"{current_row['Traders Swap Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row['Traders M Money Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            f"{current_row['Traders Other Rept Spread'] / current_row[TOTAL_TRADERS_LABEL] * 100:.2f}%",
+            '',
         ],
 
         NUMBER_OF_TRADERS_LABEL: [
             traders_bar(current_row[TRADERS_PROD_MERC_LONG],  current_row[TRADERS_PROD_MERC_SHORT],  None),
-            traders_bar(current_row[TRADERS_SWAP_LONG_COL],       current_row[TRADERS_SWAP_SHORT_COL],       current_row['Traders Swap Spread']),
-            traders_bar(current_row[TRADERS_MM_LONG_COL],    current_row[TRADERS_MM_SHORT_COL],    current_row['Traders M Money Spread']),
-            traders_bar(current_row[TRADERS_OTHER_REPT_LONG], current_row[TRADERS_OTHER_REPT_SHORT], current_row['Traders Other Rept Spread'])
+            traders_bar(current_row[TRADERS_SWAP_LONG_COL],   current_row[TRADERS_SWAP_SHORT_COL],   current_row['Traders Swap Spread']),
+            traders_bar(current_row[TRADERS_MM_LONG_COL],     current_row[TRADERS_MM_SHORT_COL],     current_row['Traders M Money Spread']),
+            traders_bar(current_row[TRADERS_OTHER_REPT_LONG], current_row[TRADERS_OTHER_REPT_SHORT], current_row['Traders Other Rept Spread']),
+            '',
         ],
     }
 
@@ -546,17 +564,20 @@ def update_table(selected_market, start_date, end_date):
     )
 
     tooltip_data = [
-        # Zeile 0: PMPU — Tooltip nur auf der Spread-Zelle
+        # Zeile 0: PMPU — Tooltip auf Spread-Zellen
         {
             'Difference (Spread %)': {'value': _pmpu_spread_tooltip, 'type': 'text'},
+            '% Spread': {'value': _pmpu_spread_tooltip, 'type': 'text'},
         },
         # Zeilen 1–3: Swap Dealer, Managed Money, Other Reportables — kein Tooltip nötig
         {},
         {},
         {},
+        # Zeile 4: Footer "Markt gesamt"
+        {},
     ]
 
-    return pd.DataFrame(data).to_dict('records'), tooltip_data
+    return pd.DataFrame(data).to_dict('records'), tooltip_data, _format_date_de(current_row['Date'])
 
 def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_title,
                               title, use_year_ticks=False, selected_market=None):

@@ -5,6 +5,10 @@ COL_DIFF_LONG    = 'Difference (Long %)'
 COL_DIFF_SHORT   = 'Difference (Short %)'
 COL_DIFF_SPREAD  = 'Difference (Spread %)'
 COL_NUM_TRADERS  = 'Number of Traders'
+COL_OPEN_INT     = 'Open Interest'
+COL_PCT_LONG     = '% Long'
+COL_PCT_SHORT    = '% Short'
+COL_PCT_SPREAD   = '% Spread'
 
 
 def layout():
@@ -25,20 +29,25 @@ def layout():
         dbc.Row([
             dbc.Col([
                 html.H2("Market Overview", className="mt-3 mb-3", id="section-market-overview"),
+                html.P(id='table-date-label', className='text-muted small mb-2'),
                 dash_table.DataTable(
                     id='overview-table',
                     tooltip_delay=400,
                     tooltip_duration=None,
                     columns=[
-                        {'name': 'Trader Group', 'id': 'Trader Group'},
-                        {'name': 'Positions (OI)', 'id': 'Positions', 'presentation': 'markdown'},
-                        {'name': 'Δ Long %', 'id': COL_DIFF_LONG},
-                        {'name': 'Δ Short %', 'id': COL_DIFF_SHORT},
-                        {'name': 'Δ Spread %', 'id': COL_DIFF_SPREAD},
-                        {'name': 'Total Traders', 'id': 'Total Traders'},
-                        {'name': '% of Traders', 'id': '% of Traders'},
-                        {'name': COL_NUM_TRADERS, 'id': COL_NUM_TRADERS, 'presentation': 'markdown'},
+                        {'name': ['',        'Trader Group'],   'id': 'Trader Group'},
+                        {'name': ['',        COL_OPEN_INT],     'id': COL_OPEN_INT},
+                        {'name': ['',        'Positions (OI)'], 'id': 'Positions', 'presentation': 'markdown'},
+                        {'name': ['',        'Δ Long %'],       'id': COL_DIFF_LONG},
+                        {'name': ['',        'Δ Short %'],      'id': COL_DIFF_SHORT},
+                        {'name': ['',        'Δ Spread %'],     'id': COL_DIFF_SPREAD},
+                        {'name': ['Traders', 'Total'],          'id': 'Total Traders'},
+                        {'name': ['Traders', '% Long'],         'id': COL_PCT_LONG},
+                        {'name': ['Traders', '% Short'],        'id': COL_PCT_SHORT},
+                        {'name': ['Traders', '% Spread'],       'id': COL_PCT_SPREAD},
+                        {'name': ['',        COL_NUM_TRADERS],  'id': COL_NUM_TRADERS, 'presentation': 'markdown'},
                     ],
+                    merge_duplicate_headers=True,
                     markdown_options={"html": True},
                     style_header={
                         'backgroundColor': 'rgb(230, 230, 230)',
@@ -51,7 +60,7 @@ def layout():
                          "rule": "white-space: normal;"},
                         {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"] .column-header-name',
                          "rule": "display: block;"},
-                        {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"]::after',
+                        {"selector": f'tr:nth-child(2) th[data-dash-column="{COL_NUM_TRADERS}"]::after',
                          "rule": (
                              "content: 'Long   Short   Spread';"
                              "display: block;"
@@ -73,7 +82,7 @@ def layout():
                          "rule": "white-space: normal;"},
                         {"selector": 'th[data-dash-column="Positions"] .column-header-name',
                          "rule": "display: block;"},
-                        {"selector": 'th[data-dash-column="Positions"]::after',
+                        {"selector": 'tr:nth-child(2) th[data-dash-column="Positions"]::after',
                          "rule": (
                              "content: 'Long   Short   Spread';"
                              "display: block;"
@@ -98,7 +107,15 @@ def layout():
                          'minWidth': '260px', 'width': '260px', 'maxWidth': '260px'},
                         {'if': {'column_id': COL_NUM_TRADERS},
                          'whiteSpace': 'normal', 'height': 'auto',
-                         'minWidth': '260px', 'width': '260px', 'maxWidth': '260px'}
+                         'minWidth': '260px', 'width': '260px', 'maxWidth': '260px'},
+                        {'if': {'column_id': COL_OPEN_INT},
+                         'minWidth': '110px', 'width': '110px', 'maxWidth': '110px', 'textAlign': 'right'},
+                        {'if': {'column_id': COL_PCT_LONG},
+                         'minWidth': '80px', 'width': '80px', 'maxWidth': '80px', 'textAlign': 'right'},
+                        {'if': {'column_id': COL_PCT_SHORT},
+                         'minWidth': '80px', 'width': '80px', 'maxWidth': '80px', 'textAlign': 'right'},
+                        {'if': {'column_id': COL_PCT_SPREAD},
+                         'minWidth': '80px', 'width': '80px', 'maxWidth': '80px', 'textAlign': 'right'},
                     ],
                     style_data_conditional=[
                         {'if': {'filter_query': '{' + COL_DIFF_LONG   + '} < 0', 'column_id': COL_DIFF_LONG},   'color': 'red'},
@@ -107,6 +124,9 @@ def layout():
                         {'if': {'filter_query': '{' + COL_DIFF_SHORT  + '} > 0', 'column_id': COL_DIFF_SHORT},  'color': 'green'},
                         {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} < 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'red'},
                         {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} > 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'green'},
+                        {'if': {'filter_query': '{Trader Group} = "Markt gesamt"'},
+                         'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold',
+                         'borderTop': '2px solid #999'},
                     ],
                     style_table={'overflowX': 'auto'},
                     style_cell={
