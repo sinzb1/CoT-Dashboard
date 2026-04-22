@@ -92,6 +92,20 @@ HOVER_POS_SIZE           = '<br>PosSize (avg): '
 # weitere Spalten-Konstanten (zweite Runde)
 LONG_CLUSTERING_COL        = 'Long Clustering'
 SHORT_CLUSTERING_COL       = 'Short Clustering'
+PMPU_LONG_CLUSTERING_COL   = 'PMPU Long Clustering'
+PMPU_SHORT_CLUSTERING_COL  = 'PMPU Short Clustering'
+SD_LONG_CLUSTERING_COL     = 'SD Long Clustering'
+SD_SHORT_CLUSTERING_COL    = 'SD Short Clustering'
+OR_LONG_CLUSTERING_COL     = 'OR Long Clustering'
+OR_SHORT_CLUSTERING_COL    = 'OR Short Clustering'
+PMPU_LONG_CONC_COL         = 'PMPU Long Concentration'
+PMPU_SHORT_CONC_COL        = 'PMPU Short Concentration'
+SD_LONG_CONC_COL           = 'SD Long Concentration'
+SD_SHORT_CONC_COL          = 'SD Short Concentration'
+MM_LONG_CONC_COL           = 'MM Long Concentration'
+MM_SHORT_CONC_COL          = 'MM Short Concentration'
+OR_LONG_CONC_COL           = 'OR Long Concentration'
+OR_SHORT_CONC_COL          = 'OR Short Concentration'
 PMPUL_POSITION_SIZE_COL    = 'PMPUL Position Size'
 PMPUS_POSITION_SIZE_COL    = 'PMPUS Position Size'
 SDL_POSITION_SIZE_COL      = 'SDL Position Size'
@@ -580,7 +594,8 @@ def update_table(selected_market, start_date, end_date):
     return pd.DataFrame(data).to_dict('records'), tooltip_data, _format_date_de(current_row['Date'])
 
 def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_title,
-                              title, use_year_ticks=False, selected_market=None):
+                              title, use_year_ticks=False, selected_market=None,
+                              yaxis_range=None):
     """Build a position-size bubble chart. Shared by PMPU/SD/OR/MM long & short variants."""
     fig = go.Figure()
 
@@ -633,6 +648,13 @@ def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_
             showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
         ))
 
+    dtick = _oi_dtick(selected_market) if selected_market else None
+    yaxis_cfg = {"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0}
+    if dtick:
+        yaxis_cfg["dtick"] = dtick
+    if yaxis_range is not None:
+        yaxis_cfg["range"] = yaxis_range
+
     if use_year_ticks:
         xaxis_cfg = {
             "tickmode": 'array',
@@ -640,12 +662,9 @@ def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_
             "ticktext": [str(y) for y in df['Date'].dt.year.unique()],
             "showgrid": True, "ticks": "outside", "tickangle": 45
         }
-        yaxis_cfg = {"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0,
-                     "dtick": _oi_dtick(selected_market)}
         legend_x = 1.2
     else:
         xaxis_cfg = {"showgrid": True, "ticks": "outside", "tickangle": 45}
-        yaxis_cfg = {"title": OPEN_INTEREST_LABEL, "showgrid": True}
         legend_x = 1.18
 
     fig.update_layout(
@@ -665,7 +684,8 @@ def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_
     return fig
 
 
-def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_market):
+def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_market,
+                           yaxis_range=None):
     """Build a clustering bubble chart. Shared by Long/Short Clustering variants."""
     fig = go.Figure()
 
@@ -707,6 +727,11 @@ def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_ma
             showlegend=True, name=f"{int(v)} Traders", hoverinfo='skip'
         ))
 
+    cl_yaxis = {"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0,
+                "dtick": _oi_dtick(selected_market)}
+    if yaxis_range is not None:
+        cl_yaxis["range"] = yaxis_range
+
     fig.update_layout(
         title=title, xaxis_title='Date', yaxis_title=OPEN_INTEREST_LABEL,
         xaxis={
@@ -715,8 +740,7 @@ def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_ma
             "ticktext": [str(year) for year in df['Date'].dt.year.unique()],
             "showgrid": True, "ticks": "outside", "tickangle": 45
         },
-        yaxis={"title": OPEN_INTEREST_LABEL, "showgrid": True, "tick0": 0,
-               "dtick": _oi_dtick(selected_market)},
+        yaxis=cl_yaxis,
         legend={"title": {"text": NUMBER_OF_TRADERS_LABEL}, "itemsizing": 'trace',
                 "x": 1.2, "y": 0.5, "font": {"size": 12}},
         margin={"l": 60, "r": 160, "t": 60, "b": 60}
@@ -794,19 +818,53 @@ def _build_dp_rc_fig(filtered_df):
     return fig_rc
 
 
+def _build_position_size_figs(df, direction, market, oi_range):
+    """Erstellt die vier Position-Size-Graphen (PMPU, SD, MM, OR) für Long oder Short."""
+    is_long = direction == 'Long'
+    configs = [
+        (TRADERS_PROD_MERC_LONG  if is_long else TRADERS_PROD_MERC_SHORT,
+         PMPUL_POSITION_SIZE_COL if is_long else PMPUS_POSITION_SIZE_COL,
+         'Long Position Size Indicator (PMPU)'          if is_long else 'Short Position Size Indicator (PMPU)',
+         False),
+        (TRADERS_SWAP_LONG_COL   if is_long else TRADERS_SWAP_SHORT_COL,
+         SDL_POSITION_SIZE_COL   if is_long else SDS_POSITION_SIZE_COL,
+         'Long Position Size Indicator (Swap Dealers)'  if is_long else 'Short Position Size Indicator (Swap Dealers)',
+         False),
+        (TRADERS_MM_LONG_COL     if is_long else TRADERS_MM_SHORT_COL,
+         MML_POSITION_SIZE_COL   if is_long else MMS_POSITION_SIZE_COL,
+         'Long Position Size Indicator (Money Managers)' if is_long else 'Short Position Size Indicator (Money Managers)',
+         True),
+        (TRADERS_OTHER_REPT_LONG if is_long else TRADERS_OTHER_REPT_SHORT,
+         ORL_POSITION_SIZE_COL   if is_long else ORS_POSITION_SIZE_COL,
+         'Long Position Size Indicator (Other Reportables)' if is_long else 'Short Position Size Indicator (Other Reportables)',
+         False),
+    ]
+    lbl = 'Long' if is_long else 'Short'
+    return tuple(
+        _build_position_size_fig(
+            df, traders_col, pos_size_col, lbl,
+            f'{lbl} Position Size', title,
+            use_year_ticks=year_ticks, selected_market=market, yaxis_range=oi_range
+        )
+        for traders_col, pos_size_col, title, year_ticks in configs
+    )
+
+
 # Callback to update graphs based on selected market and date range
 @app.callback(
     [
-        Output('long-clustering-graph', 'figure'),
-        Output('short-clustering-graph', 'figure'),
-        Output('pmpu-long-position-size-graph', 'figure'),
-        Output('pmpu-short-position-size-graph', 'figure'),
-        Output('sd-long-position-size-graph', 'figure'),
-        Output('sd-short-position-size-graph', 'figure'),
-        Output('long-position-size-graph', 'figure'),
-        Output('short-position-size-graph', 'figure'),
-        Output('or-long-position-size-graph', 'figure'),
-        Output('or-short-position-size-graph', 'figure'),
+        Output('pmpu-concentration-graph', 'figure'),
+        Output('sd-concentration-graph', 'figure'),
+        Output('mm-concentration-graph', 'figure'),
+        Output('or-concentration-graph', 'figure'),
+        Output('pmpu-clustering-graph', 'figure'),
+        Output('sd-clustering-graph', 'figure'),
+        Output('mm-clustering-graph', 'figure'),
+        Output('or-clustering-graph', 'figure'),
+        Output('pmpu-position-size-graph', 'figure'),
+        Output('sd-position-size-graph', 'figure'),
+        Output('mm-position-size-graph', 'figure'),
+        Output('or-position-size-graph', 'figure'),
         Output('dry-powder-indicator-graph', 'figure'),
         Output('dp-relative-concentration-graph', 'figure'),
         Output('dp-seasonal-indicator-graph', 'figure'),
@@ -818,59 +876,75 @@ def _build_dp_rc_fig(filtered_df):
      Input(DATE_PICKER_ID, 'start_date'),
      Input(DATE_PICKER_ID, 'end_date'),
      Input('mm-radio', 'value'),
-     Input('trader-group-radio', 'value')]
+     Input('trader-group-radio', 'value'),
+     Input('grundlegende-concentration-radio', 'value'),
+     Input('grundlegende-clustering-radio', 'value'),
+     Input('grundlegende-position-size-radio', 'value')]
 )
 
-def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
+def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
+                  concentration_direction, clustering_direction, position_size_direction):
     filtered_df = df_pivoted[(df_pivoted[MARKET_NAMES_COL] == selected_market) &
                              (df_pivoted['Date'] >= start_date) &
                              (df_pivoted['Date'] <= end_date)]
 
-    pmpu_long_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_PROD_MERC_LONG, PMPUL_POSITION_SIZE_COL,
-        'Long', 'PMPU Long Position Size', 'Long Position Size Indicator (PMPU)'
-    )
-    pmpu_short_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_PROD_MERC_SHORT, PMPUS_POSITION_SIZE_COL,
-        'Short', 'PMPU Short Position Size', 'Short Position Size Indicator (PMPU)'
-    )
-    sd_long_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_SWAP_LONG_COL, SDL_POSITION_SIZE_COL,
-        'Long', 'SD Long Position Size', 'Long Position Size Indicator (Swap Dealers)'
-    )
-    sd_short_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_SWAP_SHORT_COL, SDS_POSITION_SIZE_COL,
-        'Short', 'SD Short Position Size', 'Short Position Size Indicator (Swap Dealers)'
-    )
-    or_long_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_OTHER_REPT_LONG, ORL_POSITION_SIZE_COL,
-        'Long', 'OR Long Position Size', 'Long Position Size Indicator (Other Reportables)'
-    )
-    or_short_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_OTHER_REPT_SHORT, ORS_POSITION_SIZE_COL,
-        'Short', 'OR Short Position Size', 'Short Position Size Indicator (Other Reportables)'
-    )
-    long_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_MM_LONG_COL, MML_POSITION_SIZE_COL,
-        'Long', 'MM Long Position Size', 'Long Position Size Indicator (Money Managers)',
-        use_year_ticks=True, selected_market=selected_market
-    )
-    short_position_size_fig = _build_position_size_fig(
-        filtered_df, TRADERS_MM_SHORT_COL, MMS_POSITION_SIZE_COL,
-        'Short', 'MM Short Position Size', 'Short Position Size Indicator (Money Managers)',
-        use_year_ticks=True, selected_market=selected_market
-    )
+    _oi = pd.to_numeric(filtered_df[OPEN_INTEREST_LABEL], errors='coerce').dropna()
+    _oi_pad = (_oi.max() - _oi.min()) * 0.05 if len(_oi) > 0 else 1000
+    _oi_range = [max(0, float(_oi.min() - _oi_pad)), float(_oi.max() + _oi_pad)]
+
+    _conc_configs = [
+        (PMPU_LONG_CONC_COL,  PMPU_SHORT_CONC_COL,
+         'PMPU Long Concentration (%)',  'PMPU Short Concentration (%)',
+         'Concentration Indicator (PMPU)'),
+        (SD_LONG_CONC_COL,    SD_SHORT_CONC_COL,
+         'SD Long Concentration (%)',    'SD Short Concentration (%)',
+         'Concentration Indicator (Swap Dealers)'),
+        (MM_LONG_CONC_COL,    MM_SHORT_CONC_COL,
+         'MM Long Concentration (%)',    'MM Short Concentration (%)',
+         'Concentration Indicator (Money Managers)'),
+        (OR_LONG_CONC_COL,    OR_SHORT_CONC_COL,
+         'OR Long Concentration (%)',    'OR Short Concentration (%)',
+         'Concentration Indicator (Other Reportables)'),
+    ]
+    pmpu_concentration_fig, sd_concentration_fig, mm_concentration_fig, or_concentration_fig = [
+        _build_clustering_fig(
+            filtered_df,
+            long_col if concentration_direction == 'Long' else short_col,
+            long_lbl  if concentration_direction == 'Long' else short_lbl,
+            title, selected_market, yaxis_range=_oi_range
+        )
+        for long_col, short_col, long_lbl, short_lbl, title in _conc_configs
+    ]
+
+    pmpu_position_size_fig, sd_position_size_fig, mm_position_size_fig, or_position_size_fig = \
+        _build_position_size_figs(filtered_df, position_size_direction, selected_market, _oi_range)
 
     _, _ = calculate_scaling_factors(filtered_df)
 
-    long_clustering_fig = _build_clustering_fig(
-        filtered_df, LONG_CLUSTERING_COL,
-        'Long Clustering (%)', 'Long Positions Clustering Indicator', selected_market
-    )
-    short_clustering_fig = _build_clustering_fig(
-        filtered_df, SHORT_CLUSTERING_COL,
-        'Short Clustering (%)', 'Short Positions Clustering Indicator', selected_market
-    )
+    _cl_dir = clustering_direction
+    _cl_configs = [
+        (PMPU_LONG_CLUSTERING_COL,  PMPU_SHORT_CLUSTERING_COL,
+         'PMPU Long Clustering (%)',  'PMPU Short Clustering (%)',
+         'Clustering Indicator (PMPU)'),
+        (SD_LONG_CLUSTERING_COL,    SD_SHORT_CLUSTERING_COL,
+         'SD Long Clustering (%)',    'SD Short Clustering (%)',
+         'Clustering Indicator (Swap Dealers)'),
+        (LONG_CLUSTERING_COL,       SHORT_CLUSTERING_COL,
+         'Long Clustering (%)',       'Short Clustering (%)',
+         'Clustering Indicator (Money Managers)'),
+        (OR_LONG_CLUSTERING_COL,    OR_SHORT_CLUSTERING_COL,
+         'OR Long Clustering (%)',    'OR Short Clustering (%)',
+         'Clustering Indicator (Other Reportables)'),
+    ]
+    pmpu_clustering_fig, sd_clustering_fig, mm_clustering_fig, or_clustering_fig = [
+        _build_clustering_fig(
+            filtered_df,
+            long_col if _cl_dir == 'Long' else short_col,
+            long_lbl  if _cl_dir == 'Long' else short_lbl,
+            title, selected_market, yaxis_range=_oi_range
+        )
+        for long_col, short_col, long_lbl, short_lbl, title in _cl_configs
+    ]
 
     # --- Dry Powder Indicator---
     dry_powder_fig = go.Figure()
@@ -1164,16 +1238,18 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group):
     hedging_fig = create_hedging_indicator(filtered_df, trader_group, start_date, end_date)
 
     return (
-        long_clustering_fig,
-        short_clustering_fig,
-        pmpu_long_position_size_fig,
-        pmpu_short_position_size_fig,
-        sd_long_position_size_fig,
-        sd_short_position_size_fig,
-        long_position_size_fig,
-        short_position_size_fig,
-        or_long_position_size_fig,
-        or_short_position_size_fig,
+        pmpu_concentration_fig,
+        sd_concentration_fig,
+        mm_concentration_fig,
+        or_concentration_fig,
+        pmpu_clustering_fig,
+        sd_clustering_fig,
+        mm_clustering_fig,
+        or_clustering_fig,
+        pmpu_position_size_fig,
+        sd_position_size_fig,
+        mm_position_size_fig,
+        or_position_size_fig,
         dry_powder_fig,
         fig_rc,
         dp_seasonal_indicator_fig,

@@ -1,6 +1,11 @@
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 
+_GRP_PMPU = "Producer/Merchant/Processor/User"
+_GRP_SD   = "Swap Dealers"
+_GRP_MM   = "Money Managers"
+_GRP_OR   = "Other Reportables"
+
 COL_DIFF_LONG    = 'Difference (Long %)'
 COL_DIFF_SHORT   = 'Difference (Short %)'
 COL_DIFF_SPREAD  = 'Difference (Spread %)'
@@ -19,6 +24,7 @@ def layout():
             + [html.A(lbl, href=f"#{anc}", className="btn btn-sm btn-outline-secondary me-2 mb-1")
                for lbl, anc in [
                    ("Market Overview", "section-market-overview"),
+                   ("Concentration Indicator", "section-concentration"),
                    ("Clustering Indicator", "section-clustering"),
                    ("Position Size Indicator", "section-position-size"),
                ]],
@@ -35,27 +41,29 @@ def layout():
                     tooltip_delay=400,
                     tooltip_duration=None,
                     columns=[
-                        {'name': ['',        'Trader Group'],   'id': 'Trader Group'},
-                        {'name': ['',        COL_OPEN_INT],     'id': COL_OPEN_INT},
-                        {'name': ['',        'Positions (OI)'], 'id': 'Positions', 'presentation': 'markdown'},
-                        {'name': ['',        'Δ Long %'],       'id': COL_DIFF_LONG},
-                        {'name': ['',        'Δ Short %'],      'id': COL_DIFF_SHORT},
-                        {'name': ['',        'Δ Spread %'],     'id': COL_DIFF_SPREAD},
-                        {'name': ['Traders', 'Total'],          'id': 'Total Traders'},
-                        {'name': ['Traders', '% Long'],         'id': COL_PCT_LONG},
-                        {'name': ['Traders', '% Short'],        'id': COL_PCT_SHORT},
-                        {'name': ['Traders', '% Spread'],       'id': COL_PCT_SPREAD},
-                        {'name': ['',        COL_NUM_TRADERS],  'id': COL_NUM_TRADERS, 'presentation': 'markdown'},
+                        {'name': ['',             'Trader Group'], 'id': 'Trader Group'},
+                        {'name': [COL_OPEN_INT, 'Total'],       'id': COL_OPEN_INT},
+                        {'name': [COL_OPEN_INT, 'Positionen'],  'id': 'Positions', 'presentation': 'markdown'},
+                        {'name': [COL_OPEN_INT, 'Δ Long %'],    'id': COL_DIFF_LONG},
+                        {'name': [COL_OPEN_INT, 'Δ Short %'],   'id': COL_DIFF_SHORT},
+                        {'name': [COL_OPEN_INT, 'Δ Spread %'],  'id': COL_DIFF_SPREAD},
+                        {'name': ['Traders',       'Total'],       'id': 'Total Traders'},
+                        {'name': ['Traders',       '% Long'],      'id': COL_PCT_LONG},
+                        {'name': ['Traders',       '% Short'],     'id': COL_PCT_SHORT},
+                        {'name': ['Traders',       '% Spread'],    'id': COL_PCT_SPREAD},
+                        {'name': ['Traders',       'Verteilung'],  'id': COL_NUM_TRADERS, 'presentation': 'markdown'},
                     ],
                     merge_duplicate_headers=True,
                     markdown_options={"html": True},
                     style_header={
-                        'backgroundColor': 'rgb(230, 230, 230)',
+                        'backgroundColor': '#dae8f5',
                         'fontWeight': 'bold',
                         'whiteSpace': 'normal',
                         'height': 'auto'
                     },
                     css=[
+                        {"selector": "tr:nth-child(1) th",
+                         "rule": "background-color: #b8d0e8 !important; text-align: center !important;"},
                         {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"]',
                          "rule": "white-space: normal;"},
                         {"selector": f'th[data-dash-column="{COL_NUM_TRADERS}"] .column-header-name',
@@ -125,8 +133,8 @@ def layout():
                         {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} < 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'red'},
                         {'if': {'filter_query': '{' + COL_DIFF_SPREAD + '} > 0', 'column_id': COL_DIFF_SPREAD}, 'color': 'green'},
                         {'if': {'filter_query': '{Trader Group} = "Markt gesamt"'},
-                         'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold',
-                         'borderTop': '2px solid #999'},
+                         'backgroundColor': '#c8dff0', 'fontWeight': 'bold',
+                         'borderTop': '2px solid #7aabcf'},
                     ],
                     style_table={'overflowX': 'auto'},
                     style_cell={
@@ -139,6 +147,67 @@ def layout():
                 )
             ], width=12)
         ]),
+
+        html.Hr(),
+
+        # Concentration Indicator
+        dbc.Row([
+            dbc.Col([
+                html.H1("Concentration Indicator", id="section-concentration"),
+
+                dbc.Accordion([
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        Der **Concentration Indicator** misst, wie gross der Anteil des Open Interests
+                        einer Tradergruppe am gesamten Markt-Open-Interest ist. Er zeigt damit, wie stark
+                        eine Gruppe auf der Long- oder Short-Seite im Verhältnis zum Gesamtmarkt vertreten ist.
+
+                        Das **Ziel des Indikators** ist es, die Marktbedeutung und Dominanz einzelner
+                        Tradergruppen sichtbar zu machen. Eine hohe Konzentration bedeutet, dass ein grosser
+                        Teil des Marktes von dieser Gruppe gehalten wird.
+
+                        **Farbskala:** Die Punktfarbe zeigt den *Concentration-Wert in %*. Ein hoher Wert
+                        bedeutet, dass die Gruppe einen überproportional grossen Anteil des Open Interests hält.
+                        """, mathjax=True),
+                    ], title="Beschreibung"),
+
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        $$
+                        \mathrm{Concentration}_{G}(t) =
+                        \frac{\mathrm{OI}_{G}(t)}{\mathrm{Total\ OI}(t)}
+                        \times 100
+                        $$
+
+                        **Variablen und Begriffe:**
+                        - **$G$:** betrachtete Gruppe $\in \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$
+                        - **$\mathrm{OI}_{G}(t)$:** Open Interest der Gruppe $G$ (Long oder Short) am Reportdatum $t$
+                        - **$\mathrm{Total\ OI}(t)$:** Gesamtes Open Interest aller offenen Kontrakte am Reportdatum $t$
+                        - **Concentration-Wert:** prozentualer Anteil der Gruppe am Gesamt-Open-Interest
+                        """, mathjax=True),
+                    ], title="Berechnung"),
+                ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
+
+                dcc.RadioItems(
+                    id='grundlegende-concentration-radio',
+                    options=[
+                        {'label': 'Long', 'value': 'Long'},
+                        {'label': 'Short', 'value': 'Short'},
+                    ],
+                    value='Long',
+                    className='mb-4'
+                ),
+            ], width=12)
+        ]),
+
+        dbc.Row([dbc.Col([html.H2(_GRP_PMPU)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='pmpu-concentration-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_SD)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='sd-concentration-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_MM)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='mm-concentration-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_OR)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='or-concentration-graph')], width=12)]),
 
         html.Hr(),
 
@@ -158,9 +227,8 @@ def layout():
                         regulatorische Beschränkungen wie Positionslimits oder Diversifikationsauflagen an.
 
                         **Farbskala:** Die Punktfarbe zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
-                        stark sich Trader im Verhältnis zur historischen Bandbreite (ein Jahr) in einer Long- oder Short-Position
-                        konzentrieren. Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung
-                        positionieren.
+                        viele Trader im Verhältnis zur Gesamtanzahl aller Trader eine Long- oder Short-Position halten.
+                        Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung positionieren.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -191,13 +259,11 @@ def layout():
                         ], className="mb-2"),
 
                         dcc.Markdown(r"""
-                        **Schritt 2 – Rollende Min-Max-Normierung (52-Wochen-Fenster):**
+                        **Schritt 2 – Prozentualer Trader-Anteil:**
 
                         $$
                         \mathrm{Clustering}^{\mathrm{(Long/Short)}}_{\mathrm{MM}}(t)=
-                        \frac{\mathrm{share}(t)-\min_{52W}\!\bigl(\mathrm{share}\bigr)}
-                             {\max_{52W}\!\bigl(\mathrm{share}\bigr)-\min_{52W}\!\bigl(\mathrm{share}\bigr)}
-                        \times 100
+                        \mathrm{share}^{\mathrm{(Long/Short)}}_{\mathrm{MM}}(t) \times 100
                         $$
 
                         **Variablen und Begriffe:**
@@ -205,18 +271,31 @@ def layout():
                         - **$\mathrm{Traders}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Long-Positionen am Reportdatum $t$
                         - **$\mathrm{Traders}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Short-Positionen am Reportdatum $t$
                         - **$\mathrm{Total\ Traders}(t)$:** Gesamtanzahl aller reportablen Trader im Markt am Reportdatum $t$
-                        - **$\min_{52W}$, $\max_{52W}$:** rollierendes Minimum bzw. Maximum über 52 Wochen
-                        - **Clustering-Wert:** 0 = historisches Minimum, 100 = historisches Maximum innerhalb der letzten 52 Wochen
+                        - **Clustering-Wert:** prozentualer Anteil der MM-Trader mit Long- bzw. Short-Position an allen Tradern
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
-                dcc.Graph(id='long-clustering-graph'),
-                html.Div([], style={'marginTop': '10px'}),
-                dcc.Graph(id='short-clustering-graph'),
-                html.Br(),
+                dcc.RadioItems(
+                    id='grundlegende-clustering-radio',
+                    options=[
+                        {'label': 'Long', 'value': 'Long'},
+                        {'label': 'Short', 'value': 'Short'},
+                    ],
+                    value='Long',
+                    className='mb-4'
+                ),
             ], width=12)
         ]),
+
+        dbc.Row([dbc.Col([html.H2(_GRP_PMPU)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='pmpu-clustering-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_SD)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='sd-clustering-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_MM)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='mm-clustering-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_OR)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='or-clustering-graph')], width=12)]),
 
         html.Hr(),
 
@@ -265,27 +344,25 @@ def layout():
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
+
+                dcc.RadioItems(
+                    id='grundlegende-position-size-radio',
+                    options=[
+                        {'label': 'Long', 'value': 'Long'},
+                        {'label': 'Short', 'value': 'Short'},
+                    ],
+                    value='Long',
+                    className='mb-4'
+                ),
             ], width=12)
         ]),
 
-        dbc.Row([dbc.Col([html.H2("Producer/Merchant/Processor/User")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='pmpu-long-position-size-graph')],  width=12),
-            dbc.Col([dcc.Graph(id='pmpu-short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Swap Dealers")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='sd-long-position-size-graph')],  width=12),
-            dbc.Col([dcc.Graph(id='sd-short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Money Managers")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='long-position-size-graph')],  width=12),
-            dbc.Col([dcc.Graph(id='short-position-size-graph')], width=12),
-        ]),
-        dbc.Row([dbc.Col([html.H2("Other Reportables")], width=12)]),
-        dbc.Row([
-            dbc.Col([dcc.Graph(id='or-long-position-size-graph')],  width=12),
-            dbc.Col([dcc.Graph(id='or-short-position-size-graph')], width=12),
-        ]),
+        dbc.Row([dbc.Col([html.H2(_GRP_PMPU)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='pmpu-position-size-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_SD)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='sd-position-size-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_MM)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='mm-position-size-graph')], width=12)]),
+        dbc.Row([dbc.Col([html.H2(_GRP_OR)], width=12)]),
+        dbc.Row([dbc.Col([dcc.Graph(id='or-position-size-graph')], width=12)]),
     ])

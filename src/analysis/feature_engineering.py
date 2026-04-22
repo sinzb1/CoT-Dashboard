@@ -6,7 +6,16 @@ enrich_cot_dataframe() erwartet einen DataFrame der bereits umbenannte Spalten h
 
 Trader-Anteile & Clustering:
   MM_Long_share, MM_Short_share
-  Long Clustering, Short Clustering      – rollende 52-Wochen Min-Max-Normierung
+  Long Clustering, Short Clustering           – MM: Trader-Anteil in % (MM Long/Short / Total)
+  PMPU Long/Short Clustering                  – PMPU: Trader-Anteil in %
+  SD Long/Short Clustering                    – Swap Dealer: Trader-Anteil in %
+  OR Long/Short Clustering                    – Other Reportables: Trader-Anteil in %
+
+Concentration (OI-Anteil je Gruppe):
+  PMPU Long/Short Concentration               – PMPU OI / Total OI in %
+  SD Long/Short Concentration                 – Swap Dealer OI / Total OI in %
+  MM Long/Short Concentration                 – Managed Money OI / Total OI in %
+  OR Long/Short Concentration                 – Other Reportables OI / Total OI in %
 
 Rolling-Fenster auf PMPU Long:
   Rolling Min, Rolling Max
@@ -43,7 +52,30 @@ Aggregierte OI/Trader-Grössen für Managed Money:
 import numpy as np
 import pandas as pd
 
-from src.analysis.cot_indicators import clustering_0_100
+# ---------------------------------------------------------------------------
+# Rohe Spaltennamen (aus InfluxDB-Pivot)
+# ---------------------------------------------------------------------------
+_C_TOTAL_TRADERS   = "Total Traders"
+_C_PMPU_L          = "Producer/Merchant/Processor/User Long"
+_C_PMPU_S          = "Producer/Merchant/Processor/User Short"
+_C_MM_L            = "Managed Money Long"
+_C_MM_S            = "Managed Money Short"
+_C_SD_L            = "Swap Dealer Long"
+_C_SD_S            = "Swap Dealer Short"
+_C_OR_L            = "Other Reportables Long"
+_C_OR_S            = "Other Reportables Short"
+_C_TR_PMPU_L       = "Traders Prod/Merc Long"
+_C_TR_PMPU_S       = "Traders Prod/Merc Short"
+_C_TR_MM_L         = "Traders M Money Long"
+_C_TR_MM_S         = "Traders M Money Short"
+_C_TR_SD_L         = "Traders Swap Long"
+_C_TR_SD_S         = "Traders Swap Short"
+_C_TR_OR_L         = "Traders Other Rept Long"
+_C_TR_OR_S         = "Traders Other Rept Short"
+_C_TR_MM_SPREAD    = "Traders M Money Spread"
+_C_TR_SD_SPREAD    = "Traders Swap Spread"
+_C_TR_OR_SPREAD    = "Traders Other Rept Spread"
+_C_TOTAL_NUM       = "Total Number of Traders"
 
 
 def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -62,31 +94,46 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # Trader-Anteile & Clustering
     # ------------------------------------------------------------------
-    df["Total Number of Traders"] = df["Total Traders"]
+    df[_C_TOTAL_NUM] = df[_C_TOTAL_TRADERS]
 
-    df["MM_Long_share"]  = df["Traders M Money Long"]  / df["Total Number of Traders"]
-    df["MM_Short_share"] = df["Traders M Money Short"] / df["Total Number of Traders"]
+    df["MM_Long_share"]  = df[_C_TR_MM_L] / df[_C_TOTAL_NUM]
+    df["MM_Short_share"] = df[_C_TR_MM_S] / df[_C_TOTAL_NUM]
 
-    df["Long Clustering"] = (
-        df.groupby("Market Names")["MM_Long_share"]
-        .transform(lambda s: clustering_0_100(s, window=52))
-    )
-    df["Short Clustering"] = (
-        df.groupby("Market Names")["MM_Short_share"]
-        .transform(lambda s: clustering_0_100(s, window=52))
-    )
+    df["Long Clustering"]  = df["MM_Long_share"]  * 100.0
+    df["Short Clustering"] = df["MM_Short_share"] * 100.0
+
+    total_traders = df[_C_TOTAL_NUM].replace(0, np.nan)
+    df["PMPU Long Clustering"]  = df[_C_TR_PMPU_L] / total_traders * 100.0
+    df["PMPU Short Clustering"] = df[_C_TR_PMPU_S] / total_traders * 100.0
+    df["SD Long Clustering"]    = df[_C_TR_SD_L]   / total_traders * 100.0
+    df["SD Short Clustering"]   = df[_C_TR_SD_S]   / total_traders * 100.0
+    df["OR Long Clustering"]    = df[_C_TR_OR_L]   / total_traders * 100.0
+    df["OR Short Clustering"]   = df[_C_TR_OR_S]   / total_traders * 100.0
+
+    # ------------------------------------------------------------------
+    # Concentration (OI-Anteil je Gruppe am Total OI)
+    # ------------------------------------------------------------------
+    total_oi = pd.to_numeric(df["Open Interest"], errors="coerce").replace(0, np.nan)
+    df["PMPU Long Concentration"]  = df[_C_PMPU_L] / total_oi * 100.0
+    df["PMPU Short Concentration"] = df[_C_PMPU_S] / total_oi * 100.0
+    df["SD Long Concentration"]    = df[_C_SD_L]   / total_oi * 100.0
+    df["SD Short Concentration"]   = df[_C_SD_S]   / total_oi * 100.0
+    df["MM Long Concentration"]    = df[_C_MM_L]   / total_oi * 100.0
+    df["MM Short Concentration"]   = df[_C_MM_S]   / total_oi * 100.0
+    df["OR Long Concentration"]    = df[_C_OR_L]   / total_oi * 100.0
+    df["OR Short Concentration"]   = df[_C_OR_S]   / total_oi * 100.0
 
     # ------------------------------------------------------------------
     # Rolling Min/Max auf PMPU Long (für Grundlegende-Darstellung)
     # ------------------------------------------------------------------
-    df["Rolling Min"] = df["Producer/Merchant/Processor/User Long"].rolling(365, min_periods=1).min()
-    df["Rolling Max"] = df["Producer/Merchant/Processor/User Long"].rolling(365, min_periods=1).max()
+    df["Rolling Min"] = df[_C_PMPU_L].rolling(365, min_periods=1).min()
+    df["Rolling Max"] = df[_C_PMPU_L].rolling(365, min_periods=1).max()
 
     # ------------------------------------------------------------------
     # Trader-Kategorien
     # ------------------------------------------------------------------
     df["Trader Size"] = pd.cut(
-        df["Total Number of Traders"],
+        df[_C_TOTAL_NUM],
         bins=[0, 50, 100, 150],
         labels=["≤ 50 Traders", "51–100 Traders", "101–150 Traders"],
     )
@@ -94,8 +141,8 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # Aggregierte Trader-Zähler
     # ------------------------------------------------------------------
-    df["Total Long Traders"]  = df[["Traders Prod/Merc Short", "Traders Swap Long", "Traders M Money Long"]].sum(axis=1)
-    df["Total Short Traders"] = df[["Traders Prod/Merc Short", "Traders Swap Short", "Traders M Money Short"]].sum(axis=1)
+    df["Total Long Traders"]  = df[[_C_TR_PMPU_S, _C_TR_SD_L, _C_TR_MM_L]].sum(axis=1)
+    df["Total Short Traders"] = df[[_C_TR_PMPU_S, _C_TR_SD_S, _C_TR_MM_S]].sum(axis=1)
 
     # ------------------------------------------------------------------
     # Positions-Grössen (Kontrakte pro Trader)
@@ -103,39 +150,39 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     def _div(a: str, b: str) -> pd.Series:
         return (df[a] / df[b]).replace([np.inf, -np.inf], np.nan)
 
-    df["Long Position Size"]       = df["Producer/Merchant/Processor/User Long"]
-    df["Short Position Size"]      = df["Producer/Merchant/Processor/User Short"]
-    df["MML Position Size"]        = _div("Managed Money Long",                          "Traders M Money Long")
-    df["MMS Position Size"]        = _div("Managed Money Short",                         "Traders M Money Short")
-    df["Net Short Position Size"]  = df["Short Position Size"] - df["Long Position Size"]
-    df["PMPUL Position Size"]      = _div("Producer/Merchant/Processor/User Long",       "Traders Prod/Merc Long")
-    df["PMPUS Position Size"]      = _div("Producer/Merchant/Processor/User Short",      "Traders Prod/Merc Short")
-    df["SDL Position Size"]        = _div("Swap Dealer Long",                            "Traders Swap Long")
-    df["SDS Position Size"]        = _div("Swap Dealer Short",                           "Traders Swap Short")
-    df["ORL Position Size"]        = _div("Other Reportables Long",                      "Traders Other Rept Long")
-    df["ORS Position Size"]        = _div("Other Reportables Short",                     "Traders Other Rept Short")
+    df["Long Position Size"]      = df[_C_PMPU_L]
+    df["Short Position Size"]     = df[_C_PMPU_S]
+    df["MML Position Size"]       = _div(_C_MM_L,   _C_TR_MM_L)
+    df["MMS Position Size"]       = _div(_C_MM_S,   _C_TR_MM_S)
+    df["Net Short Position Size"] = df["Short Position Size"] - df["Long Position Size"]
+    df["PMPUL Position Size"]     = _div(_C_PMPU_L, _C_TR_PMPU_L)
+    df["PMPUS Position Size"]     = _div(_C_PMPU_S, _C_TR_PMPU_S)
+    df["SDL Position Size"]       = _div(_C_SD_L,   _C_TR_SD_L)
+    df["SDS Position Size"]       = _div(_C_SD_S,   _C_TR_SD_S)
+    df["ORL Position Size"]       = _div(_C_OR_L,   _C_TR_OR_L)
+    df["ORS Position Size"]       = _div(_C_OR_S,   _C_TR_OR_S)
 
     # ------------------------------------------------------------------
     # OI-Aliase
     # ------------------------------------------------------------------
-    df["MML Long OI"]  =  df["Managed Money Long"]
-    df["MML Short OI"] = -df["Managed Money Short"]
-    df["MMS Long OI"]  =  df["Managed Money Long"]
-    df["MMS Short OI"] = -df["Managed Money Short"]
-    df["MML Traders"]  =  df["Traders M Money Long"]
-    df["MMS Traders"]  =  df["Traders M Money Short"]
+    df["MML Long OI"]  =  df[_C_MM_L]
+    df["MML Short OI"] = -df[_C_MM_S]
+    df["MMS Long OI"]  =  df[_C_MM_L]
+    df["MMS Short OI"] = -df[_C_MM_S]
+    df["MML Traders"]  =  df[_C_TR_MM_L]
+    df["MMS Traders"]  =  df[_C_TR_MM_S]
 
     # ------------------------------------------------------------------
     # Relative Concentrations (Netto-Position: Long − Short)
     # ------------------------------------------------------------------
-    df["PMPUL Relative Concentration"] = df["Producer/Merchant/Processor/User Long"]  - df["Producer/Merchant/Processor/User Short"]
-    df["PMPUS Relative Concentration"] = df["Producer/Merchant/Processor/User Short"] - df["Producer/Merchant/Processor/User Long"]
-    df["SDL Relative Concentration"]   = df["Swap Dealer Long"]                        - df["Swap Dealer Short"]
-    df["SDS Relative Concentration"]   = df["Swap Dealer Short"]                       - df["Swap Dealer Long"]
-    df["MML Relative Concentration"]   = df["Managed Money Long"]                      - df["Managed Money Short"]
-    df["MMS Relative Concentration"]   = df["Managed Money Short"]                     - df["Managed Money Long"]
-    df["ORL Relative Concentration"]   = df["Other Reportables Long"]                  - df["Other Reportables Short"]
-    df["ORS Relative Concentration"]   = df["Other Reportables Short"]                 - df["Other Reportables Long"]
+    df["PMPUL Relative Concentration"] = df[_C_PMPU_L] - df[_C_PMPU_S]
+    df["PMPUS Relative Concentration"] = df[_C_PMPU_S] - df[_C_PMPU_L]
+    df["SDL Relative Concentration"]   = df[_C_SD_L]   - df[_C_SD_S]
+    df["SDS Relative Concentration"]   = df[_C_SD_S]   - df[_C_SD_L]
+    df["MML Relative Concentration"]   = df[_C_MM_L]   - df[_C_MM_S]
+    df["MMS Relative Concentration"]   = df[_C_MM_S]   - df[_C_MM_L]
+    df["ORL Relative Concentration"]   = df[_C_OR_L]   - df[_C_OR_S]
+    df["ORS Relative Concentration"]   = df[_C_OR_S]   - df[_C_OR_L]
 
     # ------------------------------------------------------------------
     # Netto-Aliase für Shapley-Owen
@@ -148,12 +195,12 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # Trader-Gruppen-Aliase
     # ------------------------------------------------------------------
-    df["PMPUL Traders"] = df["Traders Prod/Merc Long"]
-    df["PMPUS Traders"] = df["Traders Prod/Merc Short"]
-    df["SDL Traders"]   = df["Traders Swap Long"]
-    df["SDS Traders"]   = df["Traders Swap Short"]
-    df["ORL Traders"]   = df["Traders Other Rept Long"]
-    df["ORS Traders"]   = df["Traders Other Rept Short"]
+    df["PMPUL Traders"] = df[_C_TR_PMPU_L]
+    df["PMPUS Traders"] = df[_C_TR_PMPU_S]
+    df["SDL Traders"]   = df[_C_TR_SD_L]
+    df["SDS Traders"]   = df[_C_TR_SD_S]
+    df["ORL Traders"]   = df[_C_TR_OR_L]
+    df["ORS Traders"]   = df[_C_TR_OR_S]
 
     # ------------------------------------------------------------------
     # Temporale Features
@@ -164,7 +211,7 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # Aggregierte OI/Trader-Grössen für Managed Money
     # ------------------------------------------------------------------
-    df["MM Net OI"]      = df["Managed Money Long"]    - df["Managed Money Short"]
-    df["MM Net Traders"] = df["Traders M Money Long"]  - df["Traders M Money Short"]
+    df["MM Net OI"]      = df[_C_MM_L]    - df[_C_MM_S]
+    df["MM Net Traders"] = df[_C_TR_MM_L] - df[_C_TR_MM_S]
 
     return df

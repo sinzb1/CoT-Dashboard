@@ -5,6 +5,9 @@ from src.clients.socrata_client import SocrataClient
 from src.mappings.categories_of_traders_column_map import COLUMN_MAP
 
 
+MARKET_NAMES_COL = "Market Names"
+
+
 class TradesCategoryService:
     def __init__(self):
         self.client = SocrataClient()
@@ -33,13 +36,13 @@ class TradesCategoryService:
         }
 
         # Rename column
-        filtered_df["Market Names"] = filtered_df["Market Names"].replace(market_filter)
+        filtered_df[MARKET_NAMES_COL] = filtered_df[MARKET_NAMES_COL].replace(market_filter)
 
         # convert to date_time
         filtered_df["Date"] = pd.to_datetime(filtered_df["Date"], format="mixed", utc=True)
 
         # convert data field to numerics
-        exclude = ["Market Names", "Date"]
+        exclude = [MARKET_NAMES_COL, "Date"]
         num_cols = [c for c in filtered_df.columns if c not in exclude]
         filtered_df[num_cols] = (
             filtered_df[num_cols]
