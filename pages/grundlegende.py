@@ -158,32 +158,31 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **Concentration Indicator** misst, wie gross der Anteil des Open Interests
-                        einer Tradergruppe am gesamten Markt-Open-Interest ist. Er zeigt damit, wie stark
-                        eine Gruppe auf der Long- oder Short-Seite im Verhältnis zum Gesamtmarkt vertreten ist.
+                        **Indikator:** Misst den Anteil des Open Interests einer Tradergruppe am gesamten Markt-Open-Interest.
 
-                        Das **Ziel des Indikators** ist es, die Marktbedeutung und Dominanz einzelner
-                        Tradergruppen sichtbar zu machen. Eine hohe Konzentration bedeutet, dass ein grosser
-                        Teil des Marktes von dieser Gruppe gehalten wird.
+                        **Interpretation:** Ein hoher Wert zeigt, dass eine Gruppe einen überproportional grossen Teil des Marktes hält und damit strukturell dominant ist.
 
-                        **Farbskala:** Die Punktfarbe zeigt den *Concentration-Wert in %*. Ein hoher Wert
-                        bedeutet, dass die Gruppe einen überproportional grossen Anteil des Open Interests hält.
+                        **Ziel:** Marktbedeutung und Dominanz einzelner Tradergruppen sichtbar machen.
+
+                        **Besonderheit:** Unabhängig von der absoluten Marktgrösse – der Indikator normiert das Open Interest relativ zum Gesamtmarkt.
+
+                        **Kreisgrösse:** Die Kreisgrösse entspricht der Gesamtanzahl aller reportablen Trader im Markt ($N$).
+
+                        **Farbskala:** Die Farbe zeigt den Concentration-Wert in %. Helle Farben = hoher Anteil am Gesamtmarkt.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{Concentration}_{G}(t) =
-                        \frac{\mathrm{OI}_{G}(t)}{\mathrm{Total\ OI}(t)}
-                        \times 100
+                        \mathrm{Concentration}_{G}^{(L/S)}(\%) =
+                        \frac{\mathrm{OI}_{G}^{(L/S)}}{\mathrm{OI}_{\mathrm{total}}} \times 100
                         $$
 
                         **Variablen und Begriffe:**
-                        - **$G$:** betrachtete Gruppe $\in \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$
-                        - **$\mathrm{OI}_{G}(t)$:** Open Interest der Gruppe $G$ (Long oder Short) am Reportdatum $t$
-                        - **$\mathrm{Total\ OI}(t)$:** Gesamtes Open Interest aller offenen Kontrakte am Reportdatum $t$
-                        - **Concentration-Wert:** prozentualer Anteil der Gruppe am Gesamt-Open-Interest
+                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
+                        - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
+                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest aller offenen Kontrakte
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -219,59 +218,31 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **Clustering Indicator** misst, wie viele Trader eine bestimmte Long- oder Short-Position halten,
-                        ausgedrückt als Prozentsatz aller Trader im Markt. Er ist damit ein Indikator für Marktstimmung und „Herdentrieb".
+                        **Indikator:** Misst den Anteil der Trader einer Gruppe an der Gesamtanzahl aller reportablen Trader im Markt.
 
-                        Das **Ziel des Indikators** ist es, das Mass an „Crowding" in einem Markt sichtbar zu machen – also wie viele
-                        Trader sich in dieselbe Richtung positionieren. Er ist unabhängig von der Positionsgrösse und passt sich dadurch gut an
-                        regulatorische Beschränkungen wie Positionslimits oder Diversifikationsauflagen an.
+                        **Interpretation:** Ein hoher Wert zeigt, dass sich besonders viele Trader in dieselbe Richtung positionieren – ein Zeichen für Herdentrieb oder starkes Crowding.
 
-                        **Farbskala:** Die Punktfarbe zeigt den *Clustering-Wert in %*. Dieser Wert zeigt, wie
-                        viele Trader im Verhältnis zur Gesamtanzahl aller Trader eine Long- oder Short-Position halten.
-                        Ein hoher Wert bedeutet also, dass sich besonders viele Trader in derselben Richtung positionieren.
+                        **Ziel:** Das Mass an Crowding in einem Markt sichtbar machen – unabhängig von der Positionsgrösse.
+
+                        **Besonderheit:** Da der Indikator auf Traderzahlen basiert, reagiert er nicht auf Positionslimits oder Diversifikationsauflagen – er misst das Verhalten der Marktteilnehmer, nicht die Grösse ihrer Positionen.
+
+                        **Kreisgrösse:** Die Kreisgrösse entspricht der Gesamtanzahl aller reportablen Trader im Markt ($N$).
+
+                        **Farbskala:** Die Farbe zeigt den Clustering-Wert in %. Helle Farben = hoher Traderanteil (hohes Crowding).
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Die Berechnung erfolgt in zwei Schritten. **Schritt 1 – Roher Trader-Anteil:**
-                        """, mathjax=True),
-                        dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Long-Clustering (Money Manager):**
-
-                            $$
-                            \mathrm{share}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)=
-                            \frac{\mathrm{Traders}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)}
-                            {\mathrm{Total\ Traders}(t)}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-
-                            dbc.Col(dcc.Markdown(r"""
-                            **Short-Clustering (Money Manager):**
-
-                            $$
-                            \mathrm{share}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)=
-                            \frac{\mathrm{Traders}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)}
-                            {\mathrm{Total\ Traders}(t)}
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-                        ], className="mb-2"),
-
-                        dcc.Markdown(r"""
-                        **Schritt 2 – Prozentualer Trader-Anteil:**
-
                         $$
-                        \mathrm{Clustering}^{\mathrm{(Long/Short)}}_{\mathrm{MM}}(t)=
-                        \mathrm{share}^{\mathrm{(Long/Short)}}_{\mathrm{MM}}(t) \times 100
+                        \mathrm{Clustering}_{G}^{(L/S)}(\%) =
+                        \frac{N_{G}^{(L/S)}}{N} \times 100
                         $$
 
                         **Variablen und Begriffe:**
-                        - **MM:** Money Manager
-                        - **$\mathrm{Traders}^{\mathrm{(Long)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Long-Positionen am Reportdatum $t$
-                        - **$\mathrm{Traders}^{\mathrm{(Short)}}_{\mathrm{MM}}(t)$:** Anzahl MM-Trader mit Short-Positionen am Reportdatum $t$
-                        - **$\mathrm{Total\ Traders}(t)$:** Gesamtanzahl aller reportablen Trader im Markt am Reportdatum $t$
-                        - **Clustering-Wert:** prozentualer Anteil der MM-Trader mit Long- bzw. Short-Position an allen Tradern
+                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
+                        - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
+                        - $N$: Gesamtanzahl aller reportablen Trader im Markt
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -307,40 +278,31 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **Position Size Indicator** misst die durchschnittliche Grösse der Positionen einzelner Trader,
-                        indem die gesamte Positionsgrösse durch die Anzahl der beteiligten Trader geteilt wird. Dadurch wird sichtbar,
-                        wie stark die Überzeugung (*conviction*) innerhalb einer Tradergruppe ist.
+                        **Indikator:** Misst die durchschnittliche Positionsgrösse pro Trader einer Gruppe (Kontrakte pro Trader).
 
-                        Das **Ziel des Indikators** ist es, die durchschnittliche Positionsgrösse und damit die Intensität des Engagements von Tradern transparenter zu machen.
-                        Er kombiniert Daten zu *Open Interest* und *Traderanzahl*, um Rückschlüsse auf die Verteilung von Positionen entlang der Fälligkeiten
-                        (*down the curve*) zu ziehen. Zudem lassen sich über Positionslimits erkennen, wie stark Positionen konzentriert sind und welche
-                        Auswirkungen ein Abbau dieser Positionen auf Preise und Marktstruktur haben könnte.
+                        **Interpretation:** Ein hoher Wert zeigt, dass die Trader einer Gruppe grosse Einzelpositionen halten – ein Indikator für hohe Überzeugung (*conviction*) oder konzentrierte Positionierung.
 
-                        **Farbskala:** Die Punktfarbe zeigt die *durchschnittliche Positionsgrösse* in der jeweiligen Gruppe.
-                        Helle Farben = grössere Positionen pro Trader, dunkle Farben = kleinere Positionen.
+                        **Ziel:** Die Intensität des Engagements einer Tradergruppe sichtbar machen, unabhängig davon, wie viele Trader beteiligt sind.
+
+                        **Besonderheit:** In Kombination mit dem Clustering Indicator lässt sich unterscheiden, ob ein hoher OI-Anteil auf viele kleine oder wenige grosse Positionen zurückgeht – relevant für die Einschätzung von Liquidationsrisiken.
+
+                        **Kreisgrösse:** Die Kreisgrösse entspricht der Anzahl Trader der jeweiligen Gruppe ($N_{G}^{(L/S)}$).
+
+                        **Farbskala:** Die Farbe zeigt die durchschnittliche Positionsgrösse (Kontrakte pro Trader). Helle Farben = grössere Positionen pro Trader.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \text{Position Size}_{G} =
-                        \frac{\text{Open Interest}_{G}}
-                        {\text{Number of Traders}_{G}}
-                        $$
-
-                        wobei
-                        $$
-                        G \in \{\mathrm{MM}\text{-}L,\, \mathrm{MM}\text{-}S,\, \mathrm{PMPU}\text{-}L,\, \mathrm{PMPU}\text{-}S,\, \mathrm{SD}\text{-}L,\, \mathrm{SD}\text{-}S,\, \mathrm{OR}\text{-}L,\, \mathrm{OR}\text{-}S\}
+                        \mathrm{PositionSize}_{G}^{(L/S)} =
+                        \frac{\mathrm{OI}_{G}^{(L/S)}}{N_{G}^{(L/S)}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - **PMPU:** Producer/Merchant/Processor/User
-                        - **SD:** Swap Dealer
-                        - **MM:** Managed Money
-                        - **OR:** Other Reportables
-                        - **L:** Long Positionen
-                        - **S:** Short Positionen
+                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
+                        - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
+                        - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

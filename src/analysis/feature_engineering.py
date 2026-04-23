@@ -150,8 +150,8 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     def _div(a: str, b: str) -> pd.Series:
         return (df[a] / df[b]).replace([np.inf, -np.inf], np.nan)
 
-    df["Long Position Size"]      = df[_C_PMPU_L]
-    df["Short Position Size"]     = df[_C_PMPU_S]
+    df["Long Position Size"]      = _div(_C_PMPU_L, _C_TR_PMPU_L)
+    df["Short Position Size"]     = _div(_C_PMPU_S, _C_TR_PMPU_S)
     df["MML Position Size"]       = _div(_C_MM_L,   _C_TR_MM_L)
     df["MMS Position Size"]       = _div(_C_MM_S,   _C_TR_MM_S)
     df["Net Short Position Size"] = df["Short Position Size"] - df["Long Position Size"]
@@ -173,16 +173,17 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df["MMS Traders"]  =  df[_C_TR_MM_S]
 
     # ------------------------------------------------------------------
-    # Relative Concentrations (Netto-Position: Long − Short)
+    # Relative Concentrations (Netto-Konzentration in %, normiert durch Total OI)
+    # Formel: 100 × (Long-OI − Short-OI) / Total-OI
     # ------------------------------------------------------------------
-    df["PMPUL Relative Concentration"] = df[_C_PMPU_L] - df[_C_PMPU_S]
-    df["PMPUS Relative Concentration"] = df[_C_PMPU_S] - df[_C_PMPU_L]
-    df["SDL Relative Concentration"]   = df[_C_SD_L]   - df[_C_SD_S]
-    df["SDS Relative Concentration"]   = df[_C_SD_S]   - df[_C_SD_L]
-    df["MML Relative Concentration"]   = df[_C_MM_L]   - df[_C_MM_S]
-    df["MMS Relative Concentration"]   = df[_C_MM_S]   - df[_C_MM_L]
-    df["ORL Relative Concentration"]   = df[_C_OR_L]   - df[_C_OR_S]
-    df["ORS Relative Concentration"]   = df[_C_OR_S]   - df[_C_OR_L]
+    df["PMPUL Relative Concentration"] = 100.0 * (df[_C_PMPU_L] - df[_C_PMPU_S]) / total_oi
+    df["PMPUS Relative Concentration"] = 100.0 * (df[_C_PMPU_S] - df[_C_PMPU_L]) / total_oi
+    df["SDL Relative Concentration"]   = 100.0 * (df[_C_SD_L]   - df[_C_SD_S])   / total_oi
+    df["SDS Relative Concentration"]   = 100.0 * (df[_C_SD_S]   - df[_C_SD_L])   / total_oi
+    df["MML Relative Concentration"]   = 100.0 * (df[_C_MM_L]   - df[_C_MM_S])   / total_oi
+    df["MMS Relative Concentration"]   = 100.0 * (df[_C_MM_S]   - df[_C_MM_L])   / total_oi
+    df["ORL Relative Concentration"]   = 100.0 * (df[_C_OR_L]   - df[_C_OR_S])   / total_oi
+    df["ORS Relative Concentration"]   = 100.0 * (df[_C_OR_S]   - df[_C_OR_L])   / total_oi
 
     # ------------------------------------------------------------------
     # Netto-Aliase für Shapley-Owen

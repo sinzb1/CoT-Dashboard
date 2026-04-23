@@ -36,13 +36,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        **DP (Dry Powder)** ist eine Methode zur Visualisierung der Positionierung in Rohstoffmärkten.
-                        Dabei wird die Grösse der Long- und Short-Positionen (*Open Interest*) mit der Anzahl der Trader
-                        in einer bestimmten Gruppe (z. B. Money Manager) in Beziehung gesetzt.
+                        **Indikator:** Zeigt die Long- (MML) und Short-Positionen (MMS) der Managed-Money-Gruppe als Punktewolke: Anzahl Trader (X-Achse) gegen Open Interest (Y-Achse).
 
-                        Das **Ziel des Indikators** ist es, einschätzen zu können, ob bestehende Positionen noch ausgebaut werden
-                        können oder ob sie anfällig für Liquidationen sind. DP-Indikatoren werden in Diagrammen dargestellt
-                        und können direkt als Handelssignale genutzt werden, um Marktchancen und Risiken besser zu bewerten.
+                        **Interpretation:** Die Lage und Dichte der Punktewolke zeigen, bei welcher Traderanzahl welches OI-Niveau typisch ist. Je weiter rechts der aktuelle Punkt, desto mehr Trader sind beteiligt — je höher, desto grösser das OI.
+
+                        **Ziel:** Einschätzen, ob bestehende Positionen noch ausgebaut werden können (tiefe Traderanzahl = viel „Dry Powder") oder ob sie liquidationsgefährdet sind (hohe Konzentration, wenig Spielraum).
+
+                        **Besonderheit:** MMS-Werte werden negativ dargestellt, um Long- und Short-Seite im selben Chart zu trennen. Je Gruppe wird eine Regressionstrendlinie eingeblendet.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML (Long-Seite), Hellblau = MMS (Short-Seite). Schwarzer Punkt = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -78,18 +80,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Notional Indicator** misst die aggregierte Long- bzw. Short-Exponierung
-                        einer bestimmten Tradergruppe in Notional-Dollar, indem das Open Interest der Gruppe mit der
-                        Kontraktgrösse und dem zugrunde liegenden Futures-Preis multipliziert wird. Dadurch wird sichtbar,
-                        wie gross das gesamte finanzielle Exposure einer Gruppe im Markt ist und wie stark sie kapitalmässig engagiert ist.
+                        **Indikator:** Zeigt das aggregierte Dollar-Exposure (Notional) der MML- und MMS-Gruppe: Anzahl Trader (X-Achse) gegen Notional-Exposure in USD Mrd. (Y-Achse).
 
-                        Das **Ziel des Indikators** ist es, die absolute Markt-Exponierung einer Tradergruppe in USD sichtbar
-                        zu machen. Er hilft zu beurteilen, ob Veränderungen im Engagement einer Gruppe primär auf eine veränderte
-                        Anzahl Trader oder auf ein höheres bzw. tieferes aggregiertes Positionsvolumen zurückzuführen sind.
-                        Dadurch lassen sich Rückschlüsse auf die finanzielle Bedeutung und das Marktgewicht einzelner Tradergruppen ziehen.
+                        **Interpretation:** Hoher Notional-Wert bei tiefer Traderanzahl zeigt, dass wenige Trader ein sehr grosses Marktgewicht halten — ein Zeichen für Konzentration und erhöhte Liquidationsgefahr.
 
-                        **Farbskala:** Die Punktfarbe unterscheidet die jeweilige Tradergruppe. In der dargestellten Ausprägung
-                        steht dunkelblau für Managed Money Long (MML) und hellblau für Managed Money Short (MMS).
+                        **Ziel:** Das absolute finanzielle Marktgewicht einer Tradergruppe sichtbar machen, unabhängig von Kontraktzahl oder Marktstruktur.
+
+                        **Besonderheit:** MMS-Werte werden negativ dargestellt. Die Berechnung nutzt den Front-Month-Futures-Preis (yfinance) und die marktspezifische Kontraktgrösse. Je Gruppe wird eine Regressionstrendlinie eingeblendet.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML, Hellblau = MMS. Schwarzer Punkt = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -130,66 +129,33 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Time Indicator** zeigt, wie sich die Long- bzw. Short-Konzentration
-                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader über die Zeit entwickelt.
-                        Dadurch wird sichtbar, wie stark eine Gruppe relativ zum gesamten Markt positioniert ist und
-                        wie sich diese Positionierung im historischen Verlauf verändert.
+                        **Indikator:** Zeigt die OI-Konzentration (% des Total OI) der MML- und MMS-Gruppe gegen die Anzahl Trader, eingefärbt nach Kalenderjahr.
 
-                        Das **Ziel des Indikators** ist es, die zeitliche Entwicklung der Marktpositionierung einer
-                        Tradergruppe sichtbar zu machen. Er hilft zu beurteilen, ob sich Konzentrationsmuster in Phasen
-                        mit vielen oder wenigen Tradern wiederholen und wie sich die aktuelle Positionierung im Vergleich
-                        zu früheren Jahren einordnen lässt. Dadurch lassen sich historische Muster, Verschiebungen in der
-                        Marktstruktur und mögliche Extremphasen erkennen.
+                        **Interpretation:** Punkte desselben Jahres bilden eine Zeitreihe innerhalb des Charts. Verschiebungen von Jahres-Clustern zeigen, ob sich das Positionierungsmuster der Gruppe über Zeit verändert hat.
 
-                        **Farbskala:** Die Punktfarbe codiert das jeweilige Jahr der Beobachtung. Dadurch wird sichtbar,
-                        aus welcher Zeitperiode ein Punkt stammt und wie sich die Positionierung über die Jahre entwickelt.
+                        **Ziel:** Historische Muster und strukturelle Verschiebungen im Trader-Verhalten erkennen und die aktuelle Positionierung zeitlich einordnen.
+
+                        **Besonderheit:** MMS-Konzentration wird negativ dargestellt. Jedes Jahr erhält eine eigene Farbe.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe = Kalenderjahr der Beobachtung. Schwarzer Punkt = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
+                        Achsen (Zeitpunkt $t$), mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
                         $$
-                        x_G(t) = N_G(t), \qquad y_G(t) = c_G(t)
+                        x_G(t) = N_G(t), \qquad
+                        y_G(t) = \sigma_G \cdot \frac{\mathrm{OI}_G(t)}{\mathrm{OI}_{\mathrm{total}}(t)} \cdot 100
                         $$
 
-                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$; $y_{\mathrm{MMS}}(t)$ wird im Plot negativ dargestellt.
+                        wobei $\sigma_{\mathrm{MML}} = +1$ und $\sigma_{\mathrm{MMS}} = -1$ (MMS-Seite wird negativ dargestellt).
 
-                        **Konzentrations-Formeln:**
-                        """, mathjax=True),
-                        dbc.Row([
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Long (MML):**
-
-                            $$
-                            c_{\mathrm{MML}}(t)=
-                            \frac{\mathrm{OI}_{\mathrm{MML}}(t)}
-                            {\mathrm{OI}(t)} \cdot 100
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-
-                            dbc.Col(dcc.Markdown(r"""
-                            **Für Managed Money Short (MMS):**
-
-                            $$
-                            c_{\mathrm{MMS}}(t)=
-                            -\,\frac{\mathrm{OI}_{\mathrm{MMS}}(t)}
-                            {\mathrm{OI}(t)} \cdot 100
-                            $$
-                            """, mathjax=True), width=12, lg=6),
-                        ], className="mb-2"),
-
-                        dcc.Markdown(r"""
                         **Variablen und Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
-                        - **$c_G(t)$:** Long- bzw. Short-Konzentration der Gruppe $G$ in % (Y-Achse)
-                        - **$\mathrm{OI}_{\mathrm{MML}}(t)$:** Open Interest der Managed-Money-Long-Positionen
-                        - **$\mathrm{OI}_{\mathrm{MMS}}(t)$:** Open Interest der Managed-Money-Short-Positionen
-                        - **$\mathrm{OI}(t)$:** gesamtes Open Interest des betrachteten Futures-Marktes
-                        - **Punktfarbe:** codiert das Kalenderjahr der Beobachtung (je Farbe = ein Jahr)
-                        - **Negatives Vorzeichen bei MMS:** dient der separaten Darstellung der Short-Seite im Plot
+                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
+                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$
+                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes zum Zeitpunkt $t$
+                        - $y_G(t)$: OI-Konzentration der Gruppe $G$ in % (Y-Achse)
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -209,26 +175,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Price Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest
-                        einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl Trader und dem zugrunde
-                        liegenden Preisniveau verteilt. Dadurch wird sichtbar, bei welchen Preisniveaus eine
-                        Gruppe besonders stark oder schwach positioniert ist und wie sich diese Positionierung
-                        im Verhältnis zur Zahl der beteiligten Trader verändert.
+                        **Indikator:** Zeigt das OI der PMPU-Gruppe (Long oder Short) gegen die Anzahl PMPU-Trader, eingefärbt nach dem 2nd Nearby Futures-Preis.
 
-                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang
-                        mit dem Marktpreis sichtbar zu machen. Er hilft zu beurteilen, ob hohe oder tiefe Long-
-                        bzw. Short-Positionierungen eher bei bestimmten Preisniveaus auftreten und ob diese von
-                        vielen oder wenigen Tradern getragen werden. Dadurch lassen sich typische Preisbereiche
-                        identifizieren, in denen eine Gruppe besonders aktiv ist.
+                        **Interpretation:** Häufungen bei bestimmten Preisniveaus zeigen, bei welchen Marktpreisen die PMPU-Gruppe typischerweise besonders stark oder schwach positioniert ist.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Preisniveau des 2nd Nearby Futures
-                        am Report Date. Rote Farben stehen für tiefere Preise, grüne Farben für höhere Preise.
+                        **Ziel:** Zusammenhang zwischen Preisniveau und PMPU-Positionierung sichtbar machen — für Einschätzungen zu Hedging-Verhalten und preissensitiven Positionierungsmustern.
 
-                        **Graue Punkte** (Keine Preisdaten) erscheinen bei Märkten oder Wochen, für die kein
-                        2nd-Nearby-Schlusskurs von Databento verfügbar ist. Dies betrifft typischerweise die
-                        weniger liquiden Märkte Platin (PL) und Palladium (PA), bei denen der deferred Kontrakt
-                        an einzelnen Handelstagen kein Volumen verzeichnet und daher kein Schlusskurs
-                        vorliegt.
+                        **Besonderheit:** Graue Punkte erscheinen bei Märkten ohne 2nd-Nearby-Preisdaten (typischerweise Platin und Palladium). Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = 2nd Nearby Futures-Preis (USD). Rot = tiefer Preis, Grün = hoher Preis.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -281,28 +236,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Curve Indicator** zeigt, wie sich das Long- bzw. Short-Open Interest
-                        der Managed-Money-Gruppe in Abhängigkeit von der Anzahl Trader und der
-                        Terminstruktur (Curve Structure) des jeweiligen Futures-Markts verteilt. Die
-                        Terminstruktur wird als prozentualer Spread zwischen dem 2nd Nearby und dem
-                        3rd Nearby Kontrakt am Report Date ausgedrückt.
+                        **Indikator:** Zeigt das OI der MM-Gruppe (Long oder Short) gegen die Anzahl MM-Trader, eingefärbt nach der Terminstruktur (Curve Range).
 
-                        Das **Ziel des Indikators** ist es, die Positionierung der Managed-Money-Gruppe
-                        im Zusammenhang mit dem Preisgefälle entlang der Futures-Kurve sichtbar zu
-                        machen. Er hilft zu beurteilen, ob hohe oder tiefe Long- bzw.
-                        Short-Positionierungen eher in Phasen von Contango oder Backwardation auftreten.
+                        **Interpretation:** Häufungen roter Punkte bei hohem OI zeigen z.B., ob die MM-Gruppe bevorzugt in Backwardation-Phasen long positioniert ist.
 
-                        **Punktfarbe:** Rote Punkte stehen für Wochen in Backwardation (negativer Spread,
-                        2nd Nearby teurer als 3rd Nearby), grüne Punkte für Wochen in Contango (positiver
-                        Spread, 3rd Nearby teurer als 2nd Nearby). Die Legende zeigt zudem die tatsächliche
-                        Bandbreite der Curve Range (%) über den gesamten dargestellten Zeitraum.
-                        Der schwarze Punkt markiert die aktuellste Berichtswoche.
+                        **Ziel:** Zusammenhang zwischen Terminstruktur (Contango/Backwardation) und MM-Positionierung erkennen.
 
-                        **Hellblaue Punkte** (Keine Kurvendaten) erscheinen bei Märkten, bei denen der
-                        3rd-Nearby-Kontrakt an einzelnen Handelstagen kein Volumen verzeichnet – dies
-                        betrifft typischerweise die weniger liquiden Märkte Platin (PL) und Palladium (PA).
-                        In solchen Wochen fehlt der Databento-Schlusskurs für den 3rd Nearby, weshalb
-                        die Curve Range nicht berechnet werden kann.
+                        **Besonderheit:** Hellblaue Punkte erscheinen bei fehlenden 3rd-Nearby-Daten (typischerweise Platin und Palladium). Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = Curve Range (%). Rot = Backwardation (2nd Nearby teurer als 3rd Nearby), Grün = Contango (3rd Nearby teurer als 2nd Nearby).
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -352,22 +294,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Factor (VIX) Indicator** zeigt, wie sich das Long- bzw.
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
-                        Trader und einem externen Risikofaktor verteilt. Als externer Faktor wird der
-                        **Volatility Index (VIX)** verwendet, der die vom Markt erwartete Schwankungsintensität
-                        des S&P 500 für die nächsten 30 Tage abbildet. Dadurch wird sichtbar, ob eine Tradergruppe
-                        ihre Positionen eher in Phasen tiefer oder hoher erwarteter Marktvolatilität aufbaut.
+                        **Indikator:** Zeigt das OI der MM-Gruppe (Long oder Short) gegen die Anzahl MM-Trader, eingefärbt nach dem VIX-Niveau.
 
-                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang
-                        mit dem allgemeinen Marktunsicherheitsniveau sichtbar zu machen. Er hilft zu beurteilen,
-                        ob hohe oder tiefe Long- bzw. Short-Positionierungen eher in Phasen erhöhter oder reduzierter
-                        Risikoaversion auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Dadurch
-                        lassen sich mögliche Zusammenhänge zwischen externer Marktunsicherheit und der Positionierung
-                        im jeweiligen Rohstoffmarkt erkennen.
+                        **Interpretation:** Häufungen dunkler Punkte bei hohem OI zeigen, ob die Gruppe Positionen bevorzugt in Phasen hoher oder tiefer Marktvolatilität aufbaut.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des VIX. Helle Farben stehen für
-                        eine tiefere erwartete Volatilität, dunkelrote Farben für eine höhere erwartete Volatilität.
+                        **Ziel:** Zusammenhang zwischen allgemeiner Marktunsicherheit (VIX) und MM-Positionierung sichtbar machen.
+
+                        **Besonderheit:** Der VIX misst die vom Markt erwartete 30-Tages-Volatilität des S&P 500. Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = VIX-Niveau. Hell = tiefe Volatilität, Dunkelrot = hohe Volatilität.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -416,23 +351,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Factor (DXY) Indicator** zeigt, wie sich das Long- bzw.
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
-                        Trader und einem externen Währungsfaktor verteilt. Als externer Faktor wird der
-                        **US-Dollar-Index (DXY)** verwendet, der die Stärke des US-Dollars gegenüber einem
-                        Korb wichtiger Währungen abbildet. Dadurch wird sichtbar, ob eine Tradergruppe ihre
-                        Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars aufbaut.
+                        **Indikator:** Zeigt das OI der MM-Gruppe (Long oder Short) gegen die Anzahl MM-Trader, eingefärbt nach dem DXY-Niveau (US-Dollar-Index).
 
-                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im Zusammenhang
-                        mit der allgemeinen Dollarstärke sichtbar zu machen. Er hilft zu beurteilen, ob hohe oder
-                        tiefe Long- bzw. Short-Positionierungen eher in Phasen eines starken oder schwachen
-                        US-Dollars auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Dadurch
-                        lassen sich mögliche Zusammenhänge zwischen Wechselkursumfeld und Positionierung im
-                        jeweiligen Rohstoffmarkt erkennen.
+                        **Interpretation:** Häufungen bei bestimmten DXY-Niveaus zeigen, ob die Gruppe Positionen bevorzugt in Phasen eines starken oder schwachen US-Dollars aufbaut.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des DXY. Helle Farben stehen für
-                        einen tieferen Dollarindex, dunkelrote Farben für einen höheren Dollarindex bzw. einen
-                        stärkeren US-Dollar.
+                        **Ziel:** Zusammenhang zwischen Dollarstärke und MM-Positionierung sichtbar machen.
+
+                        **Besonderheit:** Der DXY misst die Stärke des USD gegenüber einem Korb wichtiger Währungen. Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = DXY-Niveau. Hell = schwacher Dollar, Dunkelrot = starker Dollar.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -481,25 +408,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Currency Indicator** zeigt, wie sich das Long- bzw.
-                        Short-Open-Interest einer bestimmten Tradergruppe in Abhängigkeit von der Anzahl
-                        Trader und einem relevanten Wechselkurs verteilt. Als Währungsfaktor wird der
-                        **USD/CHF-Wechselkurs** verwendet. Dadurch wird sichtbar, ob eine Tradergruppe
-                        ihre Positionen eher in Phasen eines schwächeren oder stärkeren US-Dollars
-                        gegenüber dem Schweizer Franken aufbaut.
+                        **Indikator:** Zeigt das OI der MM-Gruppe (Long oder Short) gegen die Anzahl MM-Trader, eingefärbt nach dem USD/CHF-Wechselkurs.
 
-                        Das **Ziel des Indikators** ist es, die Positionierung einer Tradergruppe im
-                        Zusammenhang mit dem Wechselkursumfeld sichtbar zu machen. Er hilft zu beurteilen,
-                        ob hohe oder tiefe Long- bzw. Short-Positionierungen eher bei bestimmten USD/CHF-Niveaus
-                        auftreten und ob diese von vielen oder wenigen Tradern getragen werden. Der Wechselkurs
-                        USD/CHF wird verwendet, da das Dashboard primär in der Schweiz eingesetzt wird und die
-                        betrachteten Rohstoffmärkte überwiegend in US-Dollar notieren. Dadurch wird die
-                        Positionierung aus einer für Schweizer Nutzer:innen besonders relevanten
-                        Währungsperspektive interpretiert.
+                        **Interpretation:** Häufungen bei bestimmten USD/CHF-Niveaus zeigen, ob die Gruppe Positionen bevorzugt bei einem starken oder schwachen USD gegenüber dem CHF aufbaut.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des USD/CHF-Wechselkurses.
-                        Helle Farben stehen für ein tieferes USD/CHF-Niveau, dunklere Farben für ein höheres
-                        USD/CHF-Niveau.
+                        **Ziel:** Positionierungsmuster aus Schweizer Währungsperspektive beleuchten — besonders relevant, da die betrachteten Rohstoffmärkte in USD notieren.
+
+                        **Besonderheit:** USD/CHF als Währungsfaktor wurde gewählt, da das Dashboard primär für Schweizer Nutzer konzipiert ist. Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = USD/CHF-Kurs. Hell = tiefer Kurs (schwacher USD), Dunkel = hoher Kurs (starker USD).
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -548,25 +465,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Fundamental Indicator** zeigt, wie sich das Long- bzw.
-                        Short-Open-Interest der Gruppe **Producer/Merchant/Processor/User (PMPU)**
-                        in Abhängigkeit von der Anzahl Trader und dem fundamentalen Rohöl-Lagerbestand
-                        verteilt. Als externer Faktor werden die wöchentlichen **US-Rohöl-Lagerbestände
-                        (Ending Stocks excl. SPR)** der U.S. Energy Information Administration (EIA)
-                        verwendet.
+                        **Indikator:** Zeigt das OI der PMPU-Gruppe (Long oder Short) gegen die Anzahl PMPU-Trader, eingefärbt nach dem US-Rohöl-Lagerbestand (EIA).
 
-                        Die PMPU-Gruppe umfasst physische Marktteilnehmer – Produzenten, Händler,
-                        Verarbeiter und Endverbraucher. Ihre Positionierung spiegelt daher direkt das
-                        operative Hedging-Verhalten gegenüber dem physischen Rohölmarkt wider.
-                        Ein Zusammenspiel zwischen der PMPU-Positionierung und dem Lagerbestandsniveau
-                        lässt Rückschlüsse auf Angebotserwartungen, Hedging-Druck und mögliche
-                        Trendwenden im physischen Markt zu.
+                        **Interpretation:** Häufungen bei tiefen Lagerbeständen und hohem PMPU Long OI zeigen typisches Hedging-Verhalten physischer Marktteilnehmer in Knappheitsphasen.
 
-                        **Dieser Indikator ist ausschliesslich für Crude Oil (WTI) verfügbar.**
+                        **Ziel:** Zusammenhang zwischen fundamentalem Angebotsniveau (Lagerbestände) und PMPU-Hedging-Positionierung sichtbar machen.
 
-                        **Farbskala:** Die Punktfarbe zeigt das jeweilige Niveau des US-Rohöl-Lagerbestands
-                        in Tausend Barrel. Helle Farben stehen für tiefere Lagerbestände
-                        (knappes Angebot), dunklere Farben für höhere Lagerbestände (reichliches Angebot).
+                        **Besonderheit:** Ausschliesslich für Crude Oil (WTI) verfügbar. EIA-Daten werden wöchentlich veröffentlicht und auf den CoT-Stichtag (Dienstag) ausgerichtet. Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Farbe = EIA-Lagerbestand (Tsd. Barrel). Hell = knappes Angebot, Dunkel = reichliches Angebot.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -620,14 +527,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Relative Concentration Indicator** normalisiert Positionen
-                        anhand des Open Interest und stellt die Konzentration der Gruppen dar. Dadurch lassen sich verschiedene Märkte
-                        oder Gruppen innerhalb eines Marktes direkt vergleichen.
+                        **Indikator:** Zeigt für alle acht Trader-Teilgruppen die relative Netto-Konzentration ($RC$, in Prozentpunkten) gegen die jeweilige Traderanzahl.
 
-                        Das **Ziel des Indikators** ist es, die Positionierungsprofile von Märkten vollständig zu visualisieren und Unterschiede
-                        sichtbar zu machen – etwa zwischen verwandten Rohstoffen wie Gold und Silber oder zwischen Platin und Palladium.
-                        Dadurch können Rückschlüsse auf zukünftige Marktbewegungen, Hedging-Verhalten und potenzielle Spreadausweitungen
-                        gezogen werden.
+                        **Interpretation:** Gruppen mit positivem $RC$-Wert sind netto long-dominant; Gruppen mit negativem $RC$-Wert sind netto short-dominant. Der Abstand vom Nullpunkt zeigt die Stärke der Netto-Positionierung.
+
+                        **Ziel:** Das vollständige Positionierungsprofil aller Tradergruppen in einem Chart darstellen — für direkte Marktvergleiche (z.B. Gold vs. Silber).
+
+                        **Besonderheit:** Jede Gruppe hat eine eigene Farbe. Schwarzer Punkt = aktuellste Woche je Gruppe.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe unterscheidet die acht Trader-Teilgruppen (MML, MMS, ORL, ORS, PMPUL, PMPUS, SDL, SDS).
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -680,27 +588,35 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Seasonal Indicator** ist ein spezieller DP-Indikator, der saisonale Muster im Traderverhalten
-                        sichtbar macht. Dabei werden Positionen nicht nur nach Grösse und Anzahl der Trader, sondern zusätzlich
-                        nach Zeitabschnitten (z. B. Monate oder Quartale) dargestellt.
+                        **Indikator:** Zeigt die relative Netto-Konzentration der PMPU-Gruppe ($RC_{\mathrm{PMPU}}$, in %) gegen die Anzahl PMPU Long Trader, eingefärbt nach Quartal (Q1–Q4).
 
-                        Das **Ziel des Indikators** ist es, saisonale Hedging-Muster oder Abweichungen davon zu erkennen.
-                        So lassen sich etwa typische Verhaltensweisen von Produzenten oder Konsumenten in bestimmten Jahreszeiten
-                        aufzeigen (z. B. stärkere Hedging-Aktivität im Winter bei Heizöl). Gleichzeitig hilft er, potenzielle
-                        Anomalien oder Unterabsicherungen zu identifizieren, die ein Risiko für Preisbewegungen darstellen könnten.
+                        **Interpretation:** Quartals-Cluster zeigen, ob sich das PMPU-Hedging-Verhalten saisonal verändert — z.B. ob Produzenten in bestimmten Quartalen systematisch stärker oder schwächer netto short absichern.
+
+                        **Ziel:** Saisonale Muster im Hedging-Verhalten der PMPU-Gruppe erkennen und von strukturellen Verschiebungen abgrenzen.
+
+                        **Besonderheit:** Ausschliesslich die PMPU Long Seite wird dargestellt. Schwarzer Punkt = aktuellste Woche.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe unterscheidet die vier Quartale (Q1–Q4).
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        x_q(t) = N_q(t), \qquad y_q(t) = RC_q(t)
+                        x(t) = N_{\mathrm{PMPU}}^L(t), \qquad y(t) = RC_{\mathrm{PMPU}}(t)
                         $$
 
-                        wobei
+                        $$
+                        RC_{\mathrm{PMPU}}(t) = \frac{\mathrm{OI}_{\mathrm{PMPU}}^L(t) - \mathrm{OI}_{\mathrm{PMPU}}^S(t)}{\mathrm{OI}_{\mathrm{total}}(t)} \times 100
+                        $$
 
-                        - $N_q(t)$: Anzahl der Trader im Quartal $q$ zum Zeitpunkt $t$
-                        - $RC_q(t)$: *Relative Concentration* der Tradergruppe im Quartal $q$
+                        **Variablen und Begriffe:**
+                        - $N_{\mathrm{PMPU}}^L(t)$: Anzahl PMPU Long Trader zum Zeitpunkt $t$ (X-Achse)
+                        - $\mathrm{OI}_{\mathrm{PMPU}}^L(t)$: Long Open Interest der PMPU-Gruppe
+                        - $\mathrm{OI}_{\mathrm{PMPU}}^S(t)$: Short Open Interest der PMPU-Gruppe
+                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes
+                        - $RC_{\mathrm{PMPU}}(t)$: Relative Netto-Konzentration der PMPU-Gruppe in % (Y-Achse)
+                        - Farbe: Quartal der Beobachtung (Q1–Q4)
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -719,14 +635,15 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Net Indicator** kombiniert Informationen zu Netto-Open-Interest und Netto-Anzahl von Tradern.
-                        Dadurch lassen sich Abweichungen zwischen Positionsgrösse und Traderanzahl sichtbar machen, die Hinweise
-                        auf mögliche Wendepunkte im Markt geben können.
+                        **Indikator:** Zeigt die Netto-Positionierung der MM-Gruppe: Netto-Traderzahl (X-Achse) gegen Netto-Open-Interest (Y-Achse), eingefärbt nach Kalenderjahr. Gestrichelte Medianlinien als Referenz.
 
-                        Das **Ziel des Indikators** ist es, ein klareres Bild der Netto-Positionierung zu liefern und Extremwerte
-                        besser einzuordnen. So können Situationen erkannt werden, in denen z. B. das Open Interest eine Long-Position
-                        zeigt, die Mehrheit der Trader aber Short positioniert ist. Zudem lassen sich auch Spread-Positionen analysieren,
-                        um einzuschätzen, ob diese sich in extremeren Marktphasen (z. B. Contango oder Backwardation) verstärken könnten.
+                        **Interpretation:** Punkte im oberen rechten Quadrant (mehr Long-Trader und mehr Long-OI als Median) zeigen ausgeprägte Netto-Long-Phasen. Abweichungen zwischen X und Y — z.B. viele Long-Trader, aber wenig Netto-OI — weisen auf Spread-Positionen hin.
+
+                        **Ziel:** Netto-Positionierung der MM-Gruppe und historische Extremwerte auf einen Blick erfassbar machen.
+
+                        **Besonderheit:** Farbkodierung nach Jahr, um zeitliche Cluster erkennbar zu machen. Schwarzer Punkt = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
+
+                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe = Kalenderjahr. Gestrichelte Linien = Median-Referenzwerte.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -772,39 +689,36 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Position Size Indicator** verknüpft die durchschnittliche Positionsgrösse von Tradern
-                        mit der Preisentwicklung eines Rohstoffs. Dabei wird die Positionsgrösse (y-Achse) gegen die Anzahl der Trader
-                        (x-Achse) dargestellt, wobei die Farben die jeweilige Preisrange markieren.
+                        **Indikator:** Zeigt die durchschnittliche Positionsgrösse (Kontrakte pro Trader) der MML- oder MMS-Gruppe gegen die Anzahl MM-Trader, eingefärbt nach Open Interest.
 
-                        Das **Ziel des Indikators** ist es, Zusammenhänge zwischen Positionsgrössen und Marktpreisen sichtbar zu machen.
-                        So lassen sich Muster erkennen, etwa dass Long-Trader bei tieferen Preisen grössere Positionen halten
-                        (stärkeres Engagement), während bei höheren Preisen die Traderzahl sinkt. Auf der Short-Seite hingegen treten
-                        oft uneinheitlichere Muster auf, was auf unterschiedliche Handelsstrategien wie Spread- oder
-                        Relative-Value-Trading hinweist.
+                        **Interpretation:** Punkte oben links (wenige Trader, grosse Positionen) zeigen hohe Conviction einzelner Trader. Punkte unten rechts (viele Trader, kleine Positionen) deuten auf breit gestreutes Engagement hin.
 
-                        Insgesamt hilft der Indikator, Unterschiede im Verhalten von Long- und Short-Tradern zu analysieren
-                        und Rückschlüsse auf ihre Handelsmotive (z. B. direktional vs. relative Value) zu ziehen.
+                        **Ziel:** Zusammenhang zwischen Traderanzahl, Positionsgrösse und Marktvolumen sichtbar machen — für Rückschlüsse auf Conviction und Liquidationsrisiken.
+
+                        **Besonderheit:** Gestrichelte Medianlinien auf beiden Achsen als Referenz. Schwarzer Punkt = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
+
+                        **Farbskala:** Farbe = Open Interest (Kontrakte). Hell = hohes OI, Dunkel = tiefes OI.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
+                        Achsen (Zeitpunkt $t$), mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
                         $$
-                        x_G(t)=N_G(t), \qquad y_G(t)=\mathrm{PS}_G(t)
+                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{PS}_G(t) = \frac{\mathrm{OI}_G(t)}{N_G(t)}
                         $$
 
-                        Farbcodierung (Zeitpunkt $t$):
+                        Farbcodierung:
                         $$
-                        \text{color}_G(t)\;\propto\;\mathrm{OI}_G(t)
+                        \mathrm{color}_G(t) \propto \mathrm{OI}_{\mathrm{total}}(t)
                         $$
 
                         **Variablen und Begriffe:**
-                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - $\mathrm{PS}_G(t)$: durchschnittliche Positionsgrösse je Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
+                        - $\mathrm{PS}_G(t)$: durchschnittliche Positionsgrösse je Trader (Kontrakte/Trader; Y-Achse)
                         - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - Die **Punktfarbe** zeigt, wie hoch das Open Interest in der jeweiligen Woche war
-                          (je heller/gelber, desto höher das Open Interest)
+                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes (Punktfarbe)
+                        - Gestrichelte Linien: Medianwerte auf X- und Y-Achse als Referenz
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -832,15 +746,17 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Hedging Indicator** erweitert die klassische DP-Analyse, indem er mehrere Tradergruppen
-                        gleichzeitig betrachtet – typischerweise Money Manager (MM) und Producer/Merchant/Processor/User (PMPU).
-                        So wird sichtbar, wie viel „Dry Powder" (Spielraum für zusätzliche Positionen) eine Gruppe im Verhältnis
-                        zu einer anderen noch hat.
+                        **Indikator:** Zeigt die OI-Position der MML- oder MMS-Gruppe gegen die Anzahl MM-Trader, eingefärbt nach der Netto-Position der PMPU-Gruppe.
 
-                        Das **Ziel des Indikators** ist es, ein vollständigeres Bild der Marktpositionierung zu geben und besser
-                        einzuschätzen, ob Preise noch weiter steigen oder fallen können. Besonders die PMPU-Gruppe
-                        (Producer/Merchant/Processor/User) liefert wertvolle Hinweise, da deren Hedging-Verhalten oft eine starke
-                        Verbindung zur physischen Marktlage hat.
+                        **Interpretation:** Hoher positiver Farbwert (PMPU netto long) bei gleichzeitig hohem MM Long OI kann auf gegensätzliche Positionierung zwischen physischen (PMPU) und spekulativen (MM) Tradern hinweisen.
+
+                        **Ziel:** Beziehung zwischen spekulativer (MM) und physischer (PMPU) Tradergruppe sichtbar machen — um einzuschätzen, welche Seite mehr „Dry Powder" hat.
+
+                        **Besonderheit:** Bubble-Grösse variiert proportional zum gesamten Open Interest des Marktes.
+
+                        **Kreisgrösse:** Die Kreisgrösse ist proportional zum gesamten Open Interest des Marktes ($\mathrm{OI}_{\mathrm{total}}$).
+
+                        **Farbskala:** Farbe = PMPU Netto-OI ($\mathrm{OI}_{\mathrm{PMPU}}^L - \mathrm{OI}_{\mathrm{PMPU}}^S$). Positiv = PMPU netto long, Negativ = PMPU netto short.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -895,50 +811,41 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **DP Concentration / Clustering Indicator** kombiniert die Konzepte von Konzentration
-                        (Open Interest-Anteil) und Clustering (Anzahl Trader) in einem DP-Chart. Er zeigt, wie extrem die
-                        Positionierung einer Tradergruppe im Vergleich zu ihrer historischen Spanne ist.
+                        **Indikator:** Zeigt für jeden Markt einen Punkt — normierter Clustering-Wert (X-Achse, 0–100) gegen normierten Concentration-Wert (Y-Achse, 0–100) — als Marktvergleichs-Snapshot.
 
-                        Das **Ziel des Indikators** ist es, relative Handelschancen zwischen ähnlichen Märkten oder Rohstoffen
-                        aufzuzeigen, indem Positionierungsunterschiede sichtbar gemacht werden. Befinden sich z. B. beide
-                        Kennzahlen in einem Extrembereich, steigt die Wahrscheinlichkeit, dass ein Markt im Falle eines
-                        Preisschocks stärker reagiert als ein anderer.
+                        **Interpretation:** Märkte oben rechts (hohes Clustering, hohe Concentration) sind doppelt extrem positioniert. Bei einem Preisschock reagieren diese Märkte typischerweise stärker als andere.
+
+                        **Ziel:** Relative Positionierungsextrema über alle Märkte auf einen Blick vergleichen — für die Identifikation von Märkten mit erhöhter Reaktionsstärke.
+
+                        **Besonderheit:** Normierung erfolgt durch globales Min-Max über alle Märkte im gewählten Zeitraum — jeder Punkt repräsentiert einen Markt als Mittelwert über den Zeitraum. Keine Zeitdimension.
+
+                        **Farbskala:** Keine Farbskala — alle Punkte grün mit Marktbezeichnung.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        **1) Clustering je Zeitpunkt $t$**
-
-                        Rohanteil der Gruppe $G$ an allen Futures-Tradern:
-                        $$
-                        \mathrm{ClustShare}^{\mathrm{raw}}_G(m,t)=\frac{T_G(m,t)}{TT_F(m,t)}
-                        $$
-
-                        Rolling-Normierung (1-Jahresfenster $\mathcal{W}_{365}$):
-                        $$
-                        \mathrm{ClustShare}^{\mathrm{roll}}_G(m,t)=
-                        \frac{\mathrm{ClustShare}^{\mathrm{raw}}_G(m,t)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)}
-                        {\max_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)-\min_{\tau\in\mathcal{W}_{365}}\mathrm{ClustShare}^{\mathrm{raw}}_G(m,\tau)}\cdot100
-                        $$
-
-                        **2) Concentration je Zeitpunkt $t$**
+                        Für jeden Markt $m$ im gewählten Zeitraum wird der Mittelwert der Rohdaten berechnet, dann global normiert:
 
                         $$
-                        \mathrm{RelConc}^{\mathrm{raw}}_G(m,t)=\mathrm{OI}^{L}_G(m,t)-\mathrm{OI}^{S}_G(m,t)
+                        x_m = \frac{\overline{\mathrm{Clustering}}_m - \min_m \overline{\mathrm{Clustering}}_m}{\max_m \overline{\mathrm{Clustering}}_m - \min_m \overline{\mathrm{Clustering}}_m} \times 100
                         $$
 
-                        **3) Range-Normalisierung über alle Märkte (0–100)**
-
                         $$
-                        x_m=\mathrm{ClusteringRange}_G(m),\qquad
-                        y_m=\mathrm{ConcentrationRange}_G(m)
+                        y_m = \frac{\overline{RC}_m - \min_m \overline{RC}_m}{\max_m \overline{RC}_m - \min_m \overline{RC}_m} \times 100
                         $$
 
-                        **Interpretation:**
-                        - **Clustering hoch ($x$ nahe 100)**: Im Vergleich zu Historie & anderen Märkten stark von Gruppe $G$ „gecrowded"
-                        - **Concentration hoch ($y$ nahe 100)**: Markt zeigt einen hohen Netto-Kontrakt-Überhang zugunsten der Gruppe $G$
-                        - **Oben rechts** (hoch/hoch): doppelt extrem → Markt tendiert bei Schocks zu stärkeren Moves
+                        **Variablen und Begriffe:**
+                        - $m$: betrachteter Markt (ein Punkt pro Markt)
+                        - $\overline{\mathrm{Clustering}}_m$: Mittelwert des Clustering-Werts für Markt $m$ über den gewählten Zeitraum
+                        - $\overline{RC}_m$: Mittelwert der relativen Netto-Konzentration ($RC$) für Markt $m$ über den gewählten Zeitraum
+                        - $x_m$: normierter Clustering-Wert (0–100, X-Achse)
+                        - $y_m$: normierter Concentration-Wert (0–100, Y-Achse)
+
+                        **Quadranten-Interpretation:**
+                        - **Oben rechts** (hoch/hoch): doppelt extrem — Markt tendiert bei Schocks zu stärkeren Preisbewegungen
+                        - **Oben links** (tiefes Clustering, hohe Concentration): wenige Trader halten grosse Positionen
+                        - **Unten rechts** (hohes Clustering, tiefe Concentration): viele Trader, aber kleine Netto-Positionen
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
