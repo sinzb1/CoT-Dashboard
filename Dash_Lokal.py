@@ -1610,25 +1610,25 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         y_vals = pd.Series([np.nan] * len(dff), index=dff.index)
         y_title = f'Price (keine Daten für {selected_market})'
 
-    # Bubble-Größen (identisch zu PPCI)
-    oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').fillna(0).abs()
+    # Bubble-Größen: Total Number of Traders
+    tr_total = pd.to_numeric(dff[TOTAL_TRADERS_LABEL], errors='coerce').fillna(0).clip(lower=0).astype(float)
     MIN_PX = 8
     MAX_PX = 30
-    _oi_pos = oi[oi > 0]
-    oi_lo = float(_oi_pos.min()) if _oi_pos.size > 0 else 1.0
-    oi_hi = float(oi.max()) if oi.max() > 0 else 1.0
-    sizes_oi = scaled_diameters(oi, min_px=MIN_PX, max_px=MAX_PX, lo=oi_lo, hi=oi_hi, log_scale=True)
+    _tr_pos = tr_total[tr_total > 0]
+    tr_lo = float(_tr_pos.min()) if _tr_pos.size > 0 else 1.0
+    tr_hi = float(tr_total.max()) if tr_total.max() > 0 else 1.0
+    sizes_traders = scaled_diameters(tr_total, min_px=MIN_PX, max_px=MAX_PX, lo=tr_lo, hi=tr_hi)
 
     color_vals = pd.to_numeric(dff[color_col], errors='coerce')
 
     # Hover-Text
     dates_str = pd.to_datetime(dff['Date']).dt.strftime('%Y-%m-%d')
     hover_text = [
-        f"Date: {d}<br>Price: {p:.2f}<br>Total Open Interest: {o:,.0f}<br>{colorbar_title}: {c:.1f}"
-        for d, p, o, c in zip(
+        f"Date: {d}<br>Price: {p:.2f}<br>Total Traders: {t:,.0f}<br>{colorbar_title}: {c:.1f}"
+        for d, p, t, c in zip(
             dates_str,
             y_vals.fillna(0),
-            oi.fillna(0),
+            tr_total.fillna(0),
             color_vals.fillna(0)
         )
     ]
@@ -1640,7 +1640,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         y=y_vals,
         mode='markers',
         marker={
-            "size": sizes_oi,
+            "size": sizes_traders,
             "sizemode": 'diameter',
             "sizeref": 1,
             "color": color_vals,
@@ -1659,14 +1659,14 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         showlegend=False
     ))
 
-    # OI-Bubble-Größen-Legende (identisch zu PPCI)
-    base = oi[oi > 0]
+    # Traders-Bubble-Größen-Legende
+    base = tr_total[tr_total > 0]
     if base.size >= 3:
         q = [0.10, 0.30, 0.50, 0.70, 0.90]
         legend_vals = np.unique(np.round(np.quantile(base, q)).astype(int))
         legend_vals = legend_vals[legend_vals > 0]
     else:
-        legend_vals = np.array([50000, 100000, 150000, 200000, 250000], dtype=int)
+        legend_vals = np.array([50, 75, 100, 125, 150], dtype=int)
 
     n_leg = len(legend_vals)
     legend_sizes = np.linspace(7, 20, n_leg) if n_leg > 1 else np.array([13.0])
@@ -1708,7 +1708,7 @@ def update_pp_clustering(selected_market, start_date, end_date, mm_type):
         xaxis_title=REPORT_DATE_LABEL,
         yaxis_title=y_title,
         legend={
-            "title": {"text": 'Total Open Interest'},
+            "title": {"text": 'Total Number of Traders'},
             "itemsizing": 'trace',
             "x": 1.2,
             "y": 0.5,

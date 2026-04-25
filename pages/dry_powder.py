@@ -81,9 +81,9 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        **Indikator:** Zeigt das aggregierte Dollar-Exposure (Notional) der MML- und MMS-Gruppe: Anzahl Trader (X-Achse) gegen Notional-Exposure in USD Mrd. (Y-Achse).
+                        **Indikator:** Zeigt das aggregierte Dollar-Exposure (Notional) der MML- und MMS-Gruppe: Anzahl Trader $N_G$ (X-Achse) gegen Notional-Exposure in USD Mrd. (Y-Achse).
 
-                        **Interpretation:** Hoher Notional-Wert bei tiefer Traderanzahl zeigt, dass wenige Trader ein sehr grosses Marktgewicht halten — ein Zeichen für Konzentration und erhöhte Liquidationsgefahr.
+                        **Interpretation:** Hoher Notional-Wert bei tiefem $N_G$ zeigt, dass wenige Trader ein sehr grosses Marktgewicht halten — ein Zeichen für Konzentration und erhöhte Liquidationsgefahr.
 
                         **Ziel:** Das absolute finanzielle Marktgewicht einer Tradergruppe sichtbar machen, unabhängig von Kontraktzahl oder Marktstruktur.
 
@@ -96,7 +96,7 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        x_G = \mathrm{Traders}_G
+                        x_G = N_G
                         $$
 
                         $$
@@ -106,7 +106,7 @@ def layout():
 
                         **Variablen und Begriffe:**
                         - **$G$:** betrachtete Tradergruppe, $\mathrm{MML}$ oder $\mathrm{MMS}$
-                        - **$\mathrm{Traders}_G$:** Anzahl Trader der Gruppe $G$
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$
                         - **$\mathrm{Position}_G$:** aggregierte Position der Gruppe $G$ (in Kontrakten)
                         - **$\mathrm{ContractSize}$:** Kontraktgrösse des jeweiligen Futures
                         - **$\mathrm{Price}$:** Futures-Preis
