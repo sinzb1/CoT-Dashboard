@@ -41,16 +41,18 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{PP\ Concentration}_{G}(t) =
-                        \frac{\mathrm{OI}_{G}(t)}{\mathrm{OI}_{\mathrm{total}}(t)} \times 100
+                        \mathrm{PP\ Concentration}_{G} =
+                        \frac{\mathrm{OI}_{G}}{\mathrm{OI}_{\mathrm{total}}} \times 100
                         $$
 
                         **Variablen und Begriffe:**
                         - $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$: betrachtete Tradergruppe
-                        - $\mathrm{OI}_{G}(t)$: Open Interest der Gruppe $G$ zum Reportdatum $t$ (in Kontrakten)
-                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest aller offenen Kontrakte
-                        - $P_{\mathrm{2nd\ Nearby}}(t)$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
-                        - Kreisgrösse: $\mathrm{OI}_{\mathrm{total}}(t)$, logarithmisch skaliert
+                        - $\mathrm{OI}_{G}$: Open Interest der Gruppe $G$ (in Kontrakten)
+                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest aller offenen Kontrakte
+                        - $P_{\mathrm{2nd\ Nearby}}$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
+                        - Kreisgrösse: $\mathrm{OI}_{\mathrm{total}}$, logarithmisch skaliert
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -96,16 +98,18 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{PP\ Clustering}_{G}(t) =
-                        \frac{N_{G}(t)}{N(t)} \times 100
+                        \mathrm{PP\ Clustering}_{G} =
+                        \frac{N_{G}}{N} \times 100
                         $$
 
                         **Variablen und Begriffe:**
                         - $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$: betrachtete Tradergruppe
-                        - $N_{G}(t)$: Anzahl Trader der Gruppe $G$ zum Reportdatum $t$
-                        - $N(t)$: Gesamtanzahl aller reportablen Trader im Markt
-                        - $P_{\mathrm{2nd\ Nearby}}(t)$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
-                        - Kreisgrösse: $\mathrm{OI}_{\mathrm{total}}(t)$, logarithmisch skaliert
+                        - $N_{G}$: Anzahl Trader der Gruppe $G$
+                        - $N$: Gesamtanzahl aller reportablen Trader im Markt
+                        - $P_{\mathrm{2nd\ Nearby}}$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
+                        - Kreisgrösse: $\mathrm{OI}_{\mathrm{total}}$, logarithmisch skaliert
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -151,18 +155,20 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{PP\ PositionSize}_{G}(t) =
-                        \frac{\mathrm{OI}_{G}(t)}{N_{G}(t)}
-                        \times \mathrm{ContractSize} \times P_{\mathrm{2nd\ Nearby}}(t)
+                        \mathrm{PP\ PositionSize}_{G} =
+                        \frac{\mathrm{OI}_{G}}{N_{G}}
+                        \times \mathrm{ContractSize} \times P_{\mathrm{2nd\ Nearby}}
                         $$
 
                         **Variablen und Begriffe:**
                         - $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$: betrachtete Tradergruppe
-                        - $\mathrm{OI}_{G}(t)$: Open Interest der Gruppe $G$ zum Reportdatum $t$ (in Kontrakten)
-                        - $N_{G}(t)$: Anzahl Trader der Gruppe $G$ zum Reportdatum $t$
+                        - $\mathrm{OI}_{G}$: Open Interest der Gruppe $G$ (in Kontrakten)
+                        - $N_{G}$: Anzahl Trader der Gruppe $G$
                         - $\mathrm{ContractSize}$: Kontraktgrösse des betrachteten Futures-Marktes
-                        - $P_{\mathrm{2nd\ Nearby}}(t)$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
-                        - Kreisgrösse: $N_{G}(t)$, linear skaliert
+                        - $P_{\mathrm{2nd\ Nearby}}$: Schlusskurs des 2nd-Nearby-Futures (Databento, Y-Achse)
+                        - Kreisgrösse: $N_{G}$, linear skaliert
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

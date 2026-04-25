@@ -50,18 +50,19 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
                         $$
-                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                        x_G = N_G, \qquad y_G = \mathrm{OI}_G
                         $$
 
-                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$; $y_{\mathrm{MMS}}(t)$ wird im Plot negativ dargestellt.
+                        mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$; $y_{\mathrm{MMS}}$ wird im Plot negativ dargestellt.
 
                         **Variablen und Begriffe:**
-                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$ (Long bzw. Short)
-                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
+                        - $\mathrm{OI}_G$: Open Interest der Gruppe $G$ (Long bzw. Short)
+                        - $N_G$: Anzahl Trader der Gruppe $G$
                         - **Farbkodierung:** Dunkelblau = MML-Wolke (Long-Seite), Hellblau = MMS-Wolke (Short-Seite)
                         - **Schwarzer Punkt:** jeweils die **aktuellste Woche**
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -95,21 +96,23 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        x_G(t) = \mathrm{Traders}_G(t)
+                        x_G = \mathrm{Traders}_G
                         $$
 
                         $$
-                        y_G(t) = \mathrm{DP\ Notional}_G(t)
-                        = \mathrm{Position}_G(t)\times \mathrm{ContractSize}\times \mathrm{Price}(t)
+                        y_G = \mathrm{DP\ Notional}_G
+                        = \mathrm{Position}_G \times \mathrm{ContractSize} \times \mathrm{Price}
                         $$
 
                         **Variablen und Begriffe:**
                         - **$G$:** betrachtete Tradergruppe, $\mathrm{MML}$ oder $\mathrm{MMS}$
-                        - **$\mathrm{Traders}_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - **$\mathrm{Position}_G(t)$:** aggregierte Position der Gruppe $G$ zum Zeitpunkt $t$ (in Kontrakten)
+                        - **$\mathrm{Traders}_G$:** Anzahl Trader der Gruppe $G$
+                        - **$\mathrm{Position}_G$:** aggregierte Position der Gruppe $G$ (in Kontrakten)
                         - **$\mathrm{ContractSize}$:** Kontraktgrösse des jeweiligen Futures
-                        - **$\mathrm{Price}(t)$:** Futures-Preis zum Zeitpunkt $t$
-                        - **$\mathrm{DP\ Notional}_G(t)$:** aggregiertes Notional-Exposure der Gruppe $G$ in USD
+                        - **$\mathrm{Price}$:** Futures-Preis
+                        - **$\mathrm{DP\ Notional}_G$:** aggregiertes Notional-Exposure der Gruppe $G$ in USD
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -143,19 +146,21 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$), mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
+                        Achsen mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
                         $$
-                        x_G(t) = N_G(t), \qquad
-                        y_G(t) = \sigma_G \cdot \frac{\mathrm{OI}_G(t)}{\mathrm{OI}_{\mathrm{total}}(t)} \cdot 100
+                        x_G = N_G, \qquad
+                        y_G = \sigma_G \cdot \frac{\mathrm{OI}_G}{\mathrm{OI}_{\mathrm{total}}} \cdot 100
                         $$
 
                         wobei $\sigma_{\mathrm{MML}} = +1$ und $\sigma_{\mathrm{MMS}} = -1$ (MMS-Seite wird negativ dargestellt).
 
                         **Variablen und Begriffe:**
-                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
-                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes zum Zeitpunkt $t$
-                        - $y_G(t)$: OI-Konzentration der Gruppe $G$ in % (Y-Achse)
+                        - $N_G$: Anzahl Trader der Gruppe $G$ (X-Achse)
+                        - $\mathrm{OI}_G$: Open Interest der Gruppe $G$
+                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest des Marktes
+                        - $y_G$: OI-Konzentration der Gruppe $G$ in % (Y-Achse)
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -193,20 +198,22 @@ def layout():
                 **Für die Long-Seite und die Short-Seite gilt:**
 
                 $$
-                x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                x_G = N_G, \qquad y_G = \mathrm{OI}_G
                 $$
 
                 $$
-                c(t)=P_{\mathrm{2nd\ Nearby}}(t)
+                c=P_{\mathrm{2nd\ Nearby}}
                 $$
 
                 **Variablen und Begriffe:**
                 - **PMPUL:** Producer/Merchant/Processor/User Long
                 - **PMPUS:** Producer/Merchant/Processor/User Short
                 - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{PMPUL},\, \mathrm{PMPUS}\}$
-                - **$N_G(t)$:** Anzahl Trader der betrachteten Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
-                - **$\mathrm{OI}_G(t)$:** Open Interest der betrachteten Gruppe $G$ zum Zeitpunkt $t$ (Y-Achse)
-                - **$P_{\mathrm{2nd\ Nearby}}(t)$:** Schlusskurs des 2nd-Nearby-Futures am Reportdatum $t$ (Databento, Punktfarbe)
+                - **$N_G$:** Anzahl Trader der betrachteten Gruppe $G$ (X-Achse)
+                - **$\mathrm{OI}_G$:** Open Interest der betrachteten Gruppe $G$ (Y-Achse)
+                - **$P_{\mathrm{2nd\ Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento, Punktfarbe)
+
+                *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                 """, mathjax=True), width=12),
                         ], className="mb-2"),
                     ], title="Berechnung"),
@@ -254,17 +261,19 @@ def layout():
                         **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                         $$
-                        c(t) = \frac{P_{\text{3rd Nearby}}(t) - P_{\text{2nd Nearby}}(t)}{P_{\text{2nd Nearby}}(t)} \times 100
+                        c = \frac{P_{\text{3rd Nearby}} - P_{\text{2nd Nearby}}}{P_{\text{2nd Nearby}}} \times 100
                         $$
 
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - **Punktfarbe:** $c(t)$, d. h. die Curve Range (%) zum Zeitpunkt $t$
-                        - **Contango:** $c(t) > 0$ – 3rd Nearby teurer als 2nd Nearby (normale Kurvenstruktur)
-                        - **Backwardation:** $c(t) < 0$ – 2nd Nearby teurer als 3rd Nearby (invertierte Kurve)
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$
+                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
+                        - **Punktfarbe:** $c$, d. h. die Curve Range (%)
+                        - **Contango:** $c > 0$ – 3rd Nearby teurer als 2nd Nearby (normale Kurvenstruktur)
+                        - **Backwardation:** $c < 0$ – 2nd Nearby teurer als 3rd Nearby (invertierte Kurve)
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True), width=12),
                         ], className="mb-2"),
                     ], title="Berechnung"),
@@ -312,7 +321,7 @@ def layout():
                                 **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                                 $$
-                                c(t)=\mathrm{VIX}(t)
+                                c=\mathrm{VIX}
                                 $$
                                 """, mathjax=True), width=12),
                         ], className="mb-2"),
@@ -320,9 +329,11 @@ def layout():
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - **Punktfarbe:** $c(t)$, d. h. das Niveau des VIX zum Zeitpunkt $t$
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$
+                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
+                        - **Punktfarbe:** $c$, d. h. das Niveau des VIX
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -369,7 +380,7 @@ def layout():
                                 **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                                 $$
-                                c(t)=\mathrm{DXY}(t)
+                                c=\mathrm{DXY}
                                 $$
                                 """, mathjax=True), width=12),
                         ], className="mb-2"),
@@ -377,9 +388,11 @@ def layout():
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - **Punktfarbe:** $c(t)$, d. h. das Niveau des DXY zum Zeitpunkt $t$
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$
+                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
+                        - **Punktfarbe:** $c$, d. h. das Niveau des DXY
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -426,16 +439,18 @@ def layout():
                     **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                     $$
-                    c(t)=FX(t)
+                    c=FX
                     $$
 
                     **Variablen und Begriffe:**
                     - **MML:** Managed Money Long
                     - **MMS:** Managed Money Short
-                    - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                    - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                    - **$FX(t)$:** FX-Wert zum Zeitpunkt $t$
-                    - **Punktfarbe:** $c(t)$, Niveau des USD/CHF-Wechselkurses zum Zeitpunkt $t$
+                    - **$N_G$:** Anzahl Trader der Gruppe $G$
+                    - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
+                    - **$FX$:** FX-Wert (USD/CHF-Wechselkurs)
+                    - **Punktfarbe:** $c$, Niveau des USD/CHF-Wechselkurses
+
+                    *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                     """, mathjax=True), width=12),
                         ], className="mb-2"),
                     ], title="Berechnung"),
@@ -483,21 +498,23 @@ def layout():
                     **Für PMPU Long (PMPUL) und PMPU Short (PMPUS) gilt:**
 
                     $$
-                    x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                    x_G = N_G, \qquad y_G = \mathrm{OI}_G
                     $$
 
                     $$
-                    c(t) = \mathrm{Inventory}_{\mathrm{EIA}}(t)
+                    c = \mathrm{Inventory}_{\mathrm{EIA}}
                     $$
 
                     **Variablen und Begriffe:**
                     - **$G$:** betrachtete Tradergruppe, $\mathrm{PMPUL}$ oder $\mathrm{PMPUS}$
-                    - **$N_G(t)$:** Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                    - **$\mathrm{OI}_G(t)$:** Open Interest der Gruppe $G$ zum Zeitpunkt $t$ (in Kontrakten)
-                    - **$\mathrm{Inventory}_{\mathrm{EIA}}(t)$:** US-Rohöl-Lagerbestand (Ending Stocks excl. SPR) in Tausend Barrel,
+                    - **$N_G$:** Anzahl Trader der Gruppe $G$
+                    - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (in Kontrakten)
+                    - **$\mathrm{Inventory}_{\mathrm{EIA}}$:** US-Rohöl-Lagerbestand (Ending Stocks excl. SPR) in Tausend Barrel,
                       veröffentlicht wöchentlich durch die EIA; zeitlich auf den CoT-Stichtag (Dienstag) ausgerichtet
-                    - **Punktfarbe:** $c(t)$, d. h. das Lagerbestandsniveau zum Zeitpunkt $t$
+                    - **Punktfarbe:** $c$, d. h. das Lagerbestandsniveau
                     - **Schwarzer Punkt:** aktuellste verfügbare Woche
+
+                    *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                     """, mathjax=True), width=12),
                         ], className="mb-2"),
                     ], title="Berechnung"),
@@ -541,15 +558,14 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
                         $$
-                        x_G(t) = N_G(t), \qquad y_G(t) = RC_G(t)
+                        x_G = N_G, \qquad y_G = RC_G
                         $$
 
                         mit
 
                         $$
-                        RC_G(t) = 100 \cdot \sigma_G \left( \frac{L_G(t)}{OI(t)} - \frac{S_G(t)}{OI(t)} \right)
+                        RC_G = 100 \cdot \sigma_G \left( \frac{L_G}{OI} - \frac{S_G}{OI} \right)
                         $$
 
                         wobei
@@ -558,18 +574,20 @@ def layout():
                         $$
 
                         und
-                        - $L_G(t)$: Long Open Interest der Gruppe $G$
-                        - $S_G(t)$: Short Open Interest der Gruppe $G$
-                        - $OI(t)$: Gesamtes Open Interest zum Zeitpunkt $t$
-                        - $N_G(t)$: Anzahl Trader (Long oder Short) der Gruppe $G$
+                        - $L_G$: Long Open Interest der Gruppe $G$
+                        - $S_G$: Short Open Interest der Gruppe $G$
+                        - $OI$: Gesamtes Open Interest
+                        - $N_G$: Anzahl Trader (Long oder Short) der Gruppe $G$
                         - $\sigma_G = +1$ für Long-Serien (MM-L, OR-L, PMPU-L, SD-L)
                         - $\sigma_G = -1$ für Short-Serien (MM-S, OR-S, PMPU-S, SD-S)
 
                         **Variablen und Begriffe:**
-                        - $\mathrm{OI}(t)$: gesamtes Open Interest aller offenen Kontrakte zum Zeitpunkt $t$
-                        - $N_G(t)$: Anzahl Trader in Gruppe $G$ zum Zeitpunkt $t$
-                        - $RC_G(t)$: Relative Concentration (in Prozentpunkten) einer Gruppe zum Zeitpunkt $t$
+                        - $\mathrm{OI}$: gesamtes Open Interest aller offenen Kontrakte
+                        - $N_G$: Anzahl Trader in Gruppe $G$
+                        - $RC_G$: Relative Concentration (in Prozentpunkten) einer Gruppe
                         - **Schwarzer Punkt:** markiert den Wert der **aktuellsten Woche** je Gruppe
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -603,20 +621,22 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        x(t) = N_{\mathrm{PMPU}}^L(t), \qquad y(t) = RC_{\mathrm{PMPU}}(t)
+                        x = N_{\mathrm{PMPU}}^L, \qquad y = RC_{\mathrm{PMPU}}
                         $$
 
                         $$
-                        RC_{\mathrm{PMPU}}(t) = \frac{\mathrm{OI}_{\mathrm{PMPU}}^L(t) - \mathrm{OI}_{\mathrm{PMPU}}^S(t)}{\mathrm{OI}_{\mathrm{total}}(t)} \times 100
+                        RC_{\mathrm{PMPU}} = \frac{\mathrm{OI}_{\mathrm{PMPU}}^L - \mathrm{OI}_{\mathrm{PMPU}}^S}{\mathrm{OI}_{\mathrm{total}}} \times 100
                         $$
 
                         **Variablen und Begriffe:**
-                        - $N_{\mathrm{PMPU}}^L(t)$: Anzahl PMPU Long Trader zum Zeitpunkt $t$ (X-Achse)
-                        - $\mathrm{OI}_{\mathrm{PMPU}}^L(t)$: Long Open Interest der PMPU-Gruppe
-                        - $\mathrm{OI}_{\mathrm{PMPU}}^S(t)$: Short Open Interest der PMPU-Gruppe
-                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes
-                        - $RC_{\mathrm{PMPU}}(t)$: Relative Netto-Konzentration der PMPU-Gruppe in % (Y-Achse)
+                        - $N_{\mathrm{PMPU}}^L$: Anzahl PMPU Long Trader (X-Achse)
+                        - $\mathrm{OI}_{\mathrm{PMPU}}^L$: Long Open Interest der PMPU-Gruppe
+                        - $\mathrm{OI}_{\mathrm{PMPU}}^S$: Short Open Interest der PMPU-Gruppe
+                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest des Marktes
+                        - $RC_{\mathrm{PMPU}}$: Relative Netto-Konzentration der PMPU-Gruppe in % (Y-Achse)
                         - Farbe: Quartal der Beobachtung (Q1–Q4)
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -649,11 +669,11 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
+                        Achsen:
                         $$
-                        x(t)=N^{\text{Net}}(t)=N^{\text{Long}}(t)-N^{\text{Short}}(t),
+                        x=N^{\text{Net}}=N^{\text{Long}}-N^{\text{Short}},
                         \qquad
-                        y(t)=\mathrm{OI}^{\text{Net}}(t)=\mathrm{OI}^{\text{Long}}(t)-\mathrm{OI}^{\text{Short}}(t)
+                        y=\mathrm{OI}^{\text{Net}}=\mathrm{OI}^{\text{Long}}-\mathrm{OI}^{\text{Short}}
                         $$
 
                         **Medians (gestrichelte Referenzlinien):**
@@ -664,13 +684,15 @@ def layout():
                         $$
 
                         **Variablen und Begriffe:**
-                        - $t$: Kalenderwoche/Beobachtungszeitpunkt innerhalb des gewählten Datumsbereichs
-                        - $N^{\text{Long}}(t)$: Anzahl Long-Trader (MM) zum Zeitpunkt $t$
-                        - $N^{\text{Short}}(t)$: Anzahl Short-Trader (MM) zum Zeitpunkt $t$
-                        - $N^{\text{Net}}(t)$: Netto-Traderzahl $=\;N^{\text{Long}}(t)-N^{\text{Short}}(t)$
-                        - $\mathrm{OI}^{\text{Long}}(t)$: Long-Open-Interest (MM) zum Zeitpunkt $t$
-                        - $\mathrm{OI}^{\text{Short}}(t)$: Short-Open-Interest (MM) zum Zeitpunkt $t$
-                        - $\mathrm{OI}^{\text{Net}}(t)$: Netto-Open-Interest $=\;\mathrm{OI}^{\text{Long}}(t)-\mathrm{OI}^{\text{Short}}(t)$
+                        - $t$: Laufindex über alle Beobachtungswochen im gewählten Datumsbereich (für Medianberechnung)
+                        - $N^{\text{Long}}$: Anzahl Long-Trader (MM)
+                        - $N^{\text{Short}}$: Anzahl Short-Trader (MM)
+                        - $N^{\text{Net}}$: Netto-Traderzahl $=\;N^{\text{Long}}-N^{\text{Short}}$
+                        - $\mathrm{OI}^{\text{Long}}$: Long-Open-Interest (MM)
+                        - $\mathrm{OI}^{\text{Short}}$: Short-Open-Interest (MM)
+                        - $\mathrm{OI}^{\text{Net}}$: Netto-Open-Interest $=\;\mathrm{OI}^{\text{Long}}-\mathrm{OI}^{\text{Short}}$
+
+                        *Alle Variablen (ausser den Medians) beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -703,22 +725,24 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$), mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
+                        Achsen mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
                         $$
-                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{PS}_G(t) = \frac{\mathrm{OI}_G(t)}{N_G(t)}
+                        x_G = N_G, \qquad y_G = \mathrm{PS}_G = \frac{\mathrm{OI}_G}{N_G}
                         $$
 
                         Farbcodierung:
                         $$
-                        \mathrm{color}_G(t) \propto \mathrm{OI}_{\mathrm{total}}(t)
+                        \mathrm{color}_G \propto \mathrm{OI}_{\mathrm{total}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$ (X-Achse)
-                        - $\mathrm{PS}_G(t)$: durchschnittliche Positionsgrösse je Trader (Kontrakte/Trader; Y-Achse)
-                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ zum Zeitpunkt $t$
-                        - $\mathrm{OI}_{\mathrm{total}}(t)$: Gesamtes Open Interest des Marktes (Punktfarbe)
+                        - $N_G$: Anzahl Trader der Gruppe $G$ (X-Achse)
+                        - $\mathrm{PS}_G$: durchschnittliche Positionsgrösse je Trader (Kontrakte/Trader; Y-Achse)
+                        - $\mathrm{OI}_G$: Open Interest der Gruppe $G$
+                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest des Marktes (Punktfarbe)
                         - Gestrichelte Linien: Medianwerte auf X- und Y-Achse als Referenz
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -762,28 +786,30 @@ def layout():
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Achsen (Zeitpunkt $t$):
+                        Achsen:
                         $$
-                        x_G(t) = N_G(t), \qquad y_G(t) = \mathrm{OI}_G(t)
+                        x_G = N_G, \qquad y_G = \mathrm{OI}_G
                         $$
 
                         mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
 
-                        Farbcodierung – Netto-Positionierung der PMPU (Zeitpunkt $t$):
+                        Farbcodierung – Netto-Positionierung der PMPU:
                         $$
-                        \mathrm{Color}_G(t)
+                        \mathrm{Color}_G
                         \;=\;
-                        \mathrm{OI}^L_{\mathrm{PMPU}}(t) - \mathrm{OI}^S_{\mathrm{PMPU}}(t)
+                        \mathrm{OI}^L_{\mathrm{PMPU}} - \mathrm{OI}^S_{\mathrm{PMPU}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $N_G(t)$: Anzahl Trader der Gruppe $G$ zum Zeitpunkt $t$
-                        - $\mathrm{OI}_G(t)$: Open Interest der Gruppe $G$ (MM Long oder Short) zum Zeitpunkt $t$
-                        - $\mathrm{OI}^L_{\mathrm{PMPU}}(t)$: Long-Open-Interest der PMPU-Gruppe zum Zeitpunkt $t$
-                        - $\mathrm{OI}^S_{\mathrm{PMPU}}(t)$: Short-Open-Interest der PMPU-Gruppe zum Zeitpunkt $t$
+                        - $N_G$: Anzahl Trader der Gruppe $G$
+                        - $\mathrm{OI}_G$: Open Interest der Gruppe $G$ (MM Long oder Short)
+                        - $\mathrm{OI}^L_{\mathrm{PMPU}}$: Long-Open-Interest der PMPU-Gruppe
+                        - $\mathrm{OI}^S_{\mathrm{PMPU}}$: Short-Open-Interest der PMPU-Gruppe
                         - **PMPU(L/S):** Producer/Merchant/Processor/User, je nach Auswahl Long (PMPUL) oder Short (PMPUS)
                         - **Bubble-Grösse:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
                         - **Punktfarbe:** rohe Netto-Position der PMPU-Gruppe; positiv = Long-Überhang, negativ = Short-Überhang
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -846,6 +872,8 @@ def layout():
                         - **Oben rechts** (hoch/hoch): doppelt extrem — Markt tendiert bei Schocks zu stärkeren Preisbewegungen
                         - **Oben links** (tiefes Clustering, hohe Concentration): wenige Trader halten grosse Positionen
                         - **Unten rechts** (hohes Clustering, tiefe Concentration): viele Trader, aber kleine Netto-Positionen
+
+                        *Die zugrundeliegenden Rohdaten beziehen sich je Beobachtung auf denselben Reporting-Zeitpunkt; dargestellt sind Mittelwerte über den gewählten Zeitraum.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

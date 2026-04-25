@@ -183,6 +183,8 @@ def layout():
                         - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
                         - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
                         - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest aller offenen Kontrakte
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -243,6 +245,8 @@ def layout():
                         - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
                         - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
                         - $N$: Gesamtanzahl aller reportablen Trader im Markt
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
@@ -303,6 +307,8 @@ def layout():
                         - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
                         - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
                         - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
+
+                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
