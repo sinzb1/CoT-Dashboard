@@ -211,7 +211,8 @@ def layout():
                 - **$G$:** betrachtete Gruppe mit $G \in \{\mathrm{PMPUL},\, \mathrm{PMPUS}\}$
                 - **$N_G$:** Anzahl Trader der betrachteten Gruppe $G$ (X-Achse)
                 - **$\mathrm{OI}_G$:** Open Interest der betrachteten Gruppe $G$ (Y-Achse)
-                - **$P_{\mathrm{2nd\ Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento, Punktfarbe)
+                - **$P_{\mathrm{2nd\ Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento)
+                - **$c$:** 2nd-Nearby-Futures-Preis (Punktfarbe)
 
                 *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                 """, mathjax=True), width=12),
@@ -261,15 +262,22 @@ def layout():
                         **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                         $$
+                        x_G = N_G, \qquad y_G = \mathrm{OI}_G
+                        $$
+
+                        $$
                         c = \frac{P_{\text{3rd Nearby}} - P_{\text{2nd Nearby}}}{P_{\text{2nd Nearby}}} \times 100
                         $$
 
                         **Variablen und Begriffe:**
                         - **MML:** Managed Money Long
                         - **MMS:** Managed Money Short
-                        - **$N_G$:** Anzahl Trader der Gruppe $G$
-                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
-                        - **Punktfarbe:** $c$, d. h. die Curve Range (%)
+                        - **$G$:** betrachtete Tradergruppe mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$ (X-Achse)
+                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (Y-Achse)
+                        - **$P_{\text{2nd Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento)
+                        - **$P_{\text{3rd Nearby}}$:** Schlusskurs des 3rd-Nearby-Futures (Databento)
+                        - **$c$:** Curve Range in % (Punktfarbe)
                         - **Contango:** $c > 0$ – 3rd Nearby teurer als 2nd Nearby (normale Kurvenstruktur)
                         - **Backwardation:** $c < 0$ – 2nd Nearby teurer als 3rd Nearby (invertierte Kurve)
 
@@ -321,20 +329,24 @@ def layout():
                                 **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                                 $$
+                                x_G = N_G, \qquad y_G = \mathrm{OI}_G
+                                $$
+
+                                $$
                                 c=\mathrm{VIX}
                                 $$
+
+                                **Variablen und Begriffe:**
+                                - **MML:** Managed Money Long
+                                - **MMS:** Managed Money Short
+                                - **$G$:** betrachtete Tradergruppe mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
+                                - **$N_G$:** Anzahl Trader der Gruppe $G$ (X-Achse)
+                                - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (Y-Achse)
+                                - **$c$:** VIX-Niveau (Punktfarbe)
+
+                                *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                                 """, mathjax=True), width=12),
                         ], className="mb-2"),
-                        dcc.Markdown(r"""
-                        **Variablen und Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$N_G$:** Anzahl Trader der Gruppe $G$
-                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
-                        - **Punktfarbe:** $c$, d. h. das Niveau des VIX
-
-                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
-                        """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
@@ -380,20 +392,24 @@ def layout():
                                 **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                                 $$
+                                x_G = N_G, \qquad y_G = \mathrm{OI}_G
+                                $$
+
+                                $$
                                 c=\mathrm{DXY}
                                 $$
+
+                                **Variablen und Begriffe:**
+                                - **MML:** Managed Money Long
+                                - **MMS:** Managed Money Short
+                                - **$G$:** betrachtete Tradergruppe mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
+                                - **$N_G$:** Anzahl Trader der Gruppe $G$ (X-Achse)
+                                - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (Y-Achse)
+                                - **$c$:** DXY-Niveau (Punktfarbe)
+
+                                *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                                 """, mathjax=True), width=12),
                         ], className="mb-2"),
-                        dcc.Markdown(r"""
-                        **Variablen und Begriffe:**
-                        - **MML:** Managed Money Long
-                        - **MMS:** Managed Money Short
-                        - **$N_G$:** Anzahl Trader der Gruppe $G$
-                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
-                        - **Punktfarbe:** $c$, d. h. das Niveau des DXY
-
-                        *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
-                        """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
@@ -439,16 +455,21 @@ def layout():
                     **Für Managed Money Long (MML) und Managed Money Short (MMS) gilt:**
 
                     $$
+                    x_G = N_G, \qquad y_G = \mathrm{OI}_G
+                    $$
+
+                    $$
                     c=FX
                     $$
 
                     **Variablen und Begriffe:**
                     - **MML:** Managed Money Long
                     - **MMS:** Managed Money Short
-                    - **$N_G$:** Anzahl Trader der Gruppe $G$
-                    - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
-                    - **$FX$:** FX-Wert (USD/CHF-Wechselkurs)
-                    - **Punktfarbe:** $c$, Niveau des USD/CHF-Wechselkurses
+                    - **$G$:** betrachtete Tradergruppe mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
+                    - **$N_G$:** Anzahl Trader der Gruppe $G$ (X-Achse)
+                    - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (Y-Achse)
+                    - **$FX$:** USD/CHF-Wechselkurs
+                    - **$c$:** USD/CHF-Niveau (Punktfarbe)
 
                     *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                     """, mathjax=True), width=12),
@@ -511,7 +532,7 @@ def layout():
                     - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$ (in Kontrakten)
                     - **$\mathrm{Inventory}_{\mathrm{EIA}}$:** US-Rohöl-Lagerbestand (Ending Stocks excl. SPR) in Tausend Barrel,
                       veröffentlicht wöchentlich durch die EIA; zeitlich auf den CoT-Stichtag (Dienstag) ausgerichtet
-                    - **Punktfarbe:** $c$, d. h. das Lagerbestandsniveau
+                    - **$c$:** Lagerbestandsniveau (Punktfarbe)
                     - **Schwarzer Punkt:** aktuellste verfügbare Woche
 
                     *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
@@ -724,26 +745,30 @@ def layout():
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
-                        dcc.Markdown(r"""
-                        Achsen mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$:
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                        **Für MML und MMS gilt ($G \in \{\mathrm{MML},\, \mathrm{MMS}\}$):**
+
                         $$
                         x_G = N_G, \qquad y_G = \mathrm{PS}_G = \frac{\mathrm{OI}_G}{N_G}
                         $$
 
-                        Farbcodierung:
                         $$
-                        \mathrm{color}_G \propto \mathrm{OI}_{\mathrm{total}}
+                        c \propto \mathrm{OI}_{\mathrm{total}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $N_G$: Anzahl Trader der Gruppe $G$ (X-Achse)
-                        - $\mathrm{PS}_G$: durchschnittliche Positionsgrösse je Trader (Kontrakte/Trader; Y-Achse)
-                        - $\mathrm{OI}_G$: Open Interest der Gruppe $G$
-                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest des Marktes (Punktfarbe)
-                        - Gestrichelte Linien: Medianwerte auf X- und Y-Achse als Referenz
+                        - **$G$:** betrachtete Tradergruppe mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
+                        - **$N_G$:** Anzahl Trader der Gruppe $G$ (X-Achse)
+                        - **$\mathrm{PS}_G$:** durchschnittliche Positionsgrösse je Trader in Kontrakten/Trader (Y-Achse)
+                        - **$\mathrm{OI}_G$:** Open Interest der Gruppe $G$
+                        - **$\mathrm{OI}_{\mathrm{total}}$:** Gesamtes Open Interest des Marktes
+                        - **$c$:** $\mathrm{OI}_{\mathrm{total}}$ (Punktfarbe); hell = hohes OI, dunkel = tiefes OI
+                        - **Gestrichelte Linien:** Medianwerte auf X- und Y-Achse als Referenz
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
-                        """, mathjax=True),
+                        """, mathjax=True), width=12),
+                        ], className="mb-2"),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
@@ -793,11 +818,8 @@ def layout():
 
                         mit $G \in \{\mathrm{MML},\, \mathrm{MMS}\}$
 
-                        Farbcodierung – Netto-Positionierung der PMPU:
                         $$
-                        \mathrm{Color}_G
-                        \;=\;
-                        \mathrm{OI}^L_{\mathrm{PMPU}} - \mathrm{OI}^S_{\mathrm{PMPU}}
+                        c = \mathrm{OI}^L_{\mathrm{PMPU}} - \mathrm{OI}^S_{\mathrm{PMPU}}
                         $$
 
                         **Variablen und Begriffe:**
@@ -807,7 +829,7 @@ def layout():
                         - $\mathrm{OI}^S_{\mathrm{PMPU}}$: Short-Open-Interest der PMPU-Gruppe
                         - **PMPU(L/S):** Producer/Merchant/Processor/User, je nach Auswahl Long (PMPUL) oder Short (PMPUS)
                         - **Bubble-Grösse:** proportional zum gesamten Open Interest (Marktliquidität bzw. Marktgewicht)
-                        - **Punktfarbe:** rohe Netto-Position der PMPU-Gruppe; positiv = Long-Überhang, negativ = Short-Überhang
+                        - **$c$:** Netto-Position der PMPU-Gruppe (Punktfarbe); positiv = Long-Überhang, negativ = Short-Überhang
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),

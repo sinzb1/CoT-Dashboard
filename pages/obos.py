@@ -13,49 +13,53 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-                        Der **OBOS Concentration Indicator** (Overbought/Oversold) zeigt, ob einzelne Märkte
-                        auf Basis der Managed-Money-Konzentration und der Preisposition im rollierenden
-                        Einjahresbereich überkauft oder überverkauft sind.
+                        **Indikator:** Zeigt für jeden Markt die normierte MM-Konzentration (X-Achse) gegen die normierte Preisposition im rollierenden Einjahresbereich (Y-Achse), eingefärbt nach der Terminstruktur. Jeder Punkt entspricht einem Markt.
 
-                        Jeder Datenpunkt repräsentiert einen **Markt** (dargestellt durch sein Ticker-Kürzel).
-                        Der Indikator vereint alle verfügbaren Märkte in einer gemeinsamen Übersicht, sodass
-                        Extrempositionen marktübergreifend auf einen Blick erkennbar sind.
+                        **Interpretation:** Märkte rechts oben (hohe MML-Konzentration, hoher Preis) sind potenziell überkauft; Märkte links unten (hohe MMS-Konzentration, tiefer Preis) potenziell überverkauft. Graue Eckzonen markieren Extrembereiche (Range > 75 % bzw. < 25 %).
 
-                        **Linke Hälfte – MM Short Concentration:** Wie hoch ist der Anteil der Managed-Money-Short-Position
-                        am gesamten Open Interest? Ein hoher Wert (links aussen) bedeutet historisch hohe Short-Konzentration.
+                        **Ziel:** Overbought/Oversold-Konstellationen marktübergreifend auf einen Blick erkennen — Extrempositionen in Konzentration und Preis gleichzeitig sichtbar machen.
 
-                        **Rechte Hälfte – MM Long Concentration:** Entsprechend für die Long-Seite. Ein hoher Wert
-                        (rechts aussen) bedeutet historisch hohe Long-Konzentration.
+                        **Besonderheit:** Die linke Hälfte zeigt MMS-Konzentration, die rechte Hälfte MML-Konzentration. Alle Werte sind rollierende 52-Wochen-Ranges. Schwarzer Punkt = aktuellste Woche.
 
-                        **Y-Achse – Preis (2nd Nearby):** Wie hoch ist der aktuelle Preis im Vergleich zum rollierenden
-                        Einjahreshöchst- und -tiefstkurs? 100 = Jahreshoch, 0 = Jahrestief.
-
-                        **Farbkodierung:**
-                        - **Blau** = Contango (2nd Nearby < 3rd Nearby, Terminmarkt steigt mit Laufzeit)
-                        - **Grün** = Backwardation (2nd Nearby > 3rd Nearby, Terminmarkt fällt mit Laufzeit)
-                        - **Grau** = Kurvenstruktur nicht ermittelbar (kein 3rd-Nearby-Preis verfügbar)
-
-                        **Graue Eckzonen** markieren Bereiche extremer Overbought/Oversold-Konstellationen
-                        (Preis- und Konzentrations-Range > 75 % bzw. < 25 %).
+                        **Farbskala:** Farbe = Terminstruktur. Blau = Contango ($P_{\mathrm{2nd}} < P_{\mathrm{3rd}}$), Grün = Backwardation ($P_{\mathrm{2nd}} > P_{\mathrm{3rd}}$), Grau = nicht ermittelbar.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
                     dbc.AccordionItem([
-                        dcc.Markdown(r"""
-                        Alle drei Achswerte werden als **rollierender Einjahresbereich (52 Wochen)** normiert:
+                        dbc.Row([
+                            dbc.Col(dcc.Markdown(r"""
+                **Für alle Märkte gilt:**
 
-                        $$
-                        \mathrm{Range}(t) =
-                        \frac{x(t) - \min_{52W}(x)}{\max_{52W}(x) - \min_{52W}(x)} \times 100
-                        $$
+                $$
+                x = \mathrm{Range}_{52W}(\mathrm{Concentration}), \qquad y = \mathrm{Range}_{52W}(P_{\mathrm{2nd\ Nearby}})
+                $$
 
-                        **Variablen und Begriffe:**
-                        - **$x(t)$:** aktueller Wert (Preis 2nd Nearby, MML- oder MMS-Konzentration) zum Reportdatum $t$
-                        - **$\min_{52W}(x)$, $\max_{52W}(x)$:** rollierendes Minimum bzw. Maximum über 52 Wochen
-                        - **$\mathrm{MML\ Concentration}(t) = \frac{\text{Managed Money Long}(t)}{\text{Open Interest}(t)} \times 100$**
-                        - **$\mathrm{MMS\ Concentration}(t) = \frac{\text{Managed Money Short}(t)}{\text{Open Interest}(t)} \times 100$**
-                        - **Contango/Backwardation:** Vorzeichen von $P_{\mathrm{2nd}}(t) - P_{\mathrm{3rd}}(t)$
-                        """, mathjax=True),
+                mit der Normierungsformel:
+
+                $$
+                \mathrm{Range}_{52W}(v,\, t) = \frac{v(t) - \min_{52W}(v)}{\max_{52W}(v) - \min_{52W}(v)} \times 100
+                $$
+
+                und den Konzentrationswerten:
+
+                $$
+                \mathrm{MML\ Conc.}(t) = \frac{\mathrm{MM\ Long}(t)}{\mathrm{OI}(t)} \times 100, \qquad
+                \mathrm{MMS\ Conc.}(t) = \frac{\mathrm{MM\ Short}(t)}{\mathrm{OI}(t)} \times 100
+                $$
+
+                **Variablen und Begriffe:**
+                - **$x$:** normierte Concentration (X-Achse); linke Hälfte = MMS-Concentration, rechte Hälfte = MML-Concentration
+                - **$y$:** normierte Preisposition im 52-Wochen-Bereich (Y-Achse); 100 = Jahreshoch, 0 = Jahrestief
+                - **$v(t)$:** Rohwert zum Reporting-Zeitpunkt $t$ (Preis oder Konzentration)
+                - **$\min_{52W}(v)$, $\max_{52W}(v)$:** rollierendes Minimum bzw. Maximum über 52 Wochen
+                - **$P_{\mathrm{2nd\ Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento)
+                - **$P_{\mathrm{3rd\ Nearby}}$:** Schlusskurs des 3rd-Nearby-Futures (Databento)
+                - **$\mathrm{OI}(t)$:** gesamtes Open Interest des Marktes
+                - **$c$:** Terminstruktur (Punktfarbe) — Contango: $P_{\mathrm{2nd}} < P_{\mathrm{3rd}}$, Backwardation: $P_{\mathrm{2nd}} > P_{\mathrm{3rd}}$
+
+                *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
+                """, mathjax=True), width=12),
+                        ], className="mb-2"),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
