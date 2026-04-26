@@ -180,6 +180,8 @@ Die Datenpipeline lädt Daten aus allen Quellen und schreibt sie in InfluxDB. Di
 python Influx.py
 ```
 
+Die Pipeline arbeitet **inkrementell**: Sie liest das neueste vorhandene Datum pro Measurement aus InfluxDB und schreibt nur neue Datensätze. Beim ersten Aufruf (leere Datenbank) werden alle Daten für den konfigurierten Zeitraum geladen (`years_back` in `config/config.json`, Standard: 10 Jahre).
+
 Die Pipeline durchläuft 5 Schritte:
 
 | Schritt | Quelle | Measurement in InfluxDB |
@@ -190,20 +192,37 @@ Die Pipeline durchläuft 5 Schritte:
 | 4 | EIA Rohöl-Lagerbestände | `eia_petroleum_stocks` |
 | 5 | Deferred Futures 2nd/3rd Nearby (Databento) | `futures_deferred_prices` |
 
-Erwartete Ausgabe (gekürzt):
+Erwartete Ausgabe – erste Ausführung (leere DB):
 ```
 ============================================================
-Pipeline: loading CoT + Macro (yfinance) + Futures data for last 4 years
-Window:   2022-04-09 -> 2026-04-09
+Pipeline: VOLLSTÄNDIG (erste Ausführung)
+CoT-Daten ab:      2016-04-26  (letzter DB-Eintrag: keiner)
+Futures ab:        2016-04-26
+Macro ab:          2016-04-26
+EIA ab:            2016-04-26
+Databento ab:      2016-04-26
 ============================================================
 
-Loaded 2299 CoT data points from Socrata.
-Successfully wrote 2299 CoT data points.
+Geladen: 2299 CoT-Datenpunkte von Socrata.
+Davon neu (noch nicht in DB): 2299 Datenpunkte
 ...
-InfluxDB v3 client closed. Pipeline complete!
+InfluxDB v3 client geschlossen. Pipeline abgeschlossen!
 ```
 
-> Die Pipeline löscht vorhandene Daten im Zeitfenster und schreibt sie neu – sie ist idempotent und kann jederzeit wiederholt werden.
+Erwartete Ausgabe – folgende Ausführungen (inkrementell):
+```
+============================================================
+Pipeline: INKREMENTELL
+CoT-Daten ab:      2026-04-12  (letzter DB-Eintrag: 2026-04-26)
+Futures ab:        2026-04-12
+...
+============================================================
+
+Geladen: 3 CoT-Datenpunkte von Socrata.
+Davon neu (noch nicht in DB): 1 Datenpunkte
+...
+InfluxDB v3 client geschlossen. Pipeline abgeschlossen!
+```
 
 ---
 

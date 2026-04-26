@@ -175,7 +175,7 @@ DIFA_influxv3/
 
 ## Datenpipeline
 
-Die Pipeline (`Influx.py`) läuft in 5 sequenziellen Schritten und ist idempotent – sie löscht vorhandene Daten im Zeitfenster und schreibt sie neu:
+Die Pipeline (`Influx.py`) läuft in 5 sequenziellen Schritten und arbeitet **inkrementell**: Sie liest das neueste vorhandene Datum pro Measurement aus InfluxDB und schreibt nur wirklich neue Datensätze. Bei der ersten Ausführung (leere Datenbank) werden alle Daten für den konfigurierten Zeitraum geladen (`years_back` in `config/config.json`, Standard: 10 Jahre).
 
 | Schritt | Quelle | Measurement in InfluxDB |
 |---|---|---|
