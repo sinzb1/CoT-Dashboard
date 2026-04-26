@@ -25,11 +25,11 @@ Interaktives Multi-Page-Dashboard zur Analyse von **Commitment of Traders (CoT)*
 | Backend | Python 3.12 |
 | Web Framework | Dash 2.18, Flask 3.0 |
 | Datenbank | InfluxDB v3 Core (SQL) |
-| Datenverarbeitung | Pandas, NumPy, SciPy |
-| Visualisierung | Plotly, Dash Bootstrap Components |
+| Datenverarbeitung | Pandas, NumPy, SciPy, Numba |
+| Visualisierung | Plotly, Dash Bootstrap Components, Matplotlib |
 | ML / Analyse | scikit-learn, SHAP, Keras |
 | Datenquellen | Socrata (CFTC), Databento, EIA, yfinance |
-| Laufzeit | Gunicorn |
+| Deployment | Gunicorn (Linux/Mac) |
 
 ---
 
@@ -69,7 +69,8 @@ pip install -r requirements.txt
 Kopiere `.env.example` zu `.env` und trage deine Credentials ein:
 
 ```bash
-cp .env.example .env
+cp .env.example .env            # Linux/Mac
+copy .env.example .env          # Windows
 ```
 
 ```env
@@ -106,6 +107,8 @@ python Dash_Lokal.py
 
 Dashboard aufrufbar unter: **http://127.0.0.1:8051/**
 
+Eine vollständige Schritt-für-Schritt-Anleitung (inkl. InfluxDB-Installation) findet sich in [SETUP_GUIDE.md](SETUP_GUIDE.md).
+
 ---
 
 ## Projektstruktur
@@ -114,12 +117,12 @@ Dashboard aufrufbar unter: **http://127.0.0.1:8051/**
 DIFA_influxv3/
 ├── Dash_Lokal.py               # Dashboard-Applikation (Einstiegspunkt)
 ├── Influx.py                   # Daten laden & in InfluxDB schreiben
-├── app.py                      # Minimaler Dash-Prototyp
+├── app.py                      # Minimaler Dash-Prototyp (Legacy)
 ├── requirements.txt
 ├── .env                        # Credentials (nicht im Repo)
 ├── .env.example                # Vorlage für Umgebungsvariablen
 ├── config/
-│   └── config.json             # App-Konfiguration
+│   └── config.json             # App-Konfiguration (Märkte, Parameter)
 ├── pages/                      # Dash-Seiten (Multi-Page)
 │   ├── grundlegende.py         # Grundlegende CoT-Indikatoren
 │   ├── positioning_price.py    # Positionierung & Preis (PP/DP)
@@ -127,24 +130,34 @@ DIFA_influxv3/
 │   ├── obos.py                 # Overbought/Oversold-Indikator
 │   ├── decision_tree.py        # Decision-Tree-Analyse
 │   └── shapley.py              # Shapley-Owen Feature Importance
-└── src/
-    ├── analysis/               # Analyse-Module
-    │   ├── cot_indicators.py
-    │   ├── decision_tree.py
-    │   ├── market_config.py
-    │   └── shapley_owen.py
-    ├── clients/                # API-Clients
-    │   ├── databento_client.py
-    │   ├── eia_client.py
-    │   ├── socrata_client.py
-    │   └── yfinance_client.py
-    ├── mappings/               # Daten-Mappings
-    └── services/               # Business-Logic
-        ├── databento_continuous_service.py
-        ├── eia_petroleum_service.py
-        ├── futures_price_service.py
-        ├── macro_price_service.py
-        └── trades_category_service.py
+├── src/
+│   ├── analysis/               # Analyse- & Indikator-Module
+│   │   ├── cot_indicators.py
+│   │   ├── decision_tree.py
+│   │   ├── market_config.py
+│   │   ├── obos_indicators.py
+│   │   ├── shapley_owen.py
+│   │   ├── feature_engineering.py
+│   │   ├── bubble_sizing.py
+│   │   └── data_merging.py
+│   ├── clients/                # API-Clients
+│   │   ├── databento_client.py
+│   │   ├── eia_client.py
+│   │   ├── socrata_client.py
+│   │   └── yfinance_client.py
+│   ├── data_loading/           # InfluxDB-Datenbankzugriff
+│   │   └── influxdb_loader.py
+│   ├── mappings/               # Daten-Mappings & Spaltenzuordnungen
+│   │   └── categories_of_traders_column_map.py
+│   └── services/               # Business-Logic / ETL-Services
+│       ├── databento_continuous_service.py
+│       ├── eia_petroleum_service.py
+│       ├── futures_price_service.py
+│       ├── macro_price_service.py
+│       └── trades_category_service.py
+└── docs_lokal/                 # Weiterführende Dokumentation (18 Dateien)
+    ├── MIGRATION_GUIDE.md
+    └── ...
 ```
 
 ---
@@ -154,9 +167,23 @@ DIFA_influxv3/
 | Quelle | Inhalt | Client |
 |---|---|---|
 | [CFTC via Socrata](https://publicreporting.cftc.gov/) | CoT-Reports (Disaggregated, Legacy, TFF) | `socrata_client.py` |
-| [Databento](https://databento.com/) | Kontinuierliche Futures-Preise (2nd Nearby) | `databento_client.py` |
+| [Databento](https://databento.com/) | Kontinuierliche Futures-Preise (2nd/3rd Nearby) | `databento_client.py` |
 | [EIA](https://www.eia.gov/opendata/) | Rohöl-Lagerbestände (WTI) | `eia_client.py` |
-| [yfinance](https://github.com/ranaroussi/yfinance) | Marktpreise & Makro-Daten | `yfinance_client.py` |
+| [yfinance](https://github.com/ranaroussi/yfinance) | Marktpreise & Makro-Daten (VIX, USD Index, USD/CHF) | `yfinance_client.py` |
+
+---
+
+## Datenpipeline
+
+Die Pipeline (`Influx.py`) läuft in 5 sequenziellen Schritten und ist idempotent – sie löscht vorhandene Daten im Zeitfenster und schreibt sie neu:
+
+| Schritt | Quelle | Measurement in InfluxDB |
+|---|---|---|
+| 1 | CFTC CoT-Reports (Socrata) | `cot_data` |
+| 2 | Makrodaten: VIX, USD Index, USD/CHF (yfinance) | `macro_by_date` |
+| 3 | Futures-Frontmonats-Preise (yfinance) | `futures_prices` |
+| 4 | EIA Rohöl-Lagerbestände | `eia_petroleum_stocks` |
+| 5 | Deferred Futures 2nd/3rd Nearby (Databento) | `futures_deferred_prices` |
 
 ---
 

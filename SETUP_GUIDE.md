@@ -1,6 +1,6 @@
 # Setup Guide – CoT Dashboard
 
-Schritt-für-Schritt-Anleitung, um das Dashboard lokal zum Laufen zu bringen.
+Schritt-für-Schritt-Anleitung, um das Dashboard lokal unter Windows zum Laufen zu bringen.
 
 ---
 
@@ -14,12 +14,14 @@ Schritt-für-Schritt-Anleitung, um das Dashboard lokal zum Laufen zu bringen.
 6. [Daten laden (Pipeline)](#6-daten-laden-pipeline)
 7. [Dashboard starten](#7-dashboard-starten)
 8. [Troubleshooting](#8-troubleshooting)
+9. [Weiterführende Dokumentation](#9-weiterführende-dokumentation)
 
 ---
 
 ## 1. Voraussetzungen
 
 ### Software
+
 - **Python 3.12+** – [python.org/downloads](https://www.python.org/downloads/)
   - Bei der Installation: **"Add Python to PATH"** aktivieren
 - **Git** – [git-scm.com](https://git-scm.com/)
@@ -60,6 +62,8 @@ pip install -r requirements.txt
 ```
 
 > **Hinweis:** Der InfluxDB v3 Python-Client heisst `influxdb3-python` (nicht `influxdb-client`). Er ist bereits in der `requirements.txt` enthalten.
+
+> **Hinweis Windows:** `gunicorn` in der `requirements.txt` dient dem Production-Deployment unter Linux/Mac und wird unter Windows nicht benötigt. Die Installation schlägt dafür fehl, was den restlichen Betrieb nicht beeinträchtigt.
 
 ---
 
@@ -115,7 +119,7 @@ In einem anderen PowerShell-Fenster:
 
 ```powershell
 curl http://localhost:8181/health
-# Erwartete Antwort: 200 OK
+# Erwartete Antwort: {"status":"ok"}
 ```
 
 ### 4.3 Admin-Token erstellen
@@ -199,7 +203,7 @@ Successfully wrote 2299 CoT data points.
 InfluxDB v3 client closed. Pipeline complete!
 ```
 
-> Die Pipeline löscht vorhandene Daten im Zeitfenster und schreibt sie neu – sie ist also idempotent und kann jederzeit wiederholt werden.
+> Die Pipeline löscht vorhandene Daten im Zeitfenster und schreibt sie neu – sie ist idempotent und kann jederzeit wiederholt werden.
 
 ---
 
@@ -217,40 +221,50 @@ Das Dashboard ist verfügbar unter: **http://127.0.0.1:8051/**
 
 | Seite | Inhalt |
 |---|---|
-| Grundlegende Indikatoren | CoT-Positionierung, Netto-Positionen |
-| Positioning & Price (PP/DP) | Preiskorrelation, Positionierungsgrad |
+| Grundlegende Indikatoren | CoT-Positionierung, Netto-Positionen je Händlergruppe |
+| Positioning & Price (PP/DP) | Preiskorrelation, Positionierungsgrad (Bubble Chart) |
 | Dry Powder | Verfügbares Kapital je Händlergruppe |
 | OB/OS | Overbought/Oversold-Signale |
-| Decision Tree | ML-basierte Klassifikation |
-| Shapley-Analyse | Feature-Importance der Indikatoren |
+| Decision Tree | ML-basierte Preisrichtungs-Klassifikation |
+| Shapley-Analyse | Feature-Importance der CoT-Indikatoren |
 
 ---
 
 ## 8. Troubleshooting
 
 ### "required arguments were not provided: --node-id"
+
 Der `--node-id` Parameter fehlt beim Serverstart. Siehe Schritt 4.1.
 
 ### "401 Unauthorized"
+
 Der Token in der `.env` ist falsch oder abgelaufen. Neuen Token erstellen (Schritt 4.3) und `.env` aktualisieren.
 
 ### "Connection refused" / "No connection to localhost:8181"
+
 InfluxDB-Server läuft nicht. PowerShell-Fenster aus Schritt 4.1 prüfen und Server neu starten.
 
 ### "Database not found" oder leere Dashboards
-Die Pipeline wurde noch nicht ausgeführt. Schritt 6 (`python Influx.py`) wiederholen.
+
+Die Pipeline wurde noch nicht ausgeführt oder ist fehlgeschlagen. Schritt 6 (`python Influx.py`) wiederholen und auf Fehlermeldungen achten.
 
 ### Port 8181 bereits belegt
+
 ```powershell
 # Prozess auf Port 8181 finden
 netstat -ano | findstr :8181
 
-# Prozess beenden (PID aus obiger Ausgabe)
+# Prozess beenden (PID aus obiger Ausgabe einsetzen)
 taskkill /PID <PID> /F
 ```
 
 ### Dash-Fehler: "app.run_server is not defined"
+
 Die aktuelle Dash-Version nutzt `app.run()` statt `app.run_server()`. Bereits in diesem Projekt korrekt implementiert – kein Handlungsbedarf.
+
+### gunicorn schlägt bei Installation fehl (Windows)
+
+`gunicorn` ist nicht Windows-kompatibel. Der Fehler kann ignoriert werden – für die lokale Entwicklung unter Windows wird Gunicorn nicht benötigt. Das Dashboard startet direkt mit `python Dash_Lokal.py`.
 
 ### Daten verifizieren (optional)
 
@@ -262,3 +276,14 @@ cd C:\InfluxDB3\influxdb3-core-x.x.x-windows_amd64
     --token "apiv3_..." `
     "SELECT COUNT(*) FROM cot_data"
 ```
+
+---
+
+## 9. Weiterführende Dokumentation
+
+Im Verzeichnis `docs_lokal/` befinden sich detaillierte Markdown-Dokumente zu Architektur, Datenquellen und Migration:
+
+| Dokument | Inhalt |
+|---|---|
+| `MIGRATION_GUIDE.md` | Migrationspfad von InfluxDB v2 (Flux) auf v3 (SQL) |
+| weitere Dateien | Architektur-Entscheidungen, API-Integrationen, Indikator-Dokumentation |
