@@ -2422,24 +2422,31 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
             showlegend=True
         ))
 
-    # Colorbar-Range: unsichtbarer Dummy-Trace – Rot (min) direkt zu Grün (max), nur Extremwerte
-    c_min = float(color_vals.min()) if color_vals.notna().any() else -1.0
-    c_max = float(color_vals.max()) if color_vals.notna().any() else  1.0
+    # Colorbar: harter Schritt bei 0 (kein Farbverlauf), symmetrisch um 0
+    if color_vals.notna().any():
+        _abs_max = max(abs(float(color_vals.min())), abs(float(color_vals.max())), 0.01)
+    else:
+        _abs_max = 1.0
     fig.add_trace(go.Scatter(
         x=[None], y=[None],
         mode='markers',
         marker={
-            "colorscale": [[0, '#d62728'], [1, '#2ca02c']],
+            "colorscale": [
+                [0.0,   '#d62728'],
+                [0.5 - 1e-9, '#d62728'],
+                [0.5,   '#2ca02c'],
+                [1.0,   '#2ca02c'],
+            ],
             "showscale": True,
-            "cmin": c_min,
-            "cmax": c_max,
+            "cmin": -_abs_max,
+            "cmax":  _abs_max,
             "colorbar": {
                 "title": 'Curve Range (%)<br>(Report Date)',
                 "thickness": 15,
                 "len": 0.5,
-                "tickvals": [c_min, c_max],
-                "ticktext": [f'{c_min:.2f}', f'{c_max:.2f}'],
-            }
+                "tickvals": [-_abs_max, 0, _abs_max],
+                "ticktext": [f'{-_abs_max:.2f}', '0', f'{_abs_max:.2f}'],
+            },
         },
         hoverinfo='skip',
         showlegend=False
