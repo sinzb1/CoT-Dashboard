@@ -1431,16 +1431,11 @@ def update_ppci(selected_market, start_date, end_date, direction):
     # Normalize Date to tz-naive for merging
     dff['_date'] = pd.to_datetime(dff['Date']).dt.tz_localize(None)
 
-    # Long/Short Concentration (%)
-    total_oi = pd.to_numeric(dff[OPEN_INTEREST_LABEL], errors='coerce').replace(0, np.nan)
-    dff['_long_conc']  = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_LONG_COL],  errors='coerce') / total_oi
-    dff['_short_conc'] = 100.0 * pd.to_numeric(dff[MANAGED_MONEY_SHORT_COL], errors='coerce') / total_oi
-
     if direction == 'MML':
-        color_col      = '_long_conc'
+        color_col      = MM_LONG_CONC_COL
         colorbar_title = 'MML Concentration (%)'
     else:
-        color_col      = '_short_conc'
+        color_col      = MM_SHORT_CONC_COL
         colorbar_title = 'MMS Concentration (%)'
 
     # Merge Databento 2nd-nearby prices (futures_deferred_prices)
