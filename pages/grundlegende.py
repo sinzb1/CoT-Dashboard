@@ -175,14 +175,20 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{Concentration}_{G}^{(L/S)}(\%) =
-                        \frac{\mathrm{OI}_{G}^{(L/S)}}{\mathrm{OI}_{\mathrm{total}}} \times 100
+                        x_{G} = t, \qquad y_{G} = \mathrm{OI}_{N}
+                        $$
+
+                        $$
+                        c = C_{G}(\%) = \frac{\mathrm{OI}_{G}}{\mathrm{OI}_{N}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
-                        - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
-                        - $\mathrm{OI}_{\mathrm{total}}$: Gesamtes Open Interest aller offenen Kontrakte
+                        - $G \in \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$: betrachtete Tradergruppe (Long oder Short)
+                        - $t$: Reporting-Zeitpunkt (X-Achse)
+                        - $\mathrm{OI}_{N}$: gesamtes Open Interest aller offenen Kontrakte (Y-Achse)
+                        - $\mathrm{OI}_{G}$: Open Interest der Gruppe $G$ (in Kontrakten)
+                        - $C_{G}(\%)$: Concentration der Gruppe $G$ (in %)
+                        - $c$: Farbskala = $C_{G}(\%)$
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
@@ -237,14 +243,21 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{Clustering}_{G}^{(L/S)}(\%) =
-                        \frac{N_{G}^{(L/S)}}{N} \times 100
+                        x_{G} = t, \qquad y_{G} = \mathrm{OI}_{N}
+                        $$
+
+                        $$
+                        c = K_{G}(\%) = \frac{N_{G}}{N}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
-                        - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
+                        - $G \in \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$: betrachtete Tradergruppe (Long oder Short)
+                        - $t$: Reporting-Zeitpunkt (X-Achse)
+                        - $\mathrm{OI}_{N}$: gesamtes Open Interest aller offenen Kontrakte (Y-Achse)
+                        - $N_{G}$: Anzahl Trader der Gruppe $G$
                         - $N$: Gesamtanzahl aller reportablen Trader im Markt
+                        - $K_{G}(\%)$: Clustering der Gruppe $G$ (in %)
+                        - $c$: Farbskala = $K_{G}(\%)$
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
@@ -299,14 +312,21 @@ def layout():
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
                         $$
-                        \mathrm{PositionSize}_{G}^{(L/S)} =
-                        \frac{\mathrm{OI}_{G}^{(L/S)}}{N_{G}^{(L/S)}}
+                        x_{G} = t, \qquad y_{G} = \mathrm{OI}_{N}
+                        $$
+
+                        $$
+                        c = \mathrm{Size}_{G} = \frac{\mathrm{OI}_{G}}{N_{G}}
                         $$
 
                         **Variablen und Begriffe:**
-                        - $G \in \{\mathrm{MM},\, \mathrm{PMPU},\, \mathrm{SD},\, \mathrm{OR}\}$: betrachtete Tradergruppe
-                        - $\mathrm{OI}_{G}^{(L/S)}$: Open Interest der Gruppe $G$ (Long oder Short)
-                        - $N_{G}^{(L/S)}$: Anzahl Trader der Gruppe $G$ mit Long- bzw. Short-Position
+                        - $G \in \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$: betrachtete Tradergruppe (Long oder Short)
+                        - $t$: Reporting-Zeitpunkt (X-Achse)
+                        - $\mathrm{OI}_{N}$: gesamtes Open Interest aller offenen Kontrakte (Y-Achse)
+                        - $\mathrm{OI}_{G}$: Open Interest der Gruppe $G$ (in Kontrakten)
+                        - $N_{G}$: Anzahl Trader der Gruppe $G$
+                        - $\mathrm{Size}_{G}$: durchschnittliche Positionsgrösse pro Trader (Kontrakte/Trader)
+                        - $c$: Farbskala = $\mathrm{Size}_{G}$
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),

@@ -55,6 +55,28 @@ def layout():
                         Trainingsset; die letzten 30 % das Out-of-Sample-Testset für die Evaluationsmetriken.
                         """, mathjax=True),
                     ], title="Berechnung"),
+
+                    dbc.AccordionItem([
+                        dcc.Markdown(r"""
+                        **Gini-Index als Reinheitsmass für Splits im Entscheidungsbaum:**
+
+                        $$
+                        \mathrm{Gini} = \sum_{i=1}^{n} p_i (1 - p_i)
+                        $$
+
+                        **Wahrscheinlichkeit / relative Häufigkeit der Klasse $i$ in einem Knoten:**
+
+                        $$
+                        p_i \in [0,\, 1]
+                        $$
+
+                        **Variablen und Begriffe:**
+                        - $n$: Anzahl Klassen im Knoten (hier $n = 2$: Preis steigt / Preis fällt)
+                        - $i$: Klassenindex
+                        - $p_i$: Anteil der Beobachtungen im Knoten, die zur Klasse $i$ gehören
+                        - $\mathrm{Gini}$: Reinheitsmass des Knotens — $0$ bei perfekter Reinheit, maximal bei Gleichverteilung
+                        """, mathjax=True),
+                    ], title="Reinheitsmass / Splitting-Kriterium"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),
 
                 # ----------------------------------------------------------

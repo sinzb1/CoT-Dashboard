@@ -11,12 +11,13 @@ def layout():
                 dbc.Accordion([
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-Der **Shapley-Owen Decomposition** Indikator zerlegt die Erklärungskraft (R²) eines
+Der **Shapley-Owen Decomposition** Indikator zerlegt die Erklärungskraft ($R^2$) eines
 linearen Regressionsmodells in die individuellen Beiträge der vier CFTC-Händlergruppen.
 
 **Modell:**
-Die wöchentliche Preisrendite (Zielvariable Y) wird durch die **Netto-Positionierungen**
-(Long − Short) der vier Gruppen erklärt:
+Die wöchentliche **Preisänderung** $\Delta P_t$ (Zielvariable) wird durch die
+**Differenzen der Netto-Positionierungen** $\Delta x_{G,t}$ (Long − Short, jeweils
+$t$ vs. $t-1$) der vier Gruppen erklärt:
 
 - **PMPU** – Producer/Merchant/Processor/User
 - **SD** – Swap Dealer
@@ -24,11 +25,11 @@ Die wöchentliche Preisrendite (Zielvariable Y) wird durch die **Netto-Positioni
 - **OR** – Other Reportables
 
 **Interpretation:**
-- Ein hoher Shapley-Wert einer Gruppe bedeutet, dass deren Netto-Positionierung
-  besonders viel zur Erklärung der Preisbewegungen beiträgt.
+- Ein hoher Shapley-Wert einer Gruppe bedeutet, dass deren Netto-Positionierungs-
+  änderung besonders viel zur Erklärung der Preisbewegungen beiträgt.
 - Negative Werte treten auf, wenn eine Variable die Erklärungskraft im Zusammenspiel
   mit anderen Variablen *reduziert* (Kollinearität / gegenseitige Überlappung).
-- Die Summe aller Shapley-Werte entspricht dem R² des Vollmodells.
+- Die Summe aller Shapley-Werte entspricht dem $R^2$ des Vollmodells.
 
 **Rollend:** Die Berechnung erfolgt auf einem gleitenden 52-Wochen-Fenster.
 Das Zeitreihendiagramm zeigt, wie sich die Beiträge im Zeitverlauf verändern.
@@ -37,25 +38,76 @@ Das Zeitreihendiagramm zeigt, wie sich die Beiträge im Zeitverlauf verändern.
 
                     dbc.AccordionItem([
                         dcc.Markdown(r"""
-**Shapley-Wert für Prädiktor** $i$ (exakte Formel):
+**Vollständiges Regressionsmodell der wöchentlichen Preisänderung auf die Netto-Position:**
 
 $$
-\varphi_i \;=\;
-\sum_{S \subseteq N \setminus \{i\}}
-\frac{|S|!\;(N-|S|-1)!}{N!}
-\Bigl[R^2\!\bigl(S \cup \{i\}\bigr) - R^2(S)\Bigr]
+\Delta P_t = \alpha
++ \beta_{\mathrm{PMPU}}\,\Delta x_{\mathrm{PMPU},t}
++ \beta_{\mathrm{SD}}\,\Delta x_{\mathrm{SD},t}
++ \beta_{\mathrm{MM}}\,\Delta x_{\mathrm{MM},t}
++ \beta_{\mathrm{OR}}\,\Delta x_{\mathrm{OR},t}
++ \varepsilon_t
 $$
 
-**Variablen:**
-- $N$ – Anzahl Prädiktoren ($N = 4$)
-- $S$ – Teilmenge der übrigen Prädiktoren (Koalition)
-- $R^2(S)$ – Bestimmtheitsmass der linearen Regression $Y \sim X_S$
-- $Y$ – wöchentliche Futures-Preisrendite: $r_t = \frac{P_t - P_{t-1}}{P_{t-1}}$
-- $X_i$ – Netto-Positionierung der Gruppe $i$: $\text{Long}_i - \text{Short}_i$
+**Allgemeine Form eines Teilmodells $S$ der Shapley-Owen-Zerlegung:**
 
-**Eigenschaft:** $\sum_{i=1}^{N} \varphi_i = R^2(Y \sim X_1, \ldots, X_N)$
+$$
+\Delta P_t = \alpha_S + \sum_{G \in S} \beta_{G,S}\,\Delta x_{G,t} + \varepsilon_{S,t}
+$$
 
-Für $N = 4$ werden alle $2^4 = 16$ Koalitionen explizit berechnet (exakter Algorithmus).
+**Shapley-Owen-Beitrag einer Variable als gewichtete Summe der marginalen Beiträge:**
+
+$$
+\varphi_i = \sum_{S \subseteq V \setminus \{i\}} w_i^{\,S} \cdot \bigl(R^2(S \cup \{i\}) - R^2(S)\bigr)
+$$
+
+**Gewichtungsfaktor der marginalen Beiträge (Fakultäts-Darstellung):**
+
+$$
+w_i^{\,S} = \frac{K!\,(n - K - 1)!}{n!}
+$$
+
+**Gewichtungsfaktor in Binomialkoeffizienten-Darstellung:**
+
+$$
+w_i^{\,S} = \frac{1}{n \cdot \binom{n-1}{K}}
+$$
+
+**Definition des Binomialkoeffizienten:**
+
+$$
+\binom{n-1}{K} = \frac{(n-1)!}{K!\,(n - 1 - K)!}
+$$
+
+**Relativer Anteil einer Variable am erklärten Varianzanteil:**
+
+$$
+\mathrm{Anteil}_i = \frac{\varphi_i}{R^2(V)} \times 100
+$$
+
+**Additivitätseigenschaft — Summe der Shapley-Owen-Werte ergibt das Gesamt-$R^2$:**
+
+$$
+\sum_{i \in V} \varphi_i = R^2(V)
+$$
+
+**Variablen und Begriffe:**
+- $\Delta P_t$: wöchentliche absolute Preisänderung des Front-Month-Futures
+- $\Delta x_{G,t}$: wöchentliche Änderung der Netto-Positionierung (Long − Short) der Gruppe $G$
+- $V = \{\mathrm{PMPU},\, \mathrm{SD},\, \mathrm{MM},\, \mathrm{OR}\}$: Menge aller Prädiktoren
+- $n = |V| = 4$: Anzahl Prädiktoren
+- $S \subseteq V \setminus \{i\}$: Teilkoalition der übrigen Prädiktoren
+- $K = |S|$: Grösse der Teilkoalition
+- $\alpha,\, \alpha_S$: Intercepts des Voll- bzw. Teilmodells
+- $\beta_{G},\, \beta_{G,S}$: Regressionskoeffizienten der Gruppe $G$ im Voll- bzw. Teilmodell
+- $\varepsilon_t,\, \varepsilon_{S,t}$: Residuen des Voll- bzw. Teilmodells
+- $R^2(S)$: Bestimmtheitsmass des Teilmodells mit Prädiktorset $S$
+- $R^2(V)$: Bestimmtheitsmass des Vollmodells
+- $w_i^{\,S}$: Gewicht der marginalen $R^2$-Differenz
+- $\varphi_i$: Shapley-Owen-Beitrag der Variable $i$
+- $\mathrm{Anteil}_i$: relativer Anteil von $i$ am erklärten Varianzanteil (in %)
+
+Für $n = 4$ werden alle $2^n = 16$ Koalitionen explizit berechnet (exakter Algorithmus).
                         """, mathjax=True),
                     ], title="Berechnung"),
                 ], start_collapsed=True, always_open=True, flush=True, className="mb-4"),

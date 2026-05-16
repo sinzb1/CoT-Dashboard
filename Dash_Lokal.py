@@ -2130,7 +2130,7 @@ def update_dp_time(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=[x_mms.iloc[-1]], y=[dff['_y_mms'].iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"symbol": 'triangle-down', "size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 

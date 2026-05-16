@@ -28,34 +28,40 @@ def layout():
                     dbc.AccordionItem([
                         dbc.Row([
                             dbc.Col(dcc.Markdown(r"""
-                **Für alle Märkte gilt:**
+                Für alle Märkte gilt eine Normierung der Konzentrationswerte und des Preises auf ein rollierendes 52-Wochen-Zeitfenster:
 
                 $$
-                x = \mathrm{Range}_{52W}(\mathrm{Concentration}), \qquad y = \mathrm{Range}_{52W}(P_{\mathrm{2nd\ Nearby}})
+                x_{S} = \mathrm{Range}(C_{\mathrm{MM}_{S}}), \qquad
+                x_{L} = \mathrm{Range}(C_{\mathrm{MM}_{L}}), \qquad
+                y = \mathrm{Range}(P_{2})
                 $$
 
-                mit der Normierungsformel:
+                Die Normierung erfolgt jeweils mit der folgenden Range-Formel:
 
                 $$
-                \mathrm{Range}_{52W}(v,\, t) = \frac{v(t) - \min_{52W}(v)}{\max_{52W}(v) - \min_{52W}(v)} \times 100
+                \mathrm{Range}(v) = \frac{v - \min(v)}{\max(v) - \min(v)} \times 100
                 $$
 
                 und den Konzentrationswerten:
 
                 $$
-                \mathrm{MML\ Conc.}(t) = \frac{\mathrm{MM\ Long}(t)}{\mathrm{OI}(t)} \times 100, \qquad
-                \mathrm{MMS\ Conc.}(t) = \frac{\mathrm{MM\ Short}(t)}{\mathrm{OI}(t)} \times 100
+                C_{\mathrm{MM}_{L}} = \frac{\mathrm{MM}_{L}}{\mathrm{OI}_{N}} \times 100, \qquad
+                C_{\mathrm{MM}_{S}} = \frac{\mathrm{MM}_{S}}{\mathrm{OI}_{N}} \times 100
                 $$
 
                 **Variablen und Begriffe:**
-                - **$x$:** normierte Concentration (X-Achse); linke Hälfte = MMS-Concentration, rechte Hälfte = MML-Concentration
-                - **$y$:** normierte Preisposition im 52-Wochen-Bereich (Y-Achse); 100 = Jahreshoch, 0 = Jahrestief
-                - **$v(t)$:** Rohwert zum Reporting-Zeitpunkt $t$ (Preis oder Konzentration)
-                - **$\min_{52W}(v)$, $\max_{52W}(v)$:** rollierendes Minimum bzw. Maximum über 52 Wochen
-                - **$P_{\mathrm{2nd\ Nearby}}$:** Schlusskurs des 2nd-Nearby-Futures (Databento)
-                - **$P_{\mathrm{3rd\ Nearby}}$:** Schlusskurs des 3rd-Nearby-Futures (Databento)
-                - **$\mathrm{OI}(t)$:** gesamtes Open Interest des Marktes
-                - **$c$:** Terminstruktur (Punktfarbe) — Contango: $P_{\mathrm{2nd}} < P_{\mathrm{3rd}}$, Backwardation: $P_{\mathrm{2nd}} > P_{\mathrm{3rd}}$
+                - $x_{S}$: normierter Konzentrationswert der Short-Positionen
+                - $x_{L}$: normierter Konzentrationswert der Long-Positionen
+                - $y$: normierte Preisposition im 52-Wochen-Bereich
+                - $v$: Rohwert (Preis oder Konzentration)
+                - $\max(v)$: Maximum von $v$ über die letzten 52 Wochen
+                - $\min(v)$: Minimum von $v$ über die letzten 52 Wochen
+                - $C_{\mathrm{MM}_{L}}$: Konzentration der Long-Positionen der MM-Trader
+                - $C_{\mathrm{MM}_{S}}$: Konzentration der Short-Positionen der MM-Trader
+                - $\mathrm{MM}_{L}$: Long-Positionen der MM-Trader
+                - $\mathrm{MM}_{S}$: Short-Positionen der MM-Trader
+                - $\mathrm{OI}_{N}$: gesamtes Open Interest des Marktes
+                - $P_{2}$: Schlusskurs des 2nd-Nearby-Futures (Databento)
 
                 *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                 """, mathjax=True), width=12),
