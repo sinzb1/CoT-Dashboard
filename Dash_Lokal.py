@@ -195,7 +195,7 @@ global_xaxis = {
     "tickangle": 45  # Rotate for better visibility
 }
 
-def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_width=4, outer_color='red', inner_color='black'):
+def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_width=4, outer_color='red', inner_color='black', showlegend=False, name=None):
     if not df.empty:  # Sicherstellen, dass die Daten nicht leer sind
         last_point = df.iloc[-1]
 
@@ -213,7 +213,8 @@ def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_wi
                     "color": outer_color  # Farbe des äußeren Rands
                 }
             },
-            showlegend=False  # Spur nicht in der Legende anzeigen
+            name=name or MOST_RECENT_WEEK,
+            showlegend=showlegend
         ))
 
 def safe_sizes(series, exp=2.2, min_px=0):
@@ -677,7 +678,7 @@ def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_
 
     try:
         add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
-                                 inner_size=2, inner_color='black')
+                                 showlegend=True)
     except Exception:
         pass
 
@@ -747,7 +748,7 @@ def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_ma
     )
 
     add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
-                             inner_size=2, inner_color='black')
+                             showlegend=True)
     return fig
 
 
@@ -802,7 +803,7 @@ def _build_dp_rc_fig(filtered_df):
         if pd.notna(x_last) and pd.notna(y_last):
             fig_rc.add_trace(go.Scatter(
                 x=[x_last], y=[y_last], mode='markers',
-                marker={"size": recent_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+                marker={"size": recent_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
                 name=MOST_RECENT_WEEK, legendgroup='recent',
                 showlegend=not first_legend_done
             ))
@@ -950,7 +951,6 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
     dry_powder_fig = go.Figure()
 
     BUBBLE_PX = 14
-    desired_max_px = 28
 
     COL_LONG = "#2c7fb8"  # MML
     COL_SHORT = "#7fcdbb"  # MMS
@@ -1016,14 +1016,14 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
         x=[filtered_df[MML_TRADERS_COL].iloc[-1]],
         y=[filtered_df[MML_LONG_OI_COL].iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     dry_powder_fig.add_trace(go.Scatter(
         x=[filtered_df[MMS_TRADERS_COL].iloc[-1]],
         y=[filtered_df[MML_SHORT_OI_COL].iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False  # keine doppelte Legende
     ))
 
@@ -1074,7 +1074,8 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
                 "size": 12,  # etwas grösser zur Hervorhebung
                 "color": 'black',
                 "symbol": 'circle',
-                "line": {"width": 1.5, "color": 'white'}
+                "opacity": 1.0,
+                "line": {"width": 4, "color": 'red'}
             },
             name=MOST_RECENT_WEEK
         ))
@@ -1116,7 +1117,7 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
         x=recent_data[MM_NET_TRADERS_COL],
         y=recent_data[MM_NET_OI_COL],
         mode='markers',
-        marker={"size": 12, "color": 'black', "symbol": 'circle'},
+        marker={"size": 12, "color": 'black', "symbol": 'circle', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -1203,7 +1204,9 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
         mode='markers',
         marker={
             "size": 12,
-            "color": 'black'
+            "color": 'black',
+            "opacity": 1.0,
+            "line": {"width": 4, "color": 'red'}
         },
         name=MOST_RECENT_WEEK
     ))
@@ -1327,7 +1330,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
     )
     last_week_trace = go.Scatter(
         x=[last_week[x]], y=[last_week[y]],
-        mode='markers', marker={"color": 'black', "size": 15},
+        mode='markers', marker={"color": 'black', "size": 15, "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     )
 
@@ -1929,7 +1932,6 @@ def update_dp_notional(selected_market, start_date, end_date):
     x_mms = pd.to_numeric(dff[MMS_TRADERS_COL], errors='coerce')
 
     BUBBLE_PX = 14
-    desired_max_px = 28
 
     COL_LONG  = "#2c7fb8"  # MML
     COL_SHORT = "#7fcdbb"  # MMS
@@ -1989,13 +1991,13 @@ def update_dp_notional(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=[x_mml.iloc[-1]], y=[y_mml.iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     fig.add_trace(go.Scatter(
         x=[x_mms.iloc[-1]], y=[y_mms.iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
@@ -2124,13 +2126,13 @@ def update_dp_time(selected_market, start_date, end_date):
     fig.add_trace(go.Scatter(
         x=[x_mml.iloc[-1]], y=[dff['_y_mml'].iloc[-1]],
         mode='markers',
-        marker={"size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": desired_max_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
     ))
     fig.add_trace(go.Scatter(
         x=[x_mms.iloc[-1]], y=[dff['_y_mms'].iloc[-1]],
         mode='markers',
-        marker={"symbol": 'triangle-down', "size": desired_max_px, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"symbol": 'triangle-down', "size": desired_max_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
@@ -2257,7 +2259,7 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -2451,7 +2453,7 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": _MARKER_SIZE + 4, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": _MARKER_SIZE + 4, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -2580,7 +2582,7 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -2708,7 +2710,7 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -2836,7 +2838,7 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 
@@ -2993,7 +2995,7 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
     fig.add_trace(go.Scatter(
         x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
         mode='markers',
-        marker={"size": 18, "color": 'black', "line": {"width": 2, "color": 'white'}},
+        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
         name=MOST_RECENT_WEEK
     ))
 

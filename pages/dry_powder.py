@@ -44,7 +44,7 @@ def layout():
 
                         **Besonderheit:** MMS-Werte werden negativ dargestellt, um Long- und Short-Seite im selben Chart zu trennen. Je Gruppe wird eine Regressionstrendlinie eingeblendet.
 
-                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML (Long-Seite), Hellblau = MMS (Short-Seite). Schwarzer Punkt = aktuellste Woche.
+                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML (Long-Seite), Hellblau = MMS (Short-Seite). Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -75,7 +75,7 @@ def layout():
                         - $\delta_{G}$: Vorzeichen ($+1$ für Long, $-1$ für Short)
                         - $y_{G}$: vorzeichenbehaftetes Open Interest (Y-Achse)
                         - **Farbkodierung:** Dunkelblau = $\mathrm{MM}_{L}$-Wolke, Hellblau = $\mathrm{MM}_{S}$-Wolke
-                        - **Schwarzer Punkt:** aktuellste Woche
+                        - **Schwarzer Punkt mit rotem Rahmen:** aktuellste Woche
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
@@ -104,7 +104,7 @@ def layout():
 
                         **Besonderheit:** MMS-Werte werden negativ dargestellt. Die Berechnung nutzt den Front-Month-Futures-Preis (yfinance) und die marktspezifische Kontraktgrösse. Je Gruppe wird eine Regressionstrendlinie eingeblendet.
 
-                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML, Hellblau = MMS. Schwarzer Punkt = aktuellste Woche.
+                        **Farbskala:** Keine kontinuierliche Farbskala — Dunkelblau = MML, Hellblau = MMS. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -165,7 +165,7 @@ def layout():
 
                         **Besonderheit:** MMS-Konzentration wird negativ dargestellt. Jedes Jahr erhält eine eigene Farbe.
 
-                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe = Kalenderjahr der Beobachtung. Schwarzer Punkt = aktuellste Woche.
+                        **Farbskala:** Keine kontinuierliche Farbskala — Farbe = Kalenderjahr der Beobachtung. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
                         """, mathjax=True),
                     ], title="Beschreibung"),
 
@@ -223,7 +223,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen Preisniveau und PMPU-Positionierung sichtbar machen — für Einschätzungen zu Hedging-Verhalten und preissensitiven Positionierungsmustern.
 
-                        **Besonderheit:** Graue Punkte erscheinen bei Märkten ohne 2nd-Nearby-Preisdaten (typischerweise Platin und Palladium). Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Graue Punkte erscheinen bei Märkten ohne 2nd-Nearby-Preisdaten (typischerweise Platin und Palladium). Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = 2nd Nearby Futures-Preis (USD). Rot = tiefer Preis, Grün = hoher Preis.
                         """, mathjax=True),
@@ -285,7 +285,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen Terminstruktur (Contango/Backwardation) und MM-Positionierung erkennen.
 
-                        **Besonderheit:** Hellblaue Punkte erscheinen bei fehlenden 3rd-Nearby-Daten (typischerweise Platin und Palladium). Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Hellblaue Punkte erscheinen bei fehlenden 3rd-Nearby-Daten (typischerweise Platin und Palladium). Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = Curve Range (%). Rot = Backwardation (2nd Nearby teurer als 3rd Nearby), Grün = Contango (3rd Nearby teurer als 2nd Nearby).
                         """, mathjax=True),
@@ -350,7 +350,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen allgemeiner Marktunsicherheit (VIX) und MM-Positionierung sichtbar machen.
 
-                        **Besonderheit:** Der VIX misst die vom Markt erwartete 30-Tages-Volatilität des S&P 500. Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Der VIX misst die vom Markt erwartete 30-Tages-Volatilität des S&P 500. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = VIX-Niveau. Hell = tiefe Volatilität, Dunkelrot = hohe Volatilität.
                         """, mathjax=True),
@@ -412,7 +412,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen Dollarstärke und MM-Positionierung sichtbar machen.
 
-                        **Besonderheit:** Der DXY misst die Stärke des USD gegenüber einem Korb wichtiger Währungen. Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Der DXY misst die Stärke des USD gegenüber einem Korb wichtiger Währungen. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = DXY-Niveau. Hell = schwacher Dollar, Dunkelrot = starker Dollar.
                         """, mathjax=True),
@@ -474,7 +474,7 @@ def layout():
 
                         **Ziel:** Positionierungsmuster aus Schweizer Währungsperspektive beleuchten — besonders relevant, da die betrachteten Rohstoffmärkte in USD notieren.
 
-                        **Besonderheit:** USD/CHF als Währungsfaktor wurde gewählt, da das Dashboard primär für Schweizer Nutzer konzipiert ist. Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** USD/CHF als Währungsfaktor wurde gewählt, da das Dashboard primär für Schweizer Nutzer konzipiert ist. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = USD/CHF-Kurs. Hell = tiefer Kurs (schwacher USD), Dunkel = hoher Kurs (starker USD).
                         """, mathjax=True),
@@ -536,7 +536,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen fundamentalem Angebotsniveau (Lagerbestände) und PMPU-Hedging-Positionierung sichtbar machen.
 
-                        **Besonderheit:** Ausschliesslich für Crude Oil (WTI) verfügbar. EIA-Daten werden wöchentlich veröffentlicht und auf den CoT-Stichtag (Dienstag) ausgerichtet. Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Ausschliesslich für Crude Oil (WTI) verfügbar. EIA-Daten werden wöchentlich veröffentlicht und auf den CoT-Stichtag (Dienstag) ausgerichtet. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Farbe = EIA-Lagerbestand (Tsd. Barrel). Hell = knappes Angebot, Dunkel = reichliches Angebot.
                         """, mathjax=True),
@@ -599,7 +599,7 @@ def layout():
 
                         **Ziel:** Das vollständige Positionierungsprofil aller Tradergruppen in einem Chart darstellen — für direkte Marktvergleiche (z.B. Gold vs. Silber).
 
-                        **Besonderheit:** Jede Gruppe hat eine eigene Farbe. Schwarzer Punkt = aktuellste Woche je Gruppe.
+                        **Besonderheit:** Jede Gruppe hat eine eigene Farbe. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche je Gruppe.
 
                         **Farbskala:** Keine kontinuierliche Farbskala — Farbe unterscheidet die acht Trader-Teilgruppen (MML, MMS, ORL, ORS, PMPUL, PMPUS, SDL, SDS).
                         """, mathjax=True),
@@ -633,7 +633,7 @@ def layout():
                         - $\mathrm{OI}_{N}$: gesamtes Open Interest aller offenen Kontrakte
                         - $\delta_{G}$: Vorzeichen ($+1$ für Long-Serien, $-1$ für Short-Serien)
                         - $RC_{G}$: Relative Concentration der Gruppe $G$ (in Prozentpunkten, Y-Achse)
-                        - **Schwarzer Punkt:** aktuellste Woche je Gruppe
+                        - **Schwarzer Punkt mit rotem Rahmen:** aktuellste Woche je Gruppe
 
                         *Alle Variablen beziehen sich auf denselben Reporting-Zeitpunkt.*
                         """, mathjax=True),
@@ -660,7 +660,7 @@ def layout():
 
                         **Ziel:** Saisonale Muster im Hedging-Verhalten der PMPU-Gruppe erkennen und von strukturellen Verschiebungen abgrenzen.
 
-                        **Besonderheit:** Ausschliesslich die PMPU Long Seite wird dargestellt. Schwarzer Punkt = aktuellste Woche.
+                        **Besonderheit:** Ausschliesslich die PMPU Long Seite wird dargestellt. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche.
 
                         **Farbskala:** Keine kontinuierliche Farbskala — Farbe unterscheidet die vier Quartale (Q1–Q4).
                         """, mathjax=True),
@@ -714,7 +714,7 @@ def layout():
 
                         **Ziel:** Netto-Positionierung der MM-Gruppe und historische Extremwerte auf einen Blick erfassbar machen.
 
-                        **Besonderheit:** Farbkodierung nach Jahr, um zeitliche Cluster erkennbar zu machen. Schwarzer Punkt = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
+                        **Besonderheit:** Farbkodierung nach Jahr, um zeitliche Cluster erkennbar zu machen. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
 
                         **Farbskala:** Keine kontinuierliche Farbskala — Farbe = Kalenderjahr. Gestrichelte Linien = Median-Referenzwerte.
                         """, mathjax=True),
@@ -778,7 +778,7 @@ def layout():
 
                         **Ziel:** Zusammenhang zwischen Traderanzahl, Positionsgrösse und Marktvolumen sichtbar machen — für Rückschlüsse auf Conviction und Liquidationsrisiken.
 
-                        **Besonderheit:** Gestrichelte Medianlinien auf beiden Achsen als Referenz. Schwarzer Punkt = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
+                        **Besonderheit:** Gestrichelte Medianlinien auf beiden Achsen als Referenz. Schwarzer Punkt mit rotem Rahmen = aktuellste Woche, Roter Punkt = erste Woche im gewählten Zeitraum.
 
                         **Farbskala:** Farbe = Open Interest (Kontrakte). Hell = hohes OI, Dunkel = tiefes OI.
                         """, mathjax=True),
