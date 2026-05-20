@@ -92,36 +92,39 @@ def enrich_cot_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(["Market Names", "Date"])
 
     # ------------------------------------------------------------------
-    # Trader-Anteile & Clustering
+    # Trader-Anteile & Clustering   (K_G = N_G / N · 100)
+    # Concentration (OI-Anteil)     (C_G = OI_G / OI_N · 100)
     # ------------------------------------------------------------------
     df[_C_TOTAL_NUM] = df[_C_TOTAL_TRADERS]
 
+    # MM-Shares (intern + Spezial-Spaltennamen ohne Gruppen-Prefix)
     df["MM_Long_share"]  = df[_C_TR_MM_L] / df[_C_TOTAL_NUM]
     df["MM_Short_share"] = df[_C_TR_MM_S] / df[_C_TOTAL_NUM]
-
     df["Long Clustering"]  = df["MM_Long_share"]  * 100.0
     df["Short Clustering"] = df["MM_Short_share"] * 100.0
 
-    total_traders = df[_C_TOTAL_NUM].replace(0, np.nan)
-    df["PMPU Long Clustering"]  = df[_C_TR_PMPU_L] / total_traders * 100.0
-    df["PMPU Short Clustering"] = df[_C_TR_PMPU_S] / total_traders * 100.0
-    df["SD Long Clustering"]    = df[_C_TR_SD_L]   / total_traders * 100.0
-    df["SD Short Clustering"]   = df[_C_TR_SD_S]   / total_traders * 100.0
-    df["OR Long Clustering"]    = df[_C_TR_OR_L]   / total_traders * 100.0
-    df["OR Short Clustering"]   = df[_C_TR_OR_S]   / total_traders * 100.0
+    # Gruppen-Tabellen: (Prefix, Long-Spalte, Short-Spalte)
+    _TRADER_GROUPS = [
+        ("PMPU", _C_TR_PMPU_L, _C_TR_PMPU_S),
+        ("SD",   _C_TR_SD_L,   _C_TR_SD_S),
+        ("OR",   _C_TR_OR_L,   _C_TR_OR_S),
+    ]
+    _OI_GROUPS = [
+        ("PMPU", _C_PMPU_L, _C_PMPU_S),
+        ("SD",   _C_SD_L,   _C_SD_S),
+        ("MM",   _C_MM_L,   _C_MM_S),
+        ("OR",   _C_OR_L,   _C_OR_S),
+    ]
 
-    # ------------------------------------------------------------------
-    # Concentration (OI-Anteil je Gruppe am Total OI)
-    # ------------------------------------------------------------------
+    total_traders = df[_C_TOTAL_NUM].replace(0, np.nan)
+    for name, l, s in _TRADER_GROUPS:
+        df[f"{name} Long Clustering"]  = df[l] / total_traders * 100.0
+        df[f"{name} Short Clustering"] = df[s] / total_traders * 100.0
+
     total_oi = pd.to_numeric(df["Open Interest"], errors="coerce").replace(0, np.nan)
-    df["PMPU Long Concentration"]  = df[_C_PMPU_L] / total_oi * 100.0
-    df["PMPU Short Concentration"] = df[_C_PMPU_S] / total_oi * 100.0
-    df["SD Long Concentration"]    = df[_C_SD_L]   / total_oi * 100.0
-    df["SD Short Concentration"]   = df[_C_SD_S]   / total_oi * 100.0
-    df["MM Long Concentration"]    = df[_C_MM_L]   / total_oi * 100.0
-    df["MM Short Concentration"]   = df[_C_MM_S]   / total_oi * 100.0
-    df["OR Long Concentration"]    = df[_C_OR_L]   / total_oi * 100.0
-    df["OR Short Concentration"]   = df[_C_OR_S]   / total_oi * 100.0
+    for name, l, s in _OI_GROUPS:
+        df[f"{name} Long Concentration"]  = df[l] / total_oi * 100.0
+        df[f"{name} Short Concentration"] = df[s] / total_oi * 100.0
 
     # ------------------------------------------------------------------
     # Rolling Min/Max auf PMPU Long (für Grundlegende-Darstellung)

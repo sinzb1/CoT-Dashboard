@@ -1884,6 +1884,27 @@ def update_pp_position_size(selected_market, start_date, end_date, mm_type):
     return fig
 
 
+# Y-Achse mit absoluten Tick-Labels um die Nulllinie (MMS wird negativ geplottet,
+# repräsentiert aber positives Exposure/Konzentration).
+def _symmetric_abs_ticks(y_min, y_max, target_n=7):
+    M = max(abs(float(y_min)), abs(float(y_max)))
+    if not np.isfinite(M) or M <= 0:
+        return None, None
+    raw_step = 2 * M / target_n
+    magnitude = 10 ** np.floor(np.log10(raw_step))
+    norm = raw_step / magnitude
+    for nice in (1, 2, 2.5, 5, 10):
+        if nice >= norm:
+            step = nice * magnitude
+            break
+    else:
+        step = 10 * magnitude
+    n_pos = int(np.ceil(M / step))
+    tickvals = [i * step for i in range(-n_pos, n_pos + 1)]
+    ticktext = [f"{abs(v):g}" for v in tickvals]
+    return tickvals, ticktext
+
+
 # ---------------------------------------------------------------------------
 # Dry Powder Notional Indicator – Callback
 # Orientierung am DP Indicator: Farben, Trendlinien, Most-Recent-Week-Marker,
@@ -2001,17 +2022,25 @@ def update_dp_notional(selected_market, start_date, end_date):
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
+    y_combined = pd.concat([y_mml, y_mms]).dropna()
+    yaxis_cfg = {
+        "title": 'Long and Short $ Exposure (USD bn)',
+        "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
+        "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1,
+    }
+    if not y_combined.empty:
+        tickvals, ticktext = _symmetric_abs_ticks(y_combined.min(), y_combined.max())
+        if tickvals is not None:
+            yaxis_cfg["tickvals"] = tickvals
+            yaxis_cfg["ticktext"] = ticktext
+
     fig.update_layout(
         title='DP Notional Indicator',
         xaxis={
             "title": NUMBER_OF_TRADERS_LABEL,
             "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
         },
-        yaxis={
-            "title": 'Long and Short $ Exposure (USD bn)',
-            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
-            "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1
-        },
+        yaxis=yaxis_cfg,
         plot_bgcolor='white',
         legend_title=TRADER_GROUP_COL,
         height=600,
@@ -2136,17 +2165,25 @@ def update_dp_time(selected_market, start_date, end_date):
         name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
     ))
 
+    y_combined = pd.concat([dff['_y_mml'], dff['_y_mms']]).dropna()
+    yaxis_cfg = {
+        "title": 'Long and Short Concentration (%)',
+        "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
+        "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1,
+    }
+    if not y_combined.empty:
+        tickvals, ticktext = _symmetric_abs_ticks(y_combined.min(), y_combined.max())
+        if tickvals is not None:
+            yaxis_cfg["tickvals"] = tickvals
+            yaxis_cfg["ticktext"] = ticktext
+
     fig.update_layout(
         title='DP Time Indicator',
         xaxis={
             "title": NUMBER_OF_TRADERS_LABEL,
             "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2, "zeroline": False
         },
-        yaxis={
-            "title": 'Long and Short Concentration (%)',
-            "showgrid": True, "gridcolor": LIGHTGRAY, "gridwidth": 2,
-            "zeroline": True, "zerolinecolor": 'black', "zerolinewidth": 1
-        },
+        yaxis=yaxis_cfg,
         plot_bgcolor='white',
         legend_title='Year',
         height=600,
