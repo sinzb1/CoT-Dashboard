@@ -195,27 +195,26 @@ global_xaxis = {
     "tickangle": 45  # Rotate for better visibility
 }
 
-def add_last_point_highlight(fig, df, x_col, y_col, inner_size=10, outer_line_width=4, outer_color='red', inner_color='black', showlegend=False, name=None):
-    if not df.empty:  # Sicherstellen, dass die Daten nicht leer sind
-        last_point = df.iloc[-1]
+def add_recent_point_marker(fig, x, y, size=18, symbol='circle',
+                            legendgroup=None, showlegend=True, name=None):
+    """Vereinheitlichter "Most Recent Week"-Marker: schwarz mit rotem Rand.
 
-        # Innerer Punkt mit rotem Rand
-        fig.add_trace(go.Scatter(
-            x=[last_point[x_col]],
-            y=[last_point[y_col]],
-            mode='markers',
-            marker={
-                "size": inner_size,  # Größe des inneren Punkts
-                "color": inner_color,  # Farbe des inneren Punkts
-                "opacity": 1.0,
-                "line": {
-                    "width": outer_line_width,  # Breite des äußeren Rands
-                    "color": outer_color  # Farbe des äußeren Rands
-                }
-            },
-            name=name or MOST_RECENT_WEEK,
-            showlegend=showlegend
-        ))
+    Wird von allen Indikatoren (Basis, PP, DP) verwendet, damit das Markieren
+    des aktuellsten Datenpunkts überall identisch dargestellt wird.
+    """
+    if pd.isna(x) or pd.isna(y):
+        return
+    fig.add_trace(go.Scatter(
+        x=[x], y=[y], mode='markers',
+        marker={
+            "size": size, "symbol": symbol,
+            "color": 'black', "opacity": 1.0,
+            "line": {"width": 4, "color": 'red'},
+        },
+        name=name or MOST_RECENT_WEEK,
+        legendgroup=legendgroup,
+        showlegend=showlegend,
+    ))
 
 def safe_sizes(series, exp=2.2, min_px=0):
     s = pd.to_numeric(series, errors='coerce').clip(lower=0)
@@ -677,8 +676,12 @@ def _build_position_size_fig(df, traders_col, pos_size_col, direction, colorbar_
     )
 
     try:
-        add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
-                                 showlegend=True)
+        if not df.empty:
+            add_recent_point_marker(
+                fig,
+                x=df['Date'].iloc[-1], y=df[OPEN_INTEREST_LABEL].iloc[-1],
+                size=10, showlegend=True,
+            )
     except Exception:
         pass
 
@@ -747,8 +750,12 @@ def _build_clustering_fig(df, clustering_col, colorbar_title, title, selected_ma
         margin={"l": 60, "r": 160, "t": 60, "b": 60}
     )
 
-    add_last_point_highlight(fig=fig, df=df, x_col='Date', y_col=OPEN_INTEREST_LABEL,
-                             showlegend=True)
+    if not df.empty:
+        add_recent_point_marker(
+            fig,
+            x=df['Date'].iloc[-1], y=df[OPEN_INTEREST_LABEL].iloc[-1],
+            size=10, showlegend=True,
+        )
     return fig
 
 
@@ -801,12 +808,11 @@ def _build_dp_rc_fig(filtered_df):
         x_last = x_series.loc[last_idx]
         y_last = y_series.loc[last_idx]
         if pd.notna(x_last) and pd.notna(y_last):
-            fig_rc.add_trace(go.Scatter(
-                x=[x_last], y=[y_last], mode='markers',
-                marker={"size": recent_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-                name=MOST_RECENT_WEEK, legendgroup='recent',
-                showlegend=not first_legend_done
-            ))
+            add_recent_point_marker(
+                fig_rc, x=x_last, y=y_last,
+                size=recent_px, legendgroup='recent',
+                showlegend=not first_legend_done,
+            )
             first_legend_done = True
 
     fig_rc.update_layout(
@@ -1011,21 +1017,19 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
     add_trend(filtered_df[MML_TRADERS_COL], filtered_df[MML_LONG_OI_COL], COL_LONG, "MML Trend")
     add_trend(filtered_df[MMS_TRADERS_COL], filtered_df[MML_SHORT_OI_COL], COL_SHORT, "MMS Trend")
 
-    # Most Recent Week
-    dry_powder_fig.add_trace(go.Scatter(
-        x=[filtered_df[MML_TRADERS_COL].iloc[-1]],
-        y=[filtered_df[MML_LONG_OI_COL].iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
-    ))
-    dry_powder_fig.add_trace(go.Scatter(
-        x=[filtered_df[MMS_TRADERS_COL].iloc[-1]],
-        y=[filtered_df[MML_SHORT_OI_COL].iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False  # keine doppelte Legende
-    ))
+    # Most Recent Week (MML + MMS gepaart, einmalige Legende)
+    add_recent_point_marker(
+        dry_powder_fig,
+        x=filtered_df[MML_TRADERS_COL].iloc[-1],
+        y=filtered_df[MML_LONG_OI_COL].iloc[-1],
+        size=18, legendgroup='recent', showlegend=True,
+    )
+    add_recent_point_marker(
+        dry_powder_fig,
+        x=filtered_df[MMS_TRADERS_COL].iloc[-1],
+        y=filtered_df[MML_SHORT_OI_COL].iloc[-1],
+        size=18, legendgroup='recent', showlegend=False,
+    )
 
     dry_powder_fig.update_layout(
         title="DP Indicator",
@@ -1066,19 +1070,12 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
     most_recent_date = filtered_df['Date'].max()
     recent_data = filtered_df[filtered_df['Date'] == most_recent_date]
     if not recent_data.empty:
-        dp_seasonal_indicator_fig.add_trace(go.Scatter(
-            x=recent_data[PMPUL_TRADERS_COL],
-            y=recent_data[PMPUL_REL_CONC_COL],
-            mode='markers',
-            marker={
-                "size": 12,  # etwas grösser zur Hervorhebung
-                "color": 'black',
-                "symbol": 'circle',
-                "opacity": 1.0,
-                "line": {"width": 4, "color": 'red'}
-            },
-            name=MOST_RECENT_WEEK
-        ))
+        add_recent_point_marker(
+            dp_seasonal_indicator_fig,
+            x=recent_data[PMPUL_TRADERS_COL].iloc[0],
+            y=recent_data[PMPUL_REL_CONC_COL].iloc[0],
+            size=12,
+        )
 
     dp_seasonal_indicator_fig.update_layout(
         title=f"DP Seasonal Indicator – {most_recent_date.strftime('%d/%m/%Y')}",
@@ -1113,13 +1110,13 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
     recent_data = filtered_df[filtered_df['Date'] == most_recent_date]
     first_data = filtered_df[filtered_df['Date'] == first_date]
     
-    dp_net_indicators_fig.add_trace(go.Scatter(
-        x=recent_data[MM_NET_TRADERS_COL],
-        y=recent_data[MM_NET_OI_COL],
-        mode='markers',
-        marker={"size": 12, "color": 'black', "symbol": 'circle', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    if not recent_data.empty:
+        add_recent_point_marker(
+            dp_net_indicators_fig,
+            x=recent_data[MM_NET_TRADERS_COL].iloc[0],
+            y=recent_data[MM_NET_OI_COL].iloc[0],
+            size=12,
+        )
 
     dp_net_indicators_fig.add_trace(go.Scatter(
         x=first_data[MM_NET_TRADERS_COL],
@@ -1198,18 +1195,11 @@ def update_graphs(selected_market, start_date, end_date, mm_type, trader_group,
         showlegend=False
     ))
 
-    dp_position_size_fig.add_trace(go.Scatter(
-        x=[recent_x],
-        y=[recent_week],
-        mode='markers',
-        marker={
-            "size": 12,
-            "color": 'black',
-            "opacity": 1.0,
-            "line": {"width": 4, "color": 'red'}
-        },
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(
+        dp_position_size_fig,
+        x=recent_x, y=recent_week,
+        size=12,
+    )
 
     dp_position_size_fig.add_trace(go.Scatter(
         x=[first_x],
@@ -1328,11 +1318,7 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
         mode='markers', marker={"color": 'red', "size": 15},
         name=FIRST_WEEK_LABEL
     )
-    last_week_trace = go.Scatter(
-        x=[last_week[x]], y=[last_week[y]],
-        mode='markers', marker={"color": 'black', "size": 15, "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    )
+    # Most-Recent-Week-Marker wird nach dem Figure-Aufbau via add_recent_point_marker hinzugefügt
 
     # --- Trendlinie (OLS) - über die ganze Plotbreite, solid, ohne Legende/Annotation ---
     xv = data[x].astype(float).to_numpy()
@@ -1362,11 +1348,12 @@ def create_hedging_indicator(data, trader_group, start_date, end_date):
     )
 
     # Figure zusammensetzen
-    traces = [trace, first_week_trace, last_week_trace]
+    traces = [trace, first_week_trace]
     if trend_trace:
         traces.append(trend_trace)
 
     fig = go.Figure(data=traces, layout=layout)
+    add_recent_point_marker(fig, x=last_week[x], y=last_week[y], size=15)
     return fig
 
 # Callback to update the Dry Powder Concentration/Clustering Indicator graph
@@ -2009,18 +1996,14 @@ def update_dp_notional(selected_market, start_date, end_date):
     _add_notional_trend(x_mms, y_mms, COL_SHORT, 'MMS Trend')
 
     # Most Recent Week (identisch zu DP Indicator)
-    fig.add_trace(go.Scatter(
-        x=[x_mml.iloc[-1]], y=[y_mml.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
-    ))
-    fig.add_trace(go.Scatter(
-        x=[x_mms.iloc[-1]], y=[y_mms.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
-    ))
+    add_recent_point_marker(
+        fig, x=x_mml.iloc[-1], y=y_mml.iloc[-1],
+        size=18, legendgroup='recent', showlegend=True,
+    )
+    add_recent_point_marker(
+        fig, x=x_mms.iloc[-1], y=y_mms.iloc[-1],
+        size=18, legendgroup='recent', showlegend=False,
+    )
 
     y_combined = pd.concat([y_mml, y_mms]).dropna()
     yaxis_cfg = {
@@ -2150,20 +2133,16 @@ def update_dp_time(selected_market, start_date, end_date):
         _add_time_trend(xs, x_mml, dff['_y_mml'], '#2c7fb8', 'MML Trend')
         _add_time_trend(xs, x_mms, dff['_y_mms'], '#7fcdbb', 'MMS Trend')
 
-    # Most Recent Week (identisch zu DP Notional)
-    desired_max_px = 18
-    fig.add_trace(go.Scatter(
-        x=[x_mml.iloc[-1]], y=[dff['_y_mml'].iloc[-1]],
-        mode='markers',
-        marker={"size": desired_max_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=True
-    ))
-    fig.add_trace(go.Scatter(
-        x=[x_mms.iloc[-1]], y=[dff['_y_mms'].iloc[-1]],
-        mode='markers',
-        marker={"symbol": 'triangle-down', "size": desired_max_px, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK, legendgroup='recent', showlegend=False
-    ))
+    # Most Recent Week (identisch zu DP Notional, MMS als Dreieck)
+    add_recent_point_marker(
+        fig, x=x_mml.iloc[-1], y=dff['_y_mml'].iloc[-1],
+        size=18, legendgroup='recent', showlegend=True,
+    )
+    add_recent_point_marker(
+        fig, x=x_mms.iloc[-1], y=dff['_y_mms'].iloc[-1],
+        size=18, symbol='triangle-down',
+        legendgroup='recent', showlegend=False,
+    )
 
     y_combined = pd.concat([dff['_y_mml'], dff['_y_mms']]).dropna()
     yaxis_cfg = {
@@ -2293,12 +2272,9 @@ def update_dp_price(selected_market, start_date, end_date, pmpu_side):
         ))
 
     # Most Recent Week (identisch zu DP Notional/Time)
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(
+        fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1], size=18,
+    )
 
     fig.update_layout(
         title=pt_title,
@@ -2487,12 +2463,10 @@ def update_dp_curve(selected_market, start_date, end_date, mm_side):
     ))
 
     # Most Recent Week
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": _MARKER_SIZE + 4, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(
+        fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1],
+        size=_MARKER_SIZE + 4,
+    )
 
     fig.update_layout(
         title=pt_title,
@@ -2616,12 +2590,7 @@ def update_dp_vix(selected_market, start_date, end_date, mm_side):
         ))
 
     # Most Recent Week (identisch zu DP Price Indicator)
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1], size=18)
 
     fig.update_layout(
         title=title,
@@ -2744,12 +2713,7 @@ def update_dp_dxy(selected_market, start_date, end_date, mm_side):
         ))
 
     # Most Recent Week (identisch zu VIX)
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1], size=18)
 
     fig.update_layout(
         title=title,
@@ -2872,12 +2836,7 @@ def update_dp_currency(selected_market, start_date, end_date, mm_side):
         ))
 
     # Most Recent Week (identisch zu DXY/VIX)
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1], size=18)
 
     fig.update_layout(
         title=title,
@@ -3029,12 +2988,7 @@ def update_dp_fundamental(selected_market, start_date, end_date, pmpu_side):
         ))
 
     # Most Recent Week
-    fig.add_trace(go.Scatter(
-        x=[x_vals.iloc[-1]], y=[y_vals.iloc[-1]],
-        mode='markers',
-        marker={"size": 18, "color": 'black', "opacity": 1.0, "line": {"width": 4, "color": 'red'}},
-        name=MOST_RECENT_WEEK
-    ))
+    add_recent_point_marker(fig, x=x_vals.iloc[-1], y=y_vals.iloc[-1], size=18)
 
     fig.update_layout(
         title=title,
