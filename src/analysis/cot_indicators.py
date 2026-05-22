@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-def clustering_0_100(
+def rolling_range_0_100(
     s: pd.Series,
     window: int = 52,
     min_periods: int = 10,

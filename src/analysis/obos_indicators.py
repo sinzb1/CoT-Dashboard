@@ -3,7 +3,7 @@ OBOS-Indikatorberechnungen: MM Long/Short Concentration Range und Curve Style.
 
 Berechnet für jeden Markt:
 - MML/MMS Concentration (% des Open Interest)
-- Rollende 52-Wochen-Range beider Concentration-Werte (via clustering_0_100)
+- Rollende 52-Wochen-Range beider Concentration-Werte (via rolling_range_0_100)
 - Preis-Range des 2nd-Nearby-Kontrakts
 - Kurvenstruktur (Contango / Backwardation) aus 2nd vs. 3rd Nearby
 
@@ -13,7 +13,7 @@ Alle Funktionen sind reine Datenberechnungen ohne UI- oder Plotly-Abhängigkeite
 import numpy as np
 import pandas as pd
 
-from src.analysis.cot_indicators import clustering_0_100
+from src.analysis.cot_indicators import rolling_range_0_100
 from src.analysis.market_config import get_2nd_nearby_price_col, get_3rd_nearby_price_col
 
 
@@ -153,11 +153,11 @@ def build_market_row(
     total_oi = pd.to_numeric(dff['Open Interest'], errors='coerce').replace(0, np.nan)
     dff['_mml_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Long'],  errors='coerce') / total_oi
     dff['_mms_conc'] = 100.0 * pd.to_numeric(dff['Managed Money Short'], errors='coerce') / total_oi
-    dff['_mml_range'] = clustering_0_100(dff['_mml_conc'], window=52)
-    dff['_mms_range'] = clustering_0_100(dff['_mms_conc'], window=52)
+    dff['_mml_range'] = rolling_range_0_100(dff['_mml_conc'], window=52)
+    dff['_mms_range'] = rolling_range_0_100(dff['_mms_conc'], window=52)
 
     dff = merge_deferred_prices(dff, market, df_deferred_prices)
-    dff['_price2_range'] = clustering_0_100(
+    dff['_price2_range'] = rolling_range_0_100(
         pd.to_numeric(dff.get('_price2', np.nan), errors='coerce'), window=52
     )
 
